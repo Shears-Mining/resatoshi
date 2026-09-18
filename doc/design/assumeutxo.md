@@ -1,3 +1,7 @@
+> Resatoshi inherits the implementation described in this upstream Bitcoin Core
+> design reference. Upstream history, proposals, and credits retain their original
+> meaning. Current Resatoshi mainnet rules are in [resatoshi.md](../resatoshi.md).
+
 # Assumeutxo Design
 
 For notes on the usage of Assumeutxo, please refer to [the usage doc](/doc/assumeutxo.md).

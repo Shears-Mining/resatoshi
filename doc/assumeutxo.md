@@ -1,3 +1,7 @@
+> Resatoshi mainnet currently has no configured AssumeUTXO snapshot entries.
+> The inherited interface guide below describes snapshot tooling, including
+> examples for other chain configurations. See [network rules](resatoshi.md).
+
 # Assumeutxo Usage
 
 Assumeutxo is a feature that allows fast bootstrapping of a validating bitcoind

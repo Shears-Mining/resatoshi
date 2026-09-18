@@ -1,23 +1,21 @@
-Bitcoin Core
-=============
+Resatoshi
+=========
 
-Intro
------
-Bitcoin is a free open source peer-to-peer electronic cash system that is
-completely decentralized, without the need for a central server or trusted
-parties.  Users hold the crypto keys to their own money and transact directly
-with each other, with the help of a P2P network to check for double-spending.
+Resatoshi is an independent proof-of-work blockchain based on Bitcoin Core 31.0.
+It includes a node, wallet and Qt graphical interface.
 
+Download packages:
+https://github.com/resatoshi/bitcoin-resatoshi-31.0/releases
 
-Setup
------
-Unpack the files into a directory and run bitcoin-qt.exe.
+Run bitcoin-qt.exe from the installed package. The executable retains its
+existing name. The default data directory is %LOCALAPPDATA%\ReSatoshi and
+the configuration filename is bitcoin.conf.
 
-Bitcoin Core is the original Bitcoin client and it builds the backbone of the network.
-However, it downloads and stores the entire history of Bitcoin transactions;
-depending on the speed of your computer and network connection, the synchronization
-process can take anywhere from a few hours to a day or more.
+Mainnet uses P2P port 19333 and RPC port 19332. Configure a Resatoshi peer
+with addnode in bitcoin.conf when starting a new node.
 
-See the bitcoin wiki at:
-  https://en.bitcoin.it/wiki/Main_Page
-for more help and information.
+Documentation:
+https://github.com/resatoshi/bitcoin-resatoshi-31.0/blob/main/doc/README.md
+
+Issue reports:
+https://github.com/resatoshi/bitcoin-resatoshi-31.0/issues

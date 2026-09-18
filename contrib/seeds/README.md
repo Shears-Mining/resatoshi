@@ -1,3 +1,13 @@
+# Resatoshi seed configuration
+
+Resatoshi mainnet currently has no configured DNS or fixed seeds; see
+[src/kernel/chainparams.cpp](../../src/kernel/chainparams.cpp). The generator,
+input lists, and procedure below are inherited Bitcoin tooling. Those lists
+contain Bitcoin peers, not Resatoshi bootstrap nodes.
+
+For a Resatoshi node, configure a known Resatoshi peer with `addnode` and port
+`19333`. The following upstream procedure is retained as a tool reference.
+
 # Seeds
 
 Utility to generate the seeds.txt list that is compiled into the client

@@ -1,3 +1,7 @@
+> Resatoshi inherits the implementation described in this upstream Bitcoin Core
+> design reference. Upstream history, proposals, and credits retain their original
+> meaning. Current Resatoshi mainnet rules are in [resatoshi.md](../resatoshi.md).
+
 # Multiprocess Bitcoin Design Document
 
 Guide to the design and architecture of the Bitcoin Core multiprocess feature

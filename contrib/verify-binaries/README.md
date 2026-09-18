@@ -1,3 +1,14 @@
+# Resatoshi package verification
+
+Resatoshi packages and accompanying checksums are published in
+[this repository's releases](https://github.com/resatoshi/bitcoin-resatoshi-31.0/releases).
+Compare a downloaded file's SHA-256 digest with the checksum published for that
+same release, for example with `sha256sum <downloaded-file>`.
+
+The `verify.py` tool and the instructions below target upstream Bitcoin Core
+release servers, signatures, and builder keys. They do not authenticate a
+Resatoshi package. The following section is the inherited tool reference.
+
 ### Verify Binaries
 
 #### Preparation

@@ -71,17 +71,17 @@ git worktree add --checkout ../where-my-checkout-commit-ish-will-live my-checkou
 
 ### Interactive "dummy rebases" for fixups and execs with `git merge-base`
 
-When rebasing, we often want to do a "dummy rebase," whereby we are not rebasing over an updated master but rather over the last common commit with master. This might be useful for rearranging commits, `rebase --autosquash`ing, or `rebase --exec`ing without introducing conflicts that arise from an updated master. In these situations, we can use `git merge-base` to identify the last common commit with master, and rebase off of that.
+When rebasing, we often want to do a "dummy rebase," whereby we are not rebasing over an updated main but rather over the last common commit with main. This might be useful for rearranging commits, `rebase --autosquash`ing, or `rebase --exec`ing without introducing conflicts that arise from an updated main. In these situations, we can use `git merge-base` to identify the last common commit with main, and rebase off of that.
 
-To squash in `git commit --fixup` commits without rebasing over an updated master, we can do the following:
+To squash in `git commit --fixup` commits without rebasing over an updated main, we can do the following:
 
 ```sh
-git rebase -i --autosquash "$(git merge-base master HEAD)"
+git rebase -i --autosquash "$(git merge-base main HEAD)"
 ```
 
-To execute `cmake --build build && ctest --test-dir build` on every commit since last diverged from master, but without rebasing over an updated master, we can do the following:
+To execute `cmake --build build && ctest --test-dir build` on every commit since last diverged from main, but without rebasing over an updated main, we can do the following:
 ```sh
-git rebase -i --exec "cmake --build build && ctest --test-dir build" "$(git merge-base master HEAD)"
+git rebase -i --exec "cmake --build build && ctest --test-dir build" "$(git merge-base main HEAD)"
 ```
 
 -----
@@ -153,7 +153,7 @@ As an alternative to fetching commits directly, when looking at pull requests by
 ```
 [remote "upstream-pull"]
         fetch = +refs/pull/*/head:refs/remotes/upstream-pull/*
-        url = git@github.com:bitcoin/bitcoin.git
+        url = git@github.com:resatoshi/bitcoin-resatoshi-31.0.git
 ```
 
 This will add an `upstream-pull` remote to your git repository, which can be fetched using `git fetch --all` or `git fetch upstream-pull`. It will download and store on disk quite a lot of data (all PRs, including merged and closed ones). Afterwards, you can use `upstream-pull/NUMBER/head` in arguments to `git show`, `git checkout` and anywhere a commit id would be acceptable to see the changes from pull request NUMBER.
@@ -174,7 +174,7 @@ git fetch upstream pull/<number>/head:pr-<number> && git switch pr-<number>
 
 > [!NOTE]
 > The remote named "upstream" here must be the one that the pull request was opened against.
-> e.g. github.com/bitcoin/bitcoin.git or for the GUI github.com/bitcoin-core/gui
+> e.g. github.com/resatoshi/bitcoin-resatoshi-31.0.git (including GUI changes)
 
 Make these easier to use by adding aliases to your git config:
 
@@ -202,14 +202,14 @@ For example, to identify the differences between your previously reviewed diffs 
 ```
        P1--P2--P3--P4--P5   <-- previously-reviewed-head
       /
-...--m   <-- master
+...--m   <-- main
       \
        P1--P2--N3--N4--N5   <-- new-head (with P3 slightly modified)
 ```
 
 You can do:
 ```sh
-git range-diff master previously-reviewed-head new-head
+git range-diff main previously-reviewed-head new-head
 ```
 
 If you expected `git range-diff` to match a commit, but it shows it as a deletion and an addition, try re-running with a higher creation factor:
@@ -223,7 +223,7 @@ Note that `git range-diff` also works for rebases:
 ```
        P1--P2--P3--P4--P5   <-- previously-reviewed-head
       /
-...--m--m1--m2--m3   <-- master
+...--m--m1--m2--m3   <-- main
                   \
                    P1--P2--N3--N4  <-- new-head (with P3 modified, P4 & P5 squashed)
 

@@ -190,7 +190,7 @@ Refer to [/test/functional/README.md#style-guidelines](/test/functional/README.m
 
 ## Coding Style (Doxygen-compatible comments)
 
-Bitcoin Core uses [Doxygen](https://www.doxygen.nl/) to generate its official documentation.
+Resatoshi uses [Doxygen](https://www.doxygen.nl/) to generate its official documentation.
 
 Use Doxygen-compatible comment blocks for functions, methods, and fields.
 
@@ -330,7 +330,7 @@ see [test/functional/](/test/functional) for tests that run in `-regtest` mode.
 
 ### DEBUG_LOCKORDER
 
-Bitcoin Core is a multi-threaded application, and deadlocks or other
+Resatoshi is a multi-threaded application, and deadlocks or other
 multi-threading bugs can be very difficult to track down. The `-DCMAKE_BUILD_TYPE=Debug`
 build option adds `-DDEBUG_LOCKORDER` to the compiler flags. This inserts
 run-time checks to keep track of which locks are held and adds warnings to the
@@ -478,7 +478,7 @@ llvm-cov show \
     --show-line-counts-or-regions \
     --show-expansions \
     --output-dir=build/coverage_report \
-    --project-title="Bitcoin Core Coverage Report"
+    --project-title="Resatoshi Coverage Report"
 ```
 
 > **Note:** The "functions have mismatched data" warning can be safely ignored, the coverage report will still be generated correctly despite this warning.
@@ -522,7 +522,7 @@ llvm-cov show \
     --show-line-counts-or-regions \
     --show-expansions \
     --output-dir=build/coverage_report \
-    --project-title="Bitcoin Core Fuzz Coverage Report"
+    --project-title="Resatoshi Fuzz Coverage Report"
 ```
 
 The generated coverage report can be accessed at `build/coverage_report/index.html`.
@@ -588,7 +588,7 @@ See the functional test documentation for how to invoke perf within tests.
 
 ### Sanitizers
 
-Bitcoin Core can be compiled with various "sanitizers" enabled, which add
+Resatoshi can be compiled with various "sanitizers" enabled, which add
 instrumentation for issues regarding things like memory safety, thread race
 conditions, or undefined behavior. This is controlled with the
 `-DSANITIZERS` cmake build flag, which should be a comma separated list of
@@ -698,7 +698,7 @@ and its `cs_KeyStore` lock for example).
     : Universal plug-and-play startup/shutdown.
 
   - [ThreadSocketHandler (`b-net`)](https://doxygen.bitcoincore.org/class_c_connman.html#a765597cbfe99c083d8fa3d61bb464e34)
-    : Sends/Receives data from peers on port 8333.
+    : Sends/Receives data from peers on port 19333.
 
   - [ThreadOpenAddedConnections (`b-addcon`)](https://doxygen.bitcoincore.org/class_c_connman.html#a0b787caf95e52a346a2b31a580d60a62)
     : Opens network connections to added nodes.
@@ -712,9 +712,9 @@ and its `cs_KeyStore` lock for example).
 # Development guidelines
 
 A few non-style-related recommendations for developers, as well as points to
-pay attention to for reviewers of Bitcoin Core code.
+pay attention to for reviewers of Resatoshi code.
 
-## General Bitcoin Core
+## General Resatoshi
 
 - New features should be exposed on RPC first, then can be made available in the GUI.
 
@@ -882,7 +882,7 @@ int GetInt(Tabs tab)
 
 - For `strprintf`, `LogInfo`, `LogDebug`, etc formatting characters don't need size specifiers (hh, h, l, ll, j, z, t, L) for arithmetic types.
 
-  - *Rationale*: Bitcoin Core uses tinyformat, which is type safe. Leave them out to avoid confusion.
+  - *Rationale*: Resatoshi uses tinyformat, which is type safe. Leave them out to avoid confusion.
 
 - Use `.c_str()` sparingly. Its only valid use is to pass C++ strings to C functions that take NULL-terminated
   strings.
@@ -1088,19 +1088,19 @@ namespace {
 
 Several parts of the repository are subtrees of software maintained elsewhere.
 
-Normally, these are maintained by active developers of Bitcoin Core, in which case
+Normally, these are maintained by active developers of Resatoshi, in which case
 changes should go directly upstream without being PRed directly against the project.
 They will be merged back in the next subtree merge.
 
 Others are external projects without a tight relationship with our project. Changes
 to these should also be sent upstream, but bugfixes may also be prudent to PR against
-a Bitcoin Core subtree, so that they can be integrated quickly. Cosmetic changes
+a Resatoshi subtree, so that they can be integrated quickly. Cosmetic changes
 should be taken upstream.
 
 There is a tool in `test/lint/git-subtree-check.sh` ([instructions](../test/lint#git-subtree-checksh))
 to check a subtree directory for consistency with its upstream repository.
 
-The tool instructions also include a list of the subtrees managed by Bitcoin Core.
+The tool instructions also include a list of the subtrees managed by Resatoshi.
 
 To fully verify or update a subtree, add it as a remote:
 
@@ -1119,7 +1119,7 @@ The ultimate upstream of the few externally managed subtrees are:
 
 - src/leveldb
   - Upstream at https://github.com/google/leveldb ; maintained by Google. Open
-    important PRs to the Bitcoin Core subtree to avoid delay.
+    important PRs to the Resatoshi subtree to avoid delay.
   - **Note**: Follow the instructions in [Upgrading LevelDB](#upgrading-leveldb) when
     merging upstream changes to the LevelDB subtree.
 
@@ -1319,7 +1319,7 @@ A few guidelines for introducing and reviewing new RPC interfaces:
   RPCs whose behavior does *not* depend on the current chainstate may omit this
   call.
 
-  - *Rationale*: In previous versions of Bitcoin Core, the wallet was always
+  - *Rationale*: In previous versions of upstream Bitcoin Core, the wallet was always
     in-sync with the chainstate (by virtue of them all being updated in the
     same cs_main lock). In order to maintain the behavior that wallet RPCs
     return results as of at least the highest best-known block an RPC

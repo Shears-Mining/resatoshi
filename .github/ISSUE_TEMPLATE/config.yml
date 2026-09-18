@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Bitcoin Core Security Policy
-    url: https://github.com/bitcoin/bitcoin/blob/master/SECURITY.md
-    about: View security policy
-  - name: Bitcoin Core Developers
-    url: https://bitcoincore.org
-    about: Bitcoin Core homepage
+  - name: Resatoshi security reporting
+    url: https://github.com/resatoshi/bitcoin-resatoshi-31.0/blob/main/SECURITY.md
+    about: Read the security reporting instructions
+  - name: Resatoshi documentation
+    url: https://github.com/resatoshi/bitcoin-resatoshi-31.0/blob/main/doc/README.md
+    about: Setup, network rules, and development guides

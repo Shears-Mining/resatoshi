@@ -1,15 +1,13 @@
 \mainpage notitle
 
-\section intro_sec Introduction
+\section intro_sec Resatoshi developer documentation
 
-This is the developer documentation of the reference client for an experimental new digital currency called Bitcoin,
-which enables instant payments to anyone, anywhere in the world. Bitcoin uses peer-to-peer technology to operate
-with no central authority: managing transactions and issuing money are carried out collectively by the network.
+Resatoshi is an independent proof-of-work blockchain based on Bitcoin Core 31.0.
+This source includes the node, wallet, Qt graphical interface, and command-line tools.
+The mainnet uses ASERT difficulty adjustment and block-height-based UTXO recycling.
 
-The software is a community-driven open source project, released under the MIT license.
-
-See https://github.com/bitcoin/bitcoin and https://bitcoincore.org/ for further information about the project.
+The software is released under the MIT license. See
+https://github.com/resatoshi/bitcoin-resatoshi-31.0 for source and documentation.
 
 \section Navigation
-Use <a href="modules.html"><code>Modules</code></a>, <a href="namespaces.html"><code>Namespaces</code></a>, <a href="classes.html"><code>Classes</code></a>, or <a href="files.html"><code>Files</code></a> at the top of the page to start navigating the code.
-
+Use <a href="modules.html"><code>Modules</code></a>, <a href="namespaces.html"><code>Namespaces</code></a>, <a href="classes.html"><code>Classes</code></a>, or <a href="files.html"><code>Files</code></a> to navigate the code.

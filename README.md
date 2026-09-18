@@ -1,79 +1,76 @@
-Bitcoin Core integration/staging tree
-=====================================
+# Resatoshi
 
-https://bitcoincore.org
+Resatoshi is an independent proof-of-work blockchain based on Bitcoin Core 31.0.
+This repository contains its node, wallet, optional Qt graphical interface,
+command-line tools, and tests. The node validates blocks and transactions on the
+Resatoshi network, which starts from its own genesis block.
 
-For an immediately usable, binary version of the Bitcoin Core software, see
-https://bitcoincore.org/en/download/.
+[Documentation](doc/README.md) ·
+[Downloads](https://github.com/resatoshi/bitcoin-resatoshi-31.0/releases) · [Issues](https://github.com/resatoshi/bitcoin-resatoshi-31.0/issues)
 
-What is Bitcoin Core?
----------------------
+## Mainnet rules
 
-Bitcoin Core connects to the Bitcoin peer-to-peer network to download and fully
-validate blocks and transactions. It also includes a wallet and graphical user
-interface, which can be optionally built.
+| Item | Current implementation |
+| --- | --- |
+| Proof of work | SHA-256d |
+| Target block interval | 600 seconds |
+| Difficulty adjustment | ASERT, with a two-day half-life |
+| Initial block subsidy | 50 coins, halved every 210,000 blocks |
+| UTXO lifetime | 5,256,000 blocks after creation |
+| Recycling | Expired unspent value enters a recycle pool |
+| Recycle reward | Up to one coin per block from the available pool, in addition to subsidy and fees |
+| Native SegWit address prefix | `rsat1` |
+| Default P2P / RPC ports | `19333` / `19332` |
 
-Further information about Bitcoin Core is available in the [doc folder](/doc).
+Expiry is measured in blocks. An output spent in its expiry block is not
+recycled. A partial recycle claim leaves the remainder in the pool; an empty
+pool pays no recycle reward. Recycling redistributes existing value.
+See [network rules](doc/resatoshi.md) for the genesis hash, address encodings,
+and source references.
 
-License
--------
+## Build and run
 
-Bitcoin Core is released under the terms of the MIT license. See [COPYING](COPYING) for more
-information or see https://opensource.org/license/MIT.
+```sh
+git clone https://github.com/resatoshi/bitcoin-resatoshi-31.0.git
+cd bitcoin-resatoshi-31.0
+cmake -B build
+cmake --build build
+```
 
-Development Process
--------------------
+Install the dependencies for your platform first: [Linux/Unix](doc/build-unix.md),
+[Windows](doc/build-windows.md), [Windows/MSVC](doc/build-windows-msvc.md),
+[macOS](doc/build-osx.md).
 
-The `master` branch is regularly built (see `doc/build-*.md` for instructions) and tested, but it is not guaranteed to be
-completely stable. [Tags](https://github.com/bitcoin/bitcoin/tags) are created
-regularly from release branches to indicate new official, stable release versions of Bitcoin Core.
+The executable names remain `bitcoind`, `bitcoin-cli`, and `bitcoin-qt`.
+The configuration file is `bitcoin.conf`. Run the node and query it with:
 
-The https://github.com/bitcoin-core/gui repository is used exclusively for the
-development of the GUI. Its master branch is identical in all monotree
-repositories. Release branches and tags do not exist, so please do not fork
-that repository unless it is for development reasons.
+```sh
+build/bin/bitcoind -daemon
+build/bin/bitcoin-cli getblockchaininfo
+```
 
-The contribution workflow is described in [CONTRIBUTING.md](CONTRIBUTING.md)
-and useful hints for developers can be found in [doc/developer-notes.md](doc/developer-notes.md).
+The Linux data directory is `~/.resatoshi`. See the [setup guide](doc/README.md)
+for other platforms and peer configuration.
 
-Testing
--------
+## Development and tests
 
-Testing and code review is the bottleneck for development; we get more pull
-requests than we can review and test on short notice. Please be patient and help out by testing
-other people's pull requests, and remember this is a security-critical project where any mistake might cost people
-lots of money.
+Development takes place in this repository against `main`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for patches, issue reports and translations.
 
-### Automated Testing
+```sh
+ctest --test-dir build
+build/test/functional/test_runner.py
+```
 
-Developers are strongly encouraged to write [unit tests](src/test/README.md) for new code, and to
-submit new unit tests for old code. Unit tests can be compiled and run
-(assuming they weren't disabled during the generation of the build system) with: `ctest`. Further details on running
-and extending unit tests can be found in [/src/test/README.md](/src/test/README.md).
+Tests require a build with the relevant test dependencies enabled.
+See the [unit test](src/test/README.md) and [functional test](test/functional/README.md)
+guides. Resatoshi-specific coverage includes ASERT/mainnet mining and UTXO
+recycling, expiry-block spending, wallet accounting, and reorg recovery.
 
-There are also [regression and integration tests](/test), written
-in Python.
-These tests can be run (if the [test dependencies](/test) are installed) with: `build/test/functional/test_runner.py`
-(assuming `build` is your build directory).
+## Origin and license
 
-The CI (Continuous Integration) systems make sure that every pull request is tested on Windows, Linux, and macOS.
-The CI must pass on all commits before merge to avoid unrelated CI failures on new pull requests.
-
-### Manual Quality Assurance (QA) Testing
-
-Changes should be tested by somebody other than the developer who wrote the
-code. This is especially important for large or high-risk changes. It is useful
-to add a test plan to the pull request description if testing the changes is
-not straightforward.
-
-Translations
-------------
-
-Changes to translations as well as new translations can be submitted to
-[Bitcoin Core's Transifex page](https://explore.transifex.com/bitcoin/bitcoin/).
-
-Translations are periodically pulled from Transifex and merged into the git repository. See the
-[translation process](doc/translation_process.md) for details on how this works.
-
-**Important**: We do not accept translation changes as GitHub pull requests because the next
-pull from Transifex would automatically overwrite them again.
+Resatoshi derives from Bitcoin Core 31.0 and is distributed under the
+[MIT license](COPYING). Upstream copyright notices, protocol references,
+third-party library documentation, and historical Bitcoin Core release notes
+retain their original attribution. [Documentation conventions](doc/documentation.md)
+explain the executable names and inherited technical examples.

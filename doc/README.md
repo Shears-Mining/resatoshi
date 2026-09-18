@@ -1,45 +1,54 @@
-Bitcoin Core
-=============
+# Resatoshi documentation
 
-Setup
----------------------
-Bitcoin Core is the original Bitcoin client and it builds the backbone of the network. It downloads and, by default, stores the entire history of Bitcoin transactions, which requires several hundred gigabytes or more of disk space. Depending on the speed of your computer and network connection, the synchronization process can take anywhere from a few hours to several days or more.
+Resatoshi runs its own proof-of-work network using a node and wallet derived
+from Bitcoin Core 31.0. Start with the [project overview](../README.md),
+[mainnet rules](resatoshi.md).
 
-To download Bitcoin Core, visit [bitcoincore.org](https://bitcoincore.org/en/download/).
+## Download and run
 
-Running
----------------------
-The following are some helpful notes on how to run Bitcoin Core on your native platform.
+Download packages from [this repository's releases](https://github.com/resatoshi/bitcoin-resatoshi-31.0/releases).
+The program names are `bitcoind` (node), `bitcoin-cli` (RPC client), and
+`bitcoin-qt` (graphical wallet). On Windows, run `bitcoin-qt.exe` from the
+installed package. Build-dependent tools also include the `bitcoin` wrapper;
+use `bitcoin help` to list its available subcommands.
 
-### Unix
+| Platform | Default data directory |
+| --- | --- |
+| Linux / Unix | `~/.resatoshi` |
+| macOS | `~/Library/Application Support/ReSatoshi` |
+| Windows | `%LOCALAPPDATA%\ReSatoshi` |
 
-Unpack the files into a directory and run:
+The configuration filename is `bitcoin.conf`. Mainnet uses P2P port `19333`
+and RPC port `19332`. The source has no built-in mainnet DNS or fixed seeds.
+To connect a new node, add the address of a Resatoshi peer you use:
 
-- `bin/bitcoin-qt` (GUI) or
-- `bin/bitcoind` (headless)
-- `bin/bitcoin` (wrapper command)
+```ini
+# bitcoin.conf — replace this example hostname with an actual Resatoshi peer.
+addnode=peer.example.org:19333
+```
 
-The `bitcoin` command supports subcommands like `bitcoin gui`, `bitcoin node`, and `bitcoin rpc` exposing different functionality. Subcommands can be listed with `bitcoin help`.
+For a Linux source build:
 
-### Windows
+```sh
+build/bin/bitcoind -daemon
+build/bin/bitcoin-cli getblockchaininfo
+build/bin/bitcoin-cli getnetworkinfo
+```
 
-Unpack the files into a directory, and then run bitcoin-qt.exe.
+See [configuration](bitcoin-conf.md), [data files](files.md), and
+[documentation conventions](documentation.md) for details.
+Questions and bug reports belong in the [Resatoshi issue tracker](https://github.com/resatoshi/bitcoin-resatoshi-31.0/issues).
 
-### macOS
+## Network and implementation
 
-Drag Bitcoin Core to your applications folder, and then run Bitcoin Core.
-
-### Need Help?
-
-* See the documentation at the [Bitcoin Wiki](https://en.bitcoin.it/wiki/Main_Page)
-for help and more information.
-* Ask for help on [Bitcoin StackExchange](https://bitcoin.stackexchange.com).
-* Ask for help on #bitcoin on Libera Chat. If you don't have an IRC client, you can use [web.libera.chat](https://web.libera.chat/#bitcoin).
-* Ask for help on the [BitcoinTalk](https://bitcointalk.org/) forums, in the [Technical Support board](https://bitcointalk.org/index.php?board=4.0).
+- [Mainnet rules and chain identity](resatoshi.md)
+- [UTXO recycling and state handling](recycle-state-integrity.md)
+- [Current source notes](release-notes.md)
+- [Security reporting](../SECURITY.md)
 
 Building
 ---------------------
-The following are developer notes on how to build Bitcoin Core on your native platform. They are not complete guides, but include notes on the necessary libraries, compile flags, etc.
+The following are developer notes on how to build Resatoshi on your native platform. They are not complete guides, but include notes on the necessary libraries, compile flags, etc.
 
 - [Dependencies](dependencies.md)
 - [macOS Build Notes](build-osx.md)
@@ -51,24 +60,20 @@ The following are developer notes on how to build Bitcoin Core on your native pl
 
 Development
 ---------------------
-The Bitcoin repo's [root README](/README.md) contains relevant information on the development process and automated testing.
+The Resatoshi repository's [root README](/README.md) contains relevant information on the development process and automated testing.
 
 - [Developer Notes](developer-notes.md)
 - [Productivity Notes](productivity.md)
 - [Release Process](release-process.md)
-- [Source Code Documentation (External Link)](https://doxygen.bitcoincore.org/)
+- [Upstream Bitcoin Core Source Documentation (External Link)](https://doxygen.bitcoincore.org/)
 - [Translation Process](translation_process.md)
 - [Translation Strings Policy](translation_strings_policy.md)
 - [JSON-RPC Interface](JSON-RPC-interface.md)
 - [Unauthenticated REST Interface](REST-interface.md)
-- [BIPS](bips.md)
+- [Inherited BIP Implementation History](bips.md)
 - [Dnsseed Policy](dnsseed-policy.md)
 - [Benchmarking](benchmarking.md)
 - [Internal Design Docs](design/)
-
-### Resources
-* Discuss on the [BitcoinTalk](https://bitcointalk.org/) forums, in the [Development & Technical Discussion board](https://bitcointalk.org/index.php?board=6.0).
-* Discuss project-specific development on #bitcoin-core-dev on Libera Chat. If you don't have an IRC client, you can use [web.libera.chat](https://web.libera.chat/#bitcoin-core-dev).
 
 ### Miscellaneous
 - [Assets Attribution](assets-attribution.md)

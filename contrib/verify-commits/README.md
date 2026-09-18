@@ -1,3 +1,7 @@
+> This is inherited Bitcoin Core commit-verification tooling. Its trust roots
+> and upstream signature history are not a Resatoshi maintainer-key list.
+> Resatoshi development is described in [CONTRIBUTING.md](../../CONTRIBUTING.md).
+
 Tooling for verification of PGP signed commits
 ----------------------------------------------
 

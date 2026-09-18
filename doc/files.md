@@ -1,4 +1,4 @@
-# Bitcoin Core file system
+# Resatoshi file system
 
 **Contents**
 
@@ -22,15 +22,15 @@
 
 ## Data directory location
 
-The data directory is the default location where the Bitcoin Core files are stored.
+The data directory is the default location where the Resatoshi files are stored.
 
 1. The default data directory paths for supported platforms are:
 
 Platform | Data directory path
 ---------|--------------------
-Linux    | `$HOME/.bitcoin/`
-macOS    | `$HOME/Library/Application Support/Bitcoin/`
-Windows  | `%LOCALAPPDATA%\Bitcoin\` <sup>[\[1\]](#note1)</sup>
+Linux    | `$HOME/.resatoshi/`
+macOS    | `$HOME/Library/Application Support/ReSatoshi/`
+Windows  | `%LOCALAPPDATA%\ReSatoshi\` <sup>[\[1\]](#note1)</sup>
 
 2. A custom data directory path can be specified with the `-datadir` option.
 
@@ -50,7 +50,7 @@ Subdirectory       | File(s)               | Description
 -------------------|-----------------------|------------
 `blocks/`          |                       | Blocks directory; can be specified by `-blocksdir` option (except for `blocks/index/`)
 `blocks/index/`    | LevelDB database      | Block index; `-blocksdir` option does not affect this path
-`blocks/`          | `blkNNNNN.dat`<sup>[\[2\]](#note2)</sup> | Actual Bitcoin blocks (dumped in network format, 128 MiB per file)
+`blocks/`          | `blkNNNNN.dat`<sup>[\[2\]](#note2)</sup> | Actual Resatoshi blocks (dumped in network format, 128 MiB per file)
 `blocks/`          | `revNNNNN.dat`<sup>[\[2\]](#note2)</sup> | Block undo data (custom format)
 `blocks/`          | `xor.dat`             | Rolling XOR pattern for block and undo data files
 `chainstate/`      | LevelDB database      | Blockchain state (a compact representation of all currently unspent transaction outputs (UTXOs) and metadata about the transactions they are from)
@@ -58,7 +58,7 @@ Subdirectory       | File(s)               | Description
 `indexes/txospenderindex/` | LevelDB database      | Transaction spender index; *optional*, used if `-txospenderindex=1`
 `indexes/blockfilter/basic/db/` | LevelDB database      | Blockfilter index LevelDB database for the basic filtertype; *optional*, used if `-blockfilterindex=basic`
 `indexes/blockfilter/basic/`    | `fltrNNNNN.dat`<sup>[\[2\]](#note2)</sup> | Blockfilter index filters for the basic filtertype; *optional*, used if `-blockfilterindex=basic`
-`indexes/coinstatsindex/db/` | LevelDB database | Coinstats index; *optional*, used if `-coinstatsindex=1`
+`indexes/coinstatsindex-recycle-v1/db/` | LevelDB database | Mainnet recycle-aware coinstats index; *optional*, used if `-coinstatsindex=1`
 `wallets/`         |                       | [Contains wallets](#multi-wallet-environment); can be specified by `-walletdir` option; if `wallets/` subdirectory does not exist, wallets reside in the [data directory](#data-directory-location)
 `./`               | `anchors.dat`         | Anchor IP address database, created on shutdown and deleted at startup. Anchors are last known outgoing block-relay-only peers that are tried to re-connect to on startup
 `./`               | `banlist.json`        | Stores the addresses/subnets of banned nodes.
@@ -104,7 +104,7 @@ Subdirectory | File                 | Description
 
 ## Legacy subdirectories and files
 
-These subdirectories and files are no longer used by Bitcoin Core:
+These subdirectories and files are no longer used by Resatoshi:
 
 Path           | Description | Repository notes
 ---------------|-------------|-----------------
@@ -133,7 +133,7 @@ Subdirectory | File(s)           | Description
 
 ## Installed Files
 
-This table describes the files installed by Bitcoin Core across different platforms.
+This table describes the files installed by Resatoshi across different platforms.
 
 | **Path**                                                   | **Description**                                                             |
 |------------------------------------------------------------|-----------------------------------------------------------------------------|
@@ -141,11 +141,11 @@ This table describes the files installed by Bitcoin Core across different platfo
 | bitcoin.conf                                               | [Generated](../contrib/devtools/gen-bitcoin-conf.sh) configuration file     |
 | bin/bitcoin                                                | Command-line tool for interacting with Bitcoin. Calls other binaries below. |
 | bin/bitcoin-cli                                            | Tool for making node and wallet RPC calls.                                  |
-| bin/bitcoin-qt                                             | Bitcoin node and wallet GUI                                                 |
+| bin/bitcoin-qt                                             | Resatoshi node and wallet GUI                                                 |
 | bin/bitcoin-tx                                             | Tool for creating and modifying transactions                                |
 | bin/bitcoin-util                                           | Miscellaneous utilities                                                     |
 | bin/bitcoin-wallet                                         | Bitcoin wallet tool                                                         |
-| bin/bitcoind                                               | Bitcoin node and wallet daemon                                              |
+| bin/bitcoind                                               | Resatoshi node and wallet daemon                                              |
 | *lib/libbitcoinkernel.so*                                  | Shared library containing core consensus and validation code                |
 | *lib/pkgconfig/libbitcoinkernel.pc*                        | Pkg-config metadata for linking to `libbitcoinkernel`                       |
 | *libexec/bench_bitcoin*                                    | Benchmarking tool for measuring node performance                            |
@@ -166,4 +166,4 @@ This table describes the files installed by Bitcoin Core across different platfo
 ## Filesystem recommendations
 
 When choosing a filesystem for the data directory (`datadir`) or blocks directory (`blocksdir`) on **macOS**,the `exFAT` filesystem should be avoided.
-There have been multiple reports of database corruption and data loss when using this filesystem with Bitcoin Core, see [Issue #31454](https://github.com/bitcoin/bitcoin/issues/31454) for more details.
+There have been multiple reports of database corruption and data loss when using this filesystem with upstream Bitcoin Core, see [Issue #31454](https://github.com/bitcoin/bitcoin/issues/31454) for more details.
