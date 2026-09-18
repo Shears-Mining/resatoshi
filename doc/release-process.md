@@ -17,4 +17,4 @@ This guide records the repository files used to prepare a release.
 Use Resatoshi chain parameters and peer information for network-specific
 release data. Upstream Bitcoin releases, signatures and seed lists describe
 the upstream network. The historical upstream notes remain under
-[release-notes/](release-notes/README.md).
+[upstream release history](upstream-release-history.md).
