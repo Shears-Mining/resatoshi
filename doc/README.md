@@ -19,12 +19,12 @@ use `bitcoin help` to list its available subcommands.
 | Windows | `%LOCALAPPDATA%\ReSatoshi` |
 
 The configuration filename is `bitcoin.conf`. Mainnet uses P2P port `19333`
-and RPC port `19332`. The source has no built-in mainnet DNS or fixed seeds.
-To connect a new node, add the address of a Resatoshi peer you use:
+and RPC port `19332`. To connect a new node to the Resatoshi bootstrap node,
+add these two bootstrap hostnames to `bitcoin.conf`:
 
 ```ini
-# bitcoin.conf — replace this example hostname with an actual Resatoshi peer.
-addnode=peer.example.org:19333
+addnode=resatoshi-seed.freeddns.org:19333
+addnode=resatoshi-seed.duckdns.org:19333
 ```
 
 For a Linux source build:
