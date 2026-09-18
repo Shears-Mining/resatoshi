@@ -261,8 +261,7 @@ of raw bytes.
 defaults for mining-related option structs (e.g. `BlockCreateOptions`,
 `BlockWaitOptions`, `BlockCheckOptions`).
 
-Credits
-=======
+# Credits
 
 Thanks to everyone who directly contributed to this release:
 
