@@ -150,6 +150,45 @@ BOOST_AUTO_TEST_CASE(xor_file)
     }
 }
 
+BOOST_AUTO_TEST_CASE(autofile_empty_io)
+{
+    for (const auto& obfuscation : {Obfuscation{}, Obfuscation{"ff00ff00ff00ff00"_hex}}) {
+        AutoFile invalid{nullptr, obfuscation};
+        BOOST_CHECK_EXCEPTION(invalid.read({}), std::ios_base::failure, HasReason{"AutoFile::read: file handle is nullptr"});
+        BOOST_CHECK_EXCEPTION(invalid.write({}), std::ios_base::failure, HasReason{"AutoFile::write: file handle is nullptr"});
+        BOOST_CHECK_EXCEPTION(invalid.write_buffer({}), std::ios_base::failure, HasReason{"AutoFile::write_buffer: file handle is nullptr"});
+
+        AutoFile file{fsbridge::fopen(m_args.GetDataDirBase() / "empty_io.bin", "w+b"), obfuscation};
+        BOOST_REQUIRE(!file.IsNull());
+        // Default-constructed spans have a null data pointer, even though
+        // a zero-length operation on a valid file must succeed.
+        file.write({});
+        file.write_buffer({});
+        BOOST_CHECK_EQUAL(file.tell(), 0);
+        const std::array payload{std::byte{0x12}, std::byte{0x34}};
+        file.write(payload);
+        file.write({});
+        file.write_buffer({});
+        BOOST_CHECK_EQUAL(file.tell(), payload.size());
+        BOOST_CHECK_EQUAL(file.size(), payload.size());
+
+        file.seek(0, SEEK_SET);
+        file.read({});
+        BOOST_CHECK_EQUAL(file.tell(), 0);
+        std::array<std::byte, payload.size()> actual{};
+        file.read(actual);
+        file.read({});
+        BOOST_CHECK_EQUAL(file.tell(), payload.size());
+        BOOST_CHECK(actual == payload);
+        BOOST_CHECK(!file.feof());
+        BOOST_CHECK_EXCEPTION(file >> std::byte{}, std::ios_base::failure, HasReason{"AutoFile::read: end of file"});
+        file.read({});
+        BOOST_CHECK(file.feof());
+        BOOST_CHECK_EQUAL(file.tell(), payload.size());
+        BOOST_CHECK_EQUAL(file.fclose(), 0);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(streams_vector_writer)
 {
     unsigned char a(1);

@@ -23,6 +23,22 @@ The two omitted minisketch hosted-CI configurations remain excluded. Archive
 checksums were verified; release signatures were not verified in this audit.
 Vendored snapshot commits are local imports, not proof of upstream Git ancestry.
 
+The restored libmultiprocess, minisketch and secp256k1 trees are recorded with
+`git subtree split --rejoin`. Their split commits describe the reviewed local
+snapshots, including the minisketch hosted-CI exclusions; they are not upstream
+release commit IDs. Existing published history and vendor contents are preserved.
+For future archive-based vendor updates, first verify the release, review and
+commit the exact vendor changes, then rejoin each affected subtree and check it:
+
+```sh
+vendor_dir=src/minisketch # Set to the reviewed subtree being updated.
+git subtree split --prefix="$vendor_dir" --rejoin
+test/lint/git-subtree-check.sh -r "$vendor_dir"
+```
+
+The check verifies consistency with the recorded split commit, not provenance
+from an upstream repository. Do not rejoin unreviewed changes just to clear lint.
+
 ## Selected 31.1 backports
 
 This is **31.0 with selected fixes**, not a complete upgrade to 31.1. Keep the
@@ -48,6 +64,15 @@ remain; reconcile them with upstream 35175 during the next full update.
 
 The 31.1 chainstate-compaction changes and unrelated release/CI changes are not
 part of these backports. No hosted CI is enabled by this procedure.
+
+## Local stream compatibility fix
+
+`AutoFile` skips C stdio calls for empty spans in `read`, `write` and
+`write_buffer`. Empty spans may have null data pointers, which UBSan rejects at
+the stdio boundary on the validated GCC/glibc environment. File-handle errors,
+obfuscation position checks, write tracking and file positions are preserved.
+The regression test covers plain/obfuscated files, empty I/O, EOF and invalid
+handles. Reconcile this small local fix with upstream during future updates.
 
 ## Update procedure
 
