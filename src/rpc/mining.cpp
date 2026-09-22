@@ -58,7 +58,7 @@ using util::ToString;
 
 /**
  * Return average network hashes per second based on the last 'lookup' blocks,
- * or from the last difficulty change if 'lookup' is -1.
+ * or over the legacy difficulty-interval window if 'lookup' is -1.
  * If 'height' is -1, compute the estimate from current chain tip.
  * If 'height' is a valid block height, compute the estimate at the time when a given block was found.
  */
@@ -80,7 +80,8 @@ static UniValue GetNetworkHashPS(int lookup, int height, const CChain& active_ch
     if (pb == nullptr || !pb->nHeight)
         return 0;
 
-    // If lookup is -1, then use blocks since last difficulty change.
+    // Preserve the legacy interval window for -1. ASERT changes the target per
+    // block, so this window does not represent time since a target change.
     if (lookup == -1)
         lookup = pb->nHeight % Params().GetConsensus().DifficultyAdjustmentInterval() + 1;
 
@@ -113,10 +114,12 @@ static RPCHelpMan getnetworkhashps()
     return RPCHelpMan{
         "getnetworkhashps",
         "Returns the estimated network hashes per second based on the last n blocks.\n"
-                "Pass in [blocks] to override # of blocks, -1 specifies since last difficulty change.\n"
+                "Pass in [blocks] to override # of blocks. -1 uses the legacy difficulty-interval window:\n"
+                "height modulo the difficulty adjustment interval, plus one, capped at height.\n"
+                "On mainnet this interval is 2016 blocks; it is unrelated to ASERT target changes.\n"
                 "Pass in [height] to estimate the network speed at the time when a certain block was found.\n",
                 {
-                    {"nblocks", RPCArg::Type::NUM, RPCArg::Default{120}, "The number of previous blocks to calculate estimate from, or -1 for blocks since last difficulty change."},
+                    {"nblocks", RPCArg::Type::NUM, RPCArg::Default{120}, "The number of previous blocks to calculate estimate from, or -1 for the legacy difficulty-interval window (not ASERT target changes)."},
                     {"height", RPCArg::Type::NUM, RPCArg::Default{-1}, "To estimate at the time of the given height."},
                 },
                 RPCResult{

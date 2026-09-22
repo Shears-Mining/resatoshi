@@ -9,6 +9,25 @@
 
 #include <QUrl>
 
+void URITests::resatoshiURIs()
+{
+    SendCoinsRecipient recipient;
+    QVERIFY(GUIUtil::parseBitcoinURI("resatoshi:address?amount=1.00000001&label=example", &recipient));
+    QCOMPARE(recipient.amount, CAmount{100000001});
+    const auto uri{GUIUtil::formatBitcoinURI(recipient)};
+    QVERIFY(uri.startsWith("resatoshi:"));
+    SendCoinsRecipient parsed;
+    QVERIFY(GUIUtil::parseBitcoinURI(uri, &parsed));
+    QCOMPARE(parsed.amount, recipient.amount);
+    QCOMPARE(parsed.address, recipient.address);
+    QCOMPARE(parsed.label, recipient.label);
+    QVERIFY(GUIUtil::parseBitcoinURI("bitcoin:address?amount=1.00000001", &parsed));
+    QCOMPARE(parsed.amount, recipient.amount);
+    QVERIFY(!GUIUtil::parseBitcoinURI("resatoshi:address?amount=1,000", &parsed));
+    QVERIFY(!GUIUtil::parseBitcoinURI("resatoshi:address?req-unknown=1", &parsed));
+    QVERIFY(!GUIUtil::parseBitcoinURI("unrelated:address?amount=1", &parsed));
+}
+
 void URITests::uriTests()
 {
     SendCoinsRecipient rv;

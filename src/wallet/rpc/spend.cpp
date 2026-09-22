@@ -1460,6 +1460,9 @@ RPCHelpMan sendall()
                     if (!tx || input.prevout.n >= tx->tx->vout.size() || !pwallet->IsMine(tx->tx->vout[input.prevout.n])) {
                         throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Input not found. UTXO (%s:%d) is not part of wallet.", input.prevout.hash.ToString(), input.prevout.n));
                     }
+                    if (pwallet->IsExpired(input.prevout)) {
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Input not available. UTXO (%s:%d) has expired.", input.prevout.hash.ToString(), input.prevout.n));
+                    }
                     if (pwallet->GetTxDepthInMainChain(*tx) == 0) {
                         if (tx->tx->version == TRUC_VERSION && coin_control.m_version != TRUC_VERSION) {
                             throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Can't spend unconfirmed version 3 pre-selected input with a version %d tx", coin_control.m_version));

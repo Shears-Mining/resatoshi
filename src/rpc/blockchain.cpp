@@ -29,6 +29,7 @@
 #include <net_processing.h>
 #include <node/blockstorage.h>
 #include <node/context.h>
+#include <node/recycle.h>
 #include <node/transaction.h>
 #include <node/utxo_snapshot.h>
 #include <node/warnings.h>
@@ -1987,10 +1988,11 @@ static RPCHelpMan getblockstats()
                 {RPCResult::Type::NUM, "total_weight", /*optional=*/true, "Total weight of all non-coinbase transactions"},
                 {RPCResult::Type::NUM, "totalfee", /*optional=*/true, "The fee total"},
                 {RPCResult::Type::NUM, "txs", /*optional=*/true, "The number of transactions (including coinbase)"},
-                {RPCResult::Type::NUM, "utxo_increase", /*optional=*/true, "The increase/decrease in the number of unspent outputs (not discounting op_return and similar)"},
-                {RPCResult::Type::NUM, "utxo_size_inc", /*optional=*/true, "The increase/decrease in size for the utxo index (not discounting op_return and similar)"},
-                {RPCResult::Type::NUM, "utxo_increase_actual", /*optional=*/true, "The increase/decrease in the number of unspent outputs, not counting unspendables"},
-                {RPCResult::Type::NUM, "utxo_size_inc_actual", /*optional=*/true, "The increase/decrease in size for the utxo index, not counting unspendables"},
+                {RPCResult::Type::NUM, "utxo_increase", /*optional=*/true, "The output count minus the input count (including unspendables, excluding expiry)"},
+                {RPCResult::Type::NUM, "utxo_size_inc", /*optional=*/true, "The UTXO size change from transaction outputs and inputs (including unspendables, excluding expiry)"},
+                {RPCResult::Type::NUM, "utxo_increase_actual", /*optional=*/true, "The increase/decrease in the number of unspent outputs, excluding unspendables and subtracting expired outputs"},
+                {RPCResult::Type::NUM, "utxo_size_inc_actual", /*optional=*/true, "The increase/decrease in size for the utxo index, excluding unspendables and subtracting expired outputs"},
+                {RPCResult::Type::NUM, "expired_outputs", /*optional=*/true, "The number of unspent outputs removed by expiry in this block (excluding outputs spent in this block)"},
             }},
                 RPCExamples{
                     HelpExampleCli("getblockstats", R"('"00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09"' '["minfeerate","avgfeerate"]')") +
@@ -2045,6 +2047,7 @@ static RPCHelpMan getblockstats()
     int64_t utxos = 0;
     int64_t utxo_size_inc = 0;
     int64_t utxo_size_inc_actual = 0;
+    int64_t expired_outputs = 0;
     std::vector<CAmount> fee_array;
     std::vector<std::pair<CAmount, int64_t>> feerate_array;
     std::vector<int64_t> txsize_array;
@@ -2134,6 +2137,23 @@ static RPCHelpMan getblockstats()
         }
     }
 
+    const auto& consensus{chainman.GetParams().GetConsensus()};
+    if ((do_all || SetHasKeys(stats, "utxo_increase_actual", "utxo_size_inc_actual", "expired_outputs")) &&
+        consensus.recycle_enabled && pindex.nHeight > consensus.recycle_expiry_blocks) {
+        // Expiry removes coins without transaction inputs. The extra undo entry
+        // records only coins actually recycled, not those spent in this block.
+        CHECK_NONFATAL(blockUndo.vtxundo.size() == block.vtx.size());
+        CAmount pool_before{0};
+        std::vector<std::pair<COutPoint, Coin>> expired;
+        CHECK_NONFATAL(node::recycle::ReadUndo(blockUndo.vtxundo.back(), pool_before, expired));
+        expired_outputs = expired.size();
+        if (do_all || stats.contains("utxo_size_inc_actual")) {
+            for (const auto& [outpoint, coin] : expired) {
+                utxo_size_inc_actual -= GetSerializeSize(coin.out) + PER_UTXO_OVERHEAD;
+            }
+        }
+    }
+
     CAmount feerate_percentiles[NUM_GETBLOCKSTATS_PERCENTILES] = { 0 };
     CalculatePercentilesByWeight(feerate_percentiles, feerate_array, total_weight);
 
@@ -2172,8 +2192,9 @@ static RPCHelpMan getblockstats()
     ret_all.pushKV("txs", block.vtx.size());
     ret_all.pushKV("utxo_increase", outputs - inputs);
     ret_all.pushKV("utxo_size_inc", utxo_size_inc);
-    ret_all.pushKV("utxo_increase_actual", utxos - inputs);
+    ret_all.pushKV("utxo_increase_actual", utxos - inputs - expired_outputs);
     ret_all.pushKV("utxo_size_inc_actual", utxo_size_inc_actual);
+    ret_all.pushKV("expired_outputs", expired_outputs);
 
     if (do_all) {
         return ret_all;

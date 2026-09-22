@@ -45,6 +45,36 @@ static_assert(WALLET_INCREMENTAL_RELAY_FEE >= DEFAULT_INCREMENTAL_RELAY_FEE, "wa
 
 BOOST_FIXTURE_TEST_SUITE(wallet_tests, WalletTestingSetup)
 
+BOOST_AUTO_TEST_CASE(wallet_interface_expiry)
+{
+    const auto lifetime{m_node.chain->utxoExpiryBlocks()};
+    BOOST_REQUIRE(lifetime.has_value());
+    auto wallet = std::make_shared<CWallet>(m_node.chain.get(), "", CreateMockableWalletDatabase());
+    WalletContext context;
+    auto interface = interfaces::MakeWallet(context, wallet);
+    CMutableTransaction tx;
+    tx.vout.emplace_back(COIN, CScript() << OP_TRUE);
+    const auto txref{MakeTransactionRef(tx)};
+    const COutPoint outpoint{txref->GetHash(), 0};
+    const auto block_hash{GetRandHash()};
+    {
+        LOCK(wallet->cs_wallet);
+        wallet->mapWallet.try_emplace(txref->GetHash(), txref, TxStateConfirmed{block_hash, 1, 0});
+    }
+    // A GUI selection must track expiry and rollback independently of spending.
+    for (const int tip_height : {*lifetime, *lifetime + 1, *lifetime}) {
+        {
+            LOCK(wallet->cs_wallet);
+            wallet->SetLastBlockProcessed(tip_height, block_hash);
+        }
+        const auto coins{interface->getCoins({outpoint})};
+        BOOST_REQUIRE_EQUAL(coins.size(), 1U);
+        BOOST_CHECK(!coins[0].is_spent);
+        BOOST_CHECK_EQUAL(coins[0].is_expired, tip_height > *lifetime);
+        BOOST_CHECK_EQUAL(coins[0].txout.nValue, COIN);
+    }
+}
+
 static CMutableTransaction TestSimpleSpend(const CTransaction& from, uint32_t index, const CKey& key, const CScript& pubkey)
 {
     CMutableTransaction mtx;

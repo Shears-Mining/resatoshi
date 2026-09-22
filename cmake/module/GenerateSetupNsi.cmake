@@ -3,10 +3,12 @@
 # file COPYING or https://opensource.org/license/mit/.
 
 function(generate_setup_nsi)
+  # Keep executable names compatible, but isolate installation and OS registration.
+  set(CLIENT_NAME "ReSatoshi")
   set(abs_top_srcdir ${PROJECT_SOURCE_DIR})
   set(abs_top_builddir ${PROJECT_BINARY_DIR})
   set(CLIENT_URL ${PROJECT_HOMEPAGE_URL})
-  set(CLIENT_TARNAME "bitcoin")
+  set(CLIENT_TARNAME "resatoshi")
   set(BITCOIN_WRAPPER_NAME "bitcoin")
   set(BITCOIN_GUI_NAME "bitcoin-qt")
   set(BITCOIN_DAEMON_NAME "bitcoind")

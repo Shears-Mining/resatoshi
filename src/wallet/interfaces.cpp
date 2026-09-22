@@ -117,6 +117,7 @@ WalletTxOut MakeWalletTxOut(const CWallet& wallet,
     result.time = wtx.GetTxTime();
     result.depth_in_main_chain = depth;
     result.is_spent = wallet.IsSpent(COutPoint(wtx.GetHash(), n));
+    result.is_expired = wallet.IsExpired(COutPoint(wtx.GetHash(), n));
     return result;
 }
 
@@ -128,6 +129,7 @@ WalletTxOut MakeWalletTxOut(const CWallet& wallet,
     result.time = output.time;
     result.depth_in_main_chain = output.depth;
     result.is_spent = wallet.IsSpent(output.outpoint);
+    result.is_expired = wallet.IsExpired(output.outpoint);
     return result;
 }
 

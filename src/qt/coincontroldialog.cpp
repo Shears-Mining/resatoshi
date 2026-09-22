@@ -395,7 +395,7 @@ void CoinControlDialog::updateLabels(CCoinControl& m_coin_control, WalletModel *
         // unselect already spent, very unlikely scenario, this could happen
         // when selected are spent elsewhere, like rpc or another computer
         const COutPoint& outpt = vCoinControl[i++];
-        if (out.is_spent)
+        if (out.is_spent || out.is_expired)
         {
             m_coin_control.UnSelect(outpt);
             continue;

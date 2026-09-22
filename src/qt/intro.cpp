@@ -133,7 +133,10 @@ bool Intro::showIfNeeded(bool& did_show_intro, int64_t& prune_MiB)
     /* 2) Allow QSettings to override default dir */
     dataDir = settings.value("strDataDir", dataDir).toString();
 
-    if(!fs::exists(GUIUtil::QStringToPath(dataDir)) || gArgs.GetBoolArg("-choosedatadir", DEFAULT_CHOOSE_DATADIR) || settings.value("fReset", false).toBool() || gArgs.GetBoolArg("-resetguisettings", false))
+    // Older ReSatoshi releases shared Bitcoin's settings namespace. Do not import
+    // that ambiguous data directory; let the user select their existing directory
+    // on first use of the separate ReSatoshi settings, even if the default exists.
+    if(!settings.contains("strDataDir") || !fs::exists(GUIUtil::QStringToPath(dataDir)) || gArgs.GetBoolArg("-choosedatadir", DEFAULT_CHOOSE_DATADIR) || settings.value("fReset", false).toBool() || gArgs.GetBoolArg("-resetguisettings", false))
     {
         /* Use selectParams here to guarantee Params() can be used by node interface */
         try {
@@ -142,7 +145,7 @@ bool Intro::showIfNeeded(bool& did_show_intro, int64_t& prune_MiB)
             return false;
         }
 
-        /* If current default data directory does not exist, let the user choose one */
+        /* Let the user choose a new or existing data directory. */
         Intro intro(nullptr, Params().AssumedBlockchainSize(), Params().AssumedChainStateSize());
         intro.setDataDirectory(dataDir);
         intro.setWindowIcon(QIcon(":icons/bitcoin"));

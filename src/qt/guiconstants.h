@@ -46,13 +46,14 @@ static const int TOOLTIP_WRAP_THRESHOLD = 80;
 /* Number of frames in spinner animation */
 #define SPINNER_FRAMES 36
 
-#define QAPP_ORG_NAME "Bitcoin"
-#define QAPP_ORG_DOMAIN "bitcoin.org"
-#define QAPP_APP_NAME_DEFAULT "Bitcoin-Qt"
-#define QAPP_APP_NAME_TESTNET "Bitcoin-Qt-testnet"
-#define QAPP_APP_NAME_TESTNET4 "Bitcoin-Qt-testnet4"
-#define QAPP_APP_NAME_SIGNET "Bitcoin-Qt-signet"
-#define QAPP_APP_NAME_REGTEST "Bitcoin-Qt-regtest"
+// QSettings identifiers, including the organization domain used on macOS.
+#define QAPP_ORG_NAME "ReSatoshi"
+#define QAPP_ORG_DOMAIN "resatoshi"
+#define QAPP_APP_NAME_DEFAULT "ReSatoshi-Qt"
+#define QAPP_APP_NAME_TESTNET "ReSatoshi-Qt-testnet"
+#define QAPP_APP_NAME_TESTNET4 "ReSatoshi-Qt-testnet4"
+#define QAPP_APP_NAME_SIGNET "ReSatoshi-Qt-signet"
+#define QAPP_APP_NAME_REGTEST "ReSatoshi-Qt-regtest"
 
 /* One gigabyte (GB) in bytes */
 static constexpr uint64_t GB_BYTES{1000000000};

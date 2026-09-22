@@ -112,6 +112,7 @@
       "avgfeerate": 0,
       "avgtxsize": 0,
       "blockhash": "29a36876ddc6899a2541afc78ce2b3ca7659cfc01875e8208d9110d59bce3a9b",
+      "expired_outputs": 0,
       "feerate_percentiles": [
         0,
         0,
@@ -151,6 +152,7 @@
       "avgfeerate": 20,
       "avgtxsize": 222,
       "blockhash": "06e5883dc39af4810bcd505b95149db664206c13ec7f5d4b33e25e30f37b5961",
+      "expired_outputs": 0,
       "feerate_percentiles": [
         20,
         20,
@@ -190,6 +192,7 @@
       "avgfeerate": 155,
       "avgtxsize": 219,
       "blockhash": "7474991c2ae3c94c4813d75b4c752028304b773dd4dce8d460dfa2d1e7b542a3",
+      "expired_outputs": 0,
       "feerate_percentiles": [
         20,
         20,

@@ -4,6 +4,36 @@ The `main` branch contains Resatoshi's independent mainnet implementation,
 based on Bitcoin Core 31.0. Published package versions and their source tags
 are listed under [Releases](https://github.com/resatoshi/bitcoin-resatoshi-31.0/releases).
 
+## Unreleased maintenance changes
+
+The source baseline remains Bitcoin Core 31.0 with selected 31.1 fixes; this is
+not a complete upgrade to Bitcoin Core 31.1. See [upstream maintenance](upstream-maintenance.md)
+for provenance, backports and local validation commands.
+
+- Correct actual UTXO count/size changes in `getblockstats` when outputs expire,
+  and expose the number removed as `expired_outputs`. Legacy transaction-only
+  statistics keep their meaning.
+- Reject expired explicit inputs in `sendall`, allow individually unlocking
+  already expired outputs, and exclude expired selections in GUI coin control.
+- Separate GUI settings, installer/autostart identifiers and macOS bundle names
+  from Bitcoin. Register `resatoshi:` for OS payment links; manually entered
+  legacy `bitcoin:` links remain accepted. BTC/mBTC/bits/sat units are unchanged.
+- Clarify the `getnetworkhashps(-1)` sampling window without changing its result.
+- Backport private-broadcast proxy retry and addrman fixes, settings-file write
+  failure checks, signed-input size estimation, empty MuSig key rejection, the
+  final BDB page check, script-check data lifetime ordering, and SHA256 SSE4
+  sanitizer compatibility fixes from Core 31.1.
+- Restore omitted vendored build/test source files and add regression tests.
+
+These maintenance changes preserve the existing ReSatoshi genesis, ASERT,
+UTXO expiry period and recycle reward rules. They do not require a consensus
+activation or change BTC unit conversions.
+
+Node tests and isolated chain replay have passed locally. Qt execution and
+Windows/macOS installation tests remain outstanding. The optional kernel-library
+spent-output API is not ready for recycle-enabled external integrations; see
+[known limitations](upstream-maintenance.md#local-validation).
+
 ## Mainnet
 
 - Own genesis block, network message start, payment-address prefixes and ports.

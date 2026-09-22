@@ -51,6 +51,7 @@ class RecycleSpendTest(BitcoinTestFramework):
         self.sync_all()
         self.generatetodescriptor(node, 199, "raw(6a)")
         before = node.gettxoutsetinfo()["hash_serialized_3"]
+        before_count = node.gettxoutsetinfo()["txouts"]
         signed = []
         txids = []
         for vout in range(2):
@@ -73,6 +74,13 @@ class RecycleSpendTest(BitcoinTestFramework):
         assert_equal(node.submitblock(expiry.serialize().hex()), None)
         self.sync_all()
         for peer in self.nodes:
+            stats = peer.getblockstats(expiry.hash_hex)
+            assert_equal(stats["expired_outputs"], 1)
+            assert_equal(stats["utxo_increase_actual"], 0)
+            assert_equal(stats["utxo_size_inc_actual"], 0)
+            assert_equal(stats["ins"], 1)
+            assert_equal(stats["totalfee"], 100_000)
+            assert_equal(peer.gettxoutsetinfo()["txouts"], before_count)
             assert_equal(peer.getrawmempool(), [])
             assert_equal(peer.gettxout(origin.txid_hex, 0), None)
             assert_equal(peer.gettxout(origin.txid_hex, 1), None)
