@@ -146,48 +146,28 @@ part of any branch or tag can be fetched as long as the remote has not garbage
 collected them.
 
 
-### Reference PRs easily with `refspec`s
+### Fetch GitLab merge requests
 
-As an alternative to fetching commits directly, when looking at pull requests by others, it may make sense to add the following section to your `.git/config` file:
-
-```
-[remote "upstream-pull"]
-        fetch = +refs/pull/*/head:refs/remotes/upstream-pull/*
-        url = git@github.com:resatoshi/bitcoin-resatoshi-31.0.git
-```
-
-This will add an `upstream-pull` remote to your git repository, which can be fetched using `git fetch --all` or `git fetch upstream-pull`. It will download and store on disk quite a lot of data (all PRs, including merged and closed ones). Afterwards, you can use `upstream-pull/NUMBER/head` in arguments to `git show`, `git checkout` and anywhere a commit id would be acceptable to see the changes from pull request NUMBER.
-
-### Fetch and update PRs individually
-
-The refspec remote is quite resource-heavy, and it is possible to fetch PRs singularly from the remote. To do this you can run:
+For ReSatoshi, `origin` should point to
+`https://gitlab.com/rst-group4210239/RST-project.git`.
+Fetch a merge request into a local review branch, replacing `<number>` with its
+project-local merge request number:
 
 ```bash
-# Individual fetch
-git fetch upstream pull/<number>/head
-
-# Fetch with automatic branch creation and switch
-git fetch upstream pull/<number>/head:pr-<number> && git switch pr-<number>
+git fetch origin refs/merge-requests/<number>/head:mr-<number>
+git switch mr-<number>
 ```
 
-...from the command line, substituting `<number>` with the PR number you want to fetch/update.
+To inspect an updated request without overwriting a local branch:
 
-> [!NOTE]
-> The remote named "upstream" here must be the one that the pull request was opened against.
-> e.g. gitlab.com/rst-group4210239/RST-project.git (including GUI changes)
-
-Make these easier to use by adding aliases to your git config:
-
-```
-[alias]
-    # Fetch a single Pull Request and switch to it in a new branch, with `git pr 12345`
-    pr = "!f() { git fetch upstream pull/$1/head:pr-$1 && git switch pr-$1; }; f";
-
-    # Update a Pull Request branch, even after a force push, and even if checked out, with `git pru 12345`
-    pru = "!f() { git fetch --update-head-ok -f upstream pull/$1/head:pr-$1; }; f";
+```bash
+git fetch origin refs/merge-requests/<number>/head
+git log -p FETCH_HEAD
 ```
 
-Then a simple `git pr 12345` will fetch and check out that pr from upstream.
+GitLab uses `refs/merge-requests/`, while GitHub's `refs/pull/` examples apply to
+upstream repositories still hosted on GitHub. Closed merge-request refs may
+expire; see [GitLab's local checkout documentation](https://docs.gitlab.com/user/project/merge_requests/merge_request_troubleshooting/).
 
 ### Diff the diffs with `git range-diff`
 
