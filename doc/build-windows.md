@@ -39,7 +39,7 @@ If you want to build the Windows installer using the `deploy` build target, you 
 
 Acquire the source in the usual way:
 
-    git clone https://github.com/resatoshi/bitcoin-resatoshi-31.0.git
+    git clone https://gitlab.com/rst-group4210239/RST-project.git bitcoin-resatoshi-31.0
     cd bitcoin-resatoshi-31.0
 Note that for WSL the Resatoshi source path MUST be somewhere in the default mount file system, for
 example /usr/src/bitcoin, AND not under /mnt/d/. If this is not the case the dependency autoconf scripts will fail.

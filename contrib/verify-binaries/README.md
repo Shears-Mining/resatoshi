@@ -1,7 +1,7 @@
 # Resatoshi package verification
 
 Resatoshi packages and accompanying checksums are published in
-[this repository's releases](https://github.com/resatoshi/bitcoin-resatoshi-31.0/releases).
+[this repository's releases](https://gitlab.com/rst-group4210239/RST-project/-/releases).
 Compare a downloaded file's SHA-256 digest with the checksum published for that
 same release, for example with `sha256sum <downloaded-file>`.
 

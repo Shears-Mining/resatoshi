@@ -6,7 +6,7 @@ command-line tools, and tests. The node validates blocks and transactions on the
 Resatoshi network, which starts from its own genesis block.
 
 [Documentation](doc/README.md) ·
-[Downloads](https://github.com/resatoshi/bitcoin-resatoshi-31.0/releases) · [Issues](https://github.com/resatoshi/bitcoin-resatoshi-31.0/issues)
+[Downloads](https://gitlab.com/rst-group4210239/RST-project/-/releases) · [Issues](https://gitlab.com/rst-group4210239/RST-project/-/issues)
 
 ## Mainnet rules
 
@@ -31,7 +31,7 @@ and source references.
 ## Build and run
 
 ```sh
-git clone https://github.com/resatoshi/bitcoin-resatoshi-31.0.git
+git clone https://gitlab.com/rst-group4210239/RST-project.git bitcoin-resatoshi-31.0
 cd bitcoin-resatoshi-31.0
 cmake -B build
 cmake --build build

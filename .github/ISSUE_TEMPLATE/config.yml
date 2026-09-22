@@ -1,8 +1,8 @@
 blank_issues_enabled: true
 contact_links:
   - name: Resatoshi security reporting
-    url: https://github.com/resatoshi/bitcoin-resatoshi-31.0/blob/main/SECURITY.md
+    url: https://gitlab.com/rst-group4210239/RST-project/-/blob/main/SECURITY.md
     about: Read the security reporting instructions
   - name: Resatoshi documentation
-    url: https://github.com/resatoshi/bitcoin-resatoshi-31.0/blob/main/doc/README.md
+    url: https://gitlab.com/rst-group4210239/RST-project/-/blob/main/doc/README.md
     about: Setup, network rules, and development guides

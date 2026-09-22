@@ -54,7 +54,7 @@ See [dependencies.md](dependencies.md) for a complete overview.
 Clone the Resatoshi repository to a directory. All build scripts and commands will run from this directory.
 
 ```bash
-git clone https://github.com/resatoshi/bitcoin-resatoshi-31.0.git
+git clone https://gitlab.com/rst-group4210239/RST-project.git bitcoin-resatoshi-31.0
 cd bitcoin-resatoshi-31.0
 ```
 

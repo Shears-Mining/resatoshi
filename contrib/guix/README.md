@@ -3,7 +3,7 @@
 Build commands below can be used with this source tree. References to upstream
 Bitcoin Core signatures and release infrastructure describe the inherited
 verification workflow. Resatoshi packages are published in
-[this repository](https://github.com/resatoshi/bitcoin-resatoshi-31.0/releases).
+[this repository](https://gitlab.com/rst-group4210239/RST-project/-/releases).
 
 This directory contains the files necessary to perform bootstrappable Bitcoin
 Core builds.

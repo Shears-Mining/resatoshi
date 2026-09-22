@@ -5,7 +5,7 @@
 To quickly get started fuzzing Resatoshi using [libFuzzer](https://llvm.org/docs/LibFuzzer.html):
 
 ```sh
-$ git clone https://github.com/resatoshi/bitcoin-resatoshi-31.0.git
+$ git clone https://gitlab.com/rst-group4210239/RST-project.git bitcoin
 $ cd bitcoin/
 $ cmake --preset=libfuzzer
 $ cmake --build build_fuzz
@@ -200,7 +200,7 @@ fuzz binary without support for any specific fuzzing engine.
 To quickly get started fuzzing Resatoshi using [afl++](https://github.com/AFLplusplus/AFLplusplus):
 
 ```sh
-$ git clone https://github.com/resatoshi/bitcoin-resatoshi-31.0.git
+$ git clone https://gitlab.com/rst-group4210239/RST-project.git bitcoin
 $ cd bitcoin/
 $ git clone https://github.com/AFLplusplus/AFLplusplus
 $ make -C AFLplusplus/ source-only
@@ -227,7 +227,7 @@ Read the [afl++ documentation](https://github.com/AFLplusplus/AFLplusplus) for m
 To quickly get started fuzzing Resatoshi using [Honggfuzz](https://github.com/google/honggfuzz):
 
 ```sh
-$ git clone https://github.com/resatoshi/bitcoin-resatoshi-31.0.git
+$ git clone https://gitlab.com/rst-group4210239/RST-project.git bitcoin
 $ cd bitcoin/
 $ git clone https://github.com/google/honggfuzz
 $ cd honggfuzz/

@@ -7,7 +7,7 @@ This source includes the node, wallet, Qt graphical interface, and command-line 
 The mainnet uses ASERT difficulty adjustment and block-height-based UTXO recycling.
 
 The software is released under the MIT license. See
-https://github.com/resatoshi/bitcoin-resatoshi-31.0 for source and documentation.
+https://gitlab.com/rst-group4210239/RST-project for source and documentation.
 
 \section Navigation
 Use <a href="modules.html"><code>Modules</code></a>, <a href="namespaces.html"><code>Namespaces</code></a>, <a href="classes.html"><code>Classes</code></a>, or <a href="files.html"><code>Files</code></a> to navigate the code.

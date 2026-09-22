@@ -2,7 +2,7 @@
 
 The `main` branch contains Resatoshi's independent mainnet implementation,
 based on Bitcoin Core 31.0. Published package versions and their source tags
-are listed under [Releases](https://github.com/resatoshi/bitcoin-resatoshi-31.0/releases).
+are listed under [Releases](https://gitlab.com/rst-group4210239/RST-project/-/releases).
 
 ## Unreleased maintenance changes
 

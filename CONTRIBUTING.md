@@ -1,11 +1,11 @@
 # Contributing to Resatoshi
 
 Contributions to the node, wallet, GUI, tests, translations, and documentation
-are handled in [this repository](https://github.com/resatoshi/bitcoin-resatoshi-31.0). The development branch is `main`.
+are handled in [this repository](https://gitlab.com/rst-group4210239/RST-project). The development branch is `main`.
 
 ## Issues
 
-Search [existing issues](https://github.com/resatoshi/bitcoin-resatoshi-31.0/issues) before filing a report. Include the
+Search [existing issues](https://gitlab.com/rst-group4210239/RST-project/-/issues) before filing a report. Include the
 version or commit, operating system, relevant configuration, reproduction
 steps, expected result, and observed result. See [SECURITY.md](SECURITY.md)
 for security reports.
@@ -14,12 +14,12 @@ for security reports.
 
 1. Create a branch from `main`.
 2. Make a focused change and follow the [developer notes](doc/developer-notes.md).
-3. Run checks appropriate to the change and include the results in the pull request.
-4. Open a pull request against this repository's `main`, including GUI changes.
+3. Run checks appropriate to the change and include the results in the merge request.
+4. Open a merge request against this repository's `main`, including GUI changes.
 
 Explain what changes and why. Keep unrelated formatting or refactoring in
 separate commits. Add tests for behavior changes, including consensus, wallet,
-and recycle-state changes. Mark unfinished proposals as draft pull requests.
+and recycle-state changes. Mark unfinished proposals as draft merge requests.
 
 ## Tests and review
 

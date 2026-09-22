@@ -6,7 +6,7 @@ from Bitcoin Core 31.0. Start with the [project overview](../README.md),
 
 ## Download and run
 
-Download packages from [this repository's releases](https://github.com/resatoshi/bitcoin-resatoshi-31.0/releases).
+Download packages from [this repository's releases](https://gitlab.com/rst-group4210239/RST-project/-/releases).
 The program names are `bitcoind` (node), `bitcoin-cli` (RPC client), and
 `bitcoin-qt` (graphical wallet). On Windows, run `bitcoin-qt.exe` from the
 installed package. Build-dependent tools also include the `bitcoin` wrapper;
@@ -37,7 +37,7 @@ build/bin/bitcoin-cli getnetworkinfo
 
 See [configuration](bitcoin-conf.md), [data files](files.md), and
 [documentation conventions](documentation.md) for details.
-Questions and bug reports belong in the [Resatoshi issue tracker](https://github.com/resatoshi/bitcoin-resatoshi-31.0/issues).
+Questions and bug reports belong in the [Resatoshi issue tracker](https://gitlab.com/rst-group4210239/RST-project/-/issues).
 
 ## Network and implementation
 
