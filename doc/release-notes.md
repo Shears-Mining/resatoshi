@@ -1,16 +1,17 @@
 # Resatoshi source notes
 
 The `main` branch contains Resatoshi's independent mainnet implementation,
-based on Bitcoin Core 31.0. To download the all-in-one miner with mining,
+based on Bitcoin Core. To download the all-in-one miner with mining,
 wallet, explorer, and other bundled features, visit the `download-only` channel
 in the [official Resatoshi Discord](https://discord.gg/QyM3eHZZS).
 Consult the package's accompanying notes for its version and source information.
 
 ## Unreleased maintenance changes
 
-The source baseline remains Bitcoin Core 31.0 with selected 31.1 fixes; this is
-not a complete upgrade to Bitcoin Core 31.1. See [upstream maintenance](upstream-maintenance.md)
-for provenance, backports and local validation commands.
+Current upstream integration includes selected fixes from Bitcoin Core 31.1;
+this is not a complete upgrade to that release. See
+[upstream maintenance](upstream-maintenance.md) for source provenance,
+incorporated fixes, remaining differences, and local validation commands.
 
 - Correct actual UTXO count/size changes in `getblockstats` when outputs expire,
   and expose the number removed as `expired_outputs`. Legacy transaction-only

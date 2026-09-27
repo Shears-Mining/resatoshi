@@ -1,7 +1,7 @@
 # Resatoshi documentation
 
 Resatoshi runs its own proof-of-work network using a node and wallet derived
-from Bitcoin Core 31.0. Start with the [project overview](../README.md),
+from Bitcoin Core. Start with the [project overview](../README.md),
 [mainnet rules](resatoshi.md).
 
 ## Download and run
@@ -56,6 +56,7 @@ details in public issues or Discord channels.
 - [Mainnet rules and chain identity](resatoshi.md)
 - [UTXO recycling and state handling](recycle-state-integrity.md)
 - [Current source notes](release-notes.md)
+- [Current upstream integration](upstream-maintenance.md)
 - [Security reporting](../SECURITY.md)
 
 Building

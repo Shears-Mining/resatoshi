@@ -1,6 +1,6 @@
 # Resatoshi
 
-Resatoshi is an independent proof-of-work blockchain based on Bitcoin Core 31.0.
+Resatoshi is an independent proof-of-work blockchain based on Bitcoin Core.
 This repository contains its node, wallet, optional Qt graphical interface,
 command-line tools, and tests. The node validates blocks and transactions on the
 Resatoshi network, which starts from its own genesis block.
@@ -12,6 +12,11 @@ and continue incorporating improvements from their upstream projects. The goal
 is to minimize development and maintenance costs while moving in the same
 technical direction as those projects. Compatibility with each application
 must be checked as part of its adaptation.
+
+Current upstream integration includes selected fixes from Bitcoin Core 31.1.
+This is not a complete upgrade to that release. See
+[upstream maintenance](doc/upstream-maintenance.md) for the changes incorporated
+and the remaining differences.
 
 [Documentation](doc/README.md) ·
 [Official Discord](https://discord.gg/QyM3eHZZS) · [Issues](https://gitlab.com/rst-group4210239/RST-project/-/issues)
@@ -90,7 +95,7 @@ recycling, expiry-block spending, wallet accounting, and reorg recovery.
 
 ## Origin and license
 
-Resatoshi derives from Bitcoin Core 31.0 and is distributed under the
+Resatoshi derives from Bitcoin Core and is distributed under the
 [MIT license](COPYING). Upstream copyright notices, protocol references,
 third-party library documentation, and historical Bitcoin Core release notes
 retain their original attribution. [Documentation conventions](doc/documentation.md)
