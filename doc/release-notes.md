@@ -27,6 +27,13 @@ incorporated fixes, remaining differences, and local validation commands.
   final BDB page check, script-check data lifetime ordering, and SHA256 SSE4
   sanitizer compatibility fixes from Core 31.1.
 - Restore omitted vendored build/test source files and add regression tests.
+- Backport the paired 31.1 LevelDB and chainstate compaction changes to reduce
+  read-triggered database rewrites and periodically clean up obsolete records.
+  Preserve the recycle-state codec and test state across compaction, cache
+  resizing, restart, recovery replay, and block disconnection.
+- Backport depends cache identification, Signet helper, BSD build instructions,
+  and functional/fuzz test fixes from 31.1. Hosted-CI changes and upstream
+  release identifiers are not imported.
 
 These maintenance changes preserve the existing ReSatoshi genesis, ASERT,
 UTXO expiry period and recycle reward rules. They do not require a consensus

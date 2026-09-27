@@ -55,15 +55,42 @@ in the [official 31.1 notes](https://bitcoincore.org/en/releases/31.1/).
 | [35227](https://github.com/bitcoin/bitcoin/pull/35227) | Check the final BDB page LSN during wallet migration. |
 | [35209](https://github.com/bitcoin/bitcoin/pull/35209) | Keep precomputed transaction data alive until script-check control is destroyed. |
 | [34953](https://github.com/bitcoin/bitcoin/pull/34953) | Avoid unsupported ASan instrumentation in SHA256 SSE4 assembly. |
+| [34228](https://github.com/bitcoin/bitcoin/pull/34228) | Keep SOURCE_DATE_EPOCH out of depends toolset-cache identifiers. |
+| [34425](https://github.com/bitcoin/bitcoin/pull/34425) | Wait for socket disconnection and avoid reconnect races in functional tests. |
+| [34991](https://github.com/bitcoin/bitcoin/pull/34991) | Correct batch requests in the pruning/index test, including CLI mode. |
+| [35080](https://github.com/bitcoin/bitcoin/pull/35080) | Scale the chainstate tool test timeout with the configured timeout factor. |
+| [35218](https://github.com/bitcoin/bitcoin/pull/35218) | Correct the P2SH script in the coins-cache fuzz target. |
+| [35279](https://github.com/bitcoin/bitcoin/pull/35279) | Exercise default address types in the PSBT test. |
+| [35289](https://github.com/bitcoin/bitcoin/pull/35289) | Bound generated block weight in the orphan-transaction fuzz target. |
+| [35044](https://github.com/bitcoin/bitcoin/pull/35044) | Fix the undefined variable in the Signet miner's template-mismatch warning. |
+| [35283](https://github.com/bitcoin/bitcoin/pull/35283) | Document the explicit ZeroMQ build option in BSD guides. |
+| [35465](https://github.com/bitcoin/bitcoin/pull/35465), [leveldb #61](https://github.com/bitcoin-core/leveldb/pull/61) | Disable read-triggered seek compaction and periodically compact chainstate in the background. |
 
 Associated upstream tests and private-broadcast test helpers are included,
-including the SOCKS5 clean shutdown fix (34863). The unrelated `connect_nodes`
-API change is not included. A Linux `/dev/full` test additionally verifies that
+including the SOCKS5 clean shutdown fix (34863) and the `connect_nodes`
+disconnection checks (34425). A Linux `/dev/full` test additionally verifies that
 settings writes fail correctly. Existing local Boost compatibility changes
-remain; reconcile them with upstream 35175 during the next full update.
+use `indexed_by` type aliases rather than derived classes, addressing the same
+issue as upstream 35175. Their spelling differs from upstream's inline types.
 
-The 31.1 chainstate-compaction changes and unrelated release/CI changes are not
+Unrelated upstream release metadata and hosted-CI infrastructure changes are not
 part of these backports. No hosted CI is enabled by this procedure.
+
+### Chainstate compaction
+
+The paired 31.1 database changes preserve ReSatoshi's recycle-state codec,
+metadata readers, and marker. Compaction changes LevelDB's physical layout,
+not expiry heights, pool accounting, ASERT, or other consensus rules. After a
+completed full flush outside initial block download, a 1/320 random trigger
+starts a one-shot background compaction unless shutdown is requested. This is
+not a fixed two-week timer. Cache resizing is serialized with compaction, and
+database destruction waits for outstanding compaction work.
+
+The LevelDB files come from the recorded 31.1 release archive. Keep LevelDB in
+the subtree checks and record its reviewed snapshot; do not copy upstream's
+release-branch lint exclusion. The recycle compaction regression test checks
+large schedule records, pool balances, all coin records, the codec marker,
+cache resizing, shutdown/reopen, recovery replay, and disconnection.
 
 ## Local stream compatibility fix
 
