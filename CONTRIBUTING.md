@@ -10,6 +10,12 @@ version or commit, operating system, relevant configuration, reproduction
 steps, expected result, and observed result. See [SECURITY.md](SECURITY.md)
 for security reports.
 
+Ordinary bugs may also be reported by email to
+[tpa1995@naver.com](mailto:tpa1995@naver.com). Send security vulnerability reports
+privately to that address, not to public issues or Discord channels.
+For general questions and help, join the
+[official Resatoshi Discord question-and-help community](https://discord.gg/QyM3eHZZS).
+
 ## Patches
 
 1. Create a branch from `main`.

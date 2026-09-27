@@ -5,8 +5,29 @@ This repository contains its node, wallet, optional Qt graphical interface,
 command-line tools, and tests. The node validates blocks and transactions on the
 Resatoshi network, which starts from its own genesis block.
 
+Resatoshi aims to follow Bitcoin Core's upstream development with the minimum
+changes needed for its own network. The same approach is intended for proven,
+Bitcoin-compatible open-source applications: adapt them with minimal changes
+and continue incorporating improvements from their upstream projects. The goal
+is to minimize development and maintenance costs while moving in the same
+technical direction as those projects. Compatibility with each application
+must be checked as part of its adaptation.
+
 [Documentation](doc/README.md) ·
-[Downloads](https://gitlab.com/rst-group4210239/RST-project/-/releases) · [Issues](https://gitlab.com/rst-group4210239/RST-project/-/issues)
+[Official Discord](https://discord.gg/QyM3eHZZS) · [Issues](https://gitlab.com/rst-group4210239/RST-project/-/issues)
+
+## Get started and get help
+
+For mining, a wallet, an explorer, and the other bundled features, join the
+[official Resatoshi Discord](https://discord.gg/QyM3eHZZS) and download the
+all-in-one miner from the `download-only` channel.
+
+The official Discord is also Resatoshi's official question-and-help community.
+For ordinary bugs, use [GitLab Issues](https://gitlab.com/rst-group4210239/RST-project/-/issues)
+or email [tpa1995@naver.com](mailto:tpa1995@naver.com).
+Report security vulnerabilities privately to [tpa1995@naver.com](mailto:tpa1995@naver.com),
+following [SECURITY.md](SECURITY.md). Do not post sensitive vulnerability details
+in public issues or Discord channels.
 
 ## Mainnet rules
 

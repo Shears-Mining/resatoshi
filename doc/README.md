@@ -6,7 +6,13 @@ from Bitcoin Core 31.0. Start with the [project overview](../README.md),
 
 ## Download and run
 
-Download packages from [this repository's releases](https://gitlab.com/rst-group4210239/RST-project/-/releases).
+For mining, a wallet, an explorer, and the other bundled features, join the
+[official Resatoshi Discord](https://discord.gg/QyM3eHZZS) and download the
+all-in-one miner from the `download-only` channel. Follow the instructions
+provided with that package to install and run it.
+
+For the node and wallet built from this repository's source, the following
+program names and configuration details apply.
 The program names are `bitcoind` (node), `bitcoin-cli` (RPC client), and
 `bitcoin-qt` (graphical wallet). On Windows, run `bitcoin-qt.exe` from the
 installed package. Build-dependent tools also include the `bitcoin` wrapper;
@@ -37,7 +43,13 @@ build/bin/bitcoin-cli getnetworkinfo
 
 See [configuration](bitcoin-conf.md), [data files](files.md), and
 [documentation conventions](documentation.md) for details.
-Questions and bug reports belong in the [Resatoshi issue tracker](https://gitlab.com/rst-group4210239/RST-project/-/issues).
+For general questions and help, join the
+[official Resatoshi Discord question-and-help community](https://discord.gg/QyM3eHZZS).
+Report ordinary bugs through the [Resatoshi issue tracker](https://gitlab.com/rst-group4210239/RST-project/-/issues)
+or email [tpa1995@naver.com](mailto:tpa1995@naver.com).
+Send security vulnerability reports privately to that email address; see
+[security reporting](../SECURITY.md). Do not post sensitive vulnerability
+details in public issues or Discord channels.
 
 ## Network and implementation
 

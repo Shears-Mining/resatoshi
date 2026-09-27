@@ -1,8 +1,10 @@
 # Resatoshi source notes
 
 The `main` branch contains Resatoshi's independent mainnet implementation,
-based on Bitcoin Core 31.0. Published package versions and their source tags
-are listed under [Releases](https://gitlab.com/rst-group4210239/RST-project/-/releases).
+based on Bitcoin Core 31.0. To download the all-in-one miner with mining,
+wallet, explorer, and other bundled features, visit the `download-only` channel
+in the [official Resatoshi Discord](https://discord.gg/QyM3eHZZS).
+Consult the package's accompanying notes for its version and source information.
 
 ## Unreleased maintenance changes
 
