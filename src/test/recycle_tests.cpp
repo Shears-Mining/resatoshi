@@ -297,6 +297,12 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
     CTxUndo expiry_undo;
 
     using Records = std::vector<std::pair<COutPoint, Coin>>;
+    const auto same_records = [](const Records& a, const Records& b) {
+        return std::ranges::equal(a, b, [](const auto& left, const auto& right) {
+            return left.first == right.first && left.second.out == right.second.out &&
+                   left.second.nHeight == right.second.nHeight && left.second.fCoinBase == right.second.fCoinBase;
+        });
+    };
     const auto snapshot = [](CCoinsViewDB& db) {
         Records records;
         for (auto cursor{db.Cursor()}; cursor->Valid(); cursor->Next()) {
@@ -316,7 +322,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
             // Resize must safely serialize with any still-running compaction.
             WITH_LOCK(::cs_main, db.ResizeCache(cache_size));
             pending.get();
-            BOOST_CHECK(snapshot(db) == before);
+            BOOST_CHECK(same_records(snapshot(db), before));
             BOOST_CHECK(db.GetBestBlock() == tip);
             BOOST_CHECK(db.RecycleStateReady());
             BOOST_CHECK(!db.NeedsUpgrade());
@@ -355,7 +361,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
     pending_shutdown.get();
     {
         CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {}};
-        BOOST_CHECK(snapshot(db) == expired_records);
+        BOOST_CHECK(same_records(snapshot(db), expired_records));
         BOOST_CHECK(db.GetBestBlock() == uint256{2});
         BOOST_REQUIRE(db.RecycleStateReady());
         CCoinsViewCache view{&db};
@@ -364,7 +370,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
         // Recovery replay after compaction must not recycle the value twice.
         BOOST_REQUIRE(node::recycle::RollforwardBlock(view, expiry, expiry_height, 50 * COIN, &expiry_undo));
         view.Flush();
-        BOOST_CHECK(snapshot(db) == expired_records);
+        BOOST_CHECK(same_records(snapshot(db), expired_records));
 
         BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &expiry_undo));
         BOOST_REQUIRE(view.SpendCoin(COutPoint{expiry.vtx[0]->GetHash(), 0}));
@@ -372,12 +378,12 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
         BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), 0);
         view.SetBestBlock(uint256{1});
         view.Flush();
-        BOOST_CHECK(snapshot(db) == original_records);
+        BOOST_CHECK(same_records(snapshot(db), original_records));
         compact_and_resize(db);
     }
     {
         CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {}};
-        BOOST_CHECK(snapshot(db) == original_records);
+        BOOST_CHECK(same_records(snapshot(db), original_records));
         BOOST_CHECK(db.GetBestBlock() == uint256{1});
         BOOST_CHECK(db.RecycleStateReady());
     }
