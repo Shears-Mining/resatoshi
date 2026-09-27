@@ -13,6 +13,14 @@ is to minimize development and maintenance costs while moving in the same
 technical direction as those projects. Compatibility with each application
 must be checked as part of its adaptation.
 
+Resatoshi treats a predictable development direction as a core value. We take
+Bitcoin Core as our upstream, uphold the core principle of a 100-year recycling
+cycle, and minimize unnecessary changes specific to Resatoshi. We aim for a
+development process in which anyone can understand what the project preserves
+and the criteria that guide its evolution. The recycling period is defined in
+blocks and corresponds to approximately 100 years at the target block interval;
+see the [network rules](doc/resatoshi.md).
+
 Current upstream integration includes selected fixes from Bitcoin Core 31.1.
 This is not a complete upgrade to that release. See
 [upstream maintenance](doc/upstream-maintenance.md) for the changes incorporated
