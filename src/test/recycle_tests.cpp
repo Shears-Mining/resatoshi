@@ -365,6 +365,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
         BOOST_CHECK(db.GetBestBlock() == uint256{2});
         BOOST_REQUIRE(db.RecycleStateReady());
         CCoinsViewCache view{&db};
+        BOOST_REQUIRE(view.GetBestBlock() == uint256{2});
         BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), VALUE);
 
         // Recovery replay after compaction must not recycle the value twice.
