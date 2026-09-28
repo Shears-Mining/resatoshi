@@ -1,5 +1,6 @@
 add_executable(test_kernel
     test_kernel.cpp
+    recycle_params.cpp
 )
 
 target_link_libraries(test_kernel

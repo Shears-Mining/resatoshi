@@ -22,12 +22,54 @@ mainnet difficulty with a half-life of 172,800 seconds. The initial subsidy is
 50 coins and halves every 210,000 blocks.
 
 BIP34, BIP65, BIP66 and CSV activate at height 1. SegWit and Taproot are active
-from genesis. The mainnet configuration has no DNS seeds, fixed seeds,
-assume-valid block, or AssumeUTXO snapshots configured.
+from genesis. Mainnet uses the documented bootstrap hostnames through Bitcoin
+Core's existing DNS-seed / address-fetch path. No fixed seeds, assume-valid
+block, or AssumeUTXO snapshots are configured.
 
 Sources: [difficulty calculation](../src/pow.cpp),
 [subsidy and block validation](../src/validation.cpp),
 [mainnet parameters](../src/kernel/chainparams.cpp).
+
+### Bootstrap and minimum chain work
+
+Fresh nodes discover peers through `resatoshi-seed.freeddns.org` and
+`resatoshi-seed.duckdns.org`. These are the existing operator's bootstrap
+hostnames, not two independent operators. If a hostname does not support
+service-bit DNS queries, the upstream networking code falls back to connecting
+to that host and requesting peer addresses. Normal `-dnsseed`, `-connect`,
+`-proxy`, and manual-peer controls still apply. Independent bootstrap operators
+remain desirable as the network grows.
+
+If a fresh mainnet node has neither peers nor known addresses, it retries seed address
+fetches after 60 seconds, doubling the interval up to 15 minutes after each
+retry. This allows recovery after a temporary bootstrap outage without a
+restart. Retries use the existing proxy-aware address-fetch path and require
+network activity and automatic DNS seeding; explicit `-connect` disables them.
+Inherited Bitcoin test networks retain their upstream seed retry behavior.
+
+The default minimum chain work is
+`0000000000000000000000000000000000000000000000000cfed9b27eee9a28`,
+the cumulative work through height 8,000, block
+`0000000000002714ba4d770189e83f6fb05d8bca671cd22849a8e52fc35d5495`.
+On 2026-09-28 this block was over 1,700 blocks behind the locally validated tip.
+Its 8,001 headers, including genesis, were separately checked from local block
+files for ancestry, SHA-256d proof of work, ASERT targets and median time past;
+the independently calculated work matched the node's RPC result. This is local
+verification, not an attestation from an independent operator.
+
+This floor uses Bitcoin Core's existing initial-sync/header anti-DoS policy.
+It does not pin the block hash as a consensus checkpoint or skip transaction
+or script validation. Alternative valid chains with sufficient work remain
+eligible. `-minimumchainwork` retains its upstream override behavior; setting
+it to zero disables this configured protection and is only useful for isolated
+short-chain tests or deliberate recovery work.
+
+For future release updates, choose a fully validated block at least 1,000
+confirmations deep and at least seven days old. Record the height, hash, time,
+work and validation evidence; recompute the header-chain work and compare with
+independent operators when available. If observations disagree, defer the
+update. Review the constant as a normal source change rather than automatically
+trusting a remote service at startup. Keep `defaultAssumeValid` disabled.
 
 `getnetworkhashps` defaults to a 120-block estimation window. Positive `nblocks`
 values select an explicit window. For compatibility, `nblocks=-1` retains the
@@ -50,7 +92,8 @@ redistributes existing coins rather than creating an additional subsidy.
 
 Wallet balances and coin selection exclude expired outputs. `listunspent`
 reports expiry information. Disconnecting blocks restores the corresponding
-UTXOs and recycle state. See [recycle state](recycle-state-integrity.md).
+UTXOs and recycle state. See [recycle state](recycle-state-integrity.md) and
+[explorer, wallet and snapshot integrations](recycle-integrations.md).
 `sendall` also rejects explicitly selected expired inputs before creating a
 signed transaction or PSBT. Spending in the expiry block remains valid.
 
@@ -67,7 +110,51 @@ Sources: [consensus parameters](../src/consensus/params.h),
 [recycle implementation](../src/node/recycle.cpp),
 [recycle constants](../src/node/recycle.h).
 
+## Version identity and node status
+
+The display release is `31.0.0-rsat.1`, based on Bitcoin Core 31.0 with the
+selected maintenance backports documented separately. `bitcoind --version`,
+`bitcoin-cli --version`, startup logs and the GUI full version identify
+ReSatoshi and include the upstream base and source revision. A `-dirty` suffix
+means the checkout includes local changes, including untracked files; it is
+not an exact, reproducible source revision. Git archives use their exporting
+commit; builds without Git or archive provenance report `-unknown`.
+The source revision and dirty marker stay in the first version token, for example
+`v31.0.0-rsat.1-g<commit>-dirty (Bitcoin Core base 31.0.0)`, so upstream release
+tools can recognize locally modified builds.
+This display release is independent of the upstream numeric client version
+and P2P user agent, which retain their existing values.
+
+To inspect recycling rules and state at the reported `bestblockhash`:
+
+```sh
+bitcoin-cli getblockchaininfo true
+bitcoin-cli -named getblockchaininfo include_recycling=true
+```
+
+The optional `recycling` object contains `enabled` and, on enabled networks,
+`expiry_blocks`, `max_reward_per_block`, and `pool_balance`. Amounts are in
+whole coins, using the existing RPC amount convention. The pool balance is
+unclaimed value after the tip's transactions and recycling; it excludes outputs
+that will expire in future blocks. It is not a quote for the next block's
+reward. The state and block hash are read under the same chain lock.
+
+Omitting `include_recycling`, or passing `false`, preserves the existing
+response fields. Disabled networks return only `recycling: {"enabled": false}`
+when requested. The existing REST chain-info response remains unchanged.
+
+These display and read-only API additions do not alter consensus rules, disk
+formats, wallet formats, network identifiers or numeric protocol versions.
+They require no chain reset, reindex, wallet migration or activation height.
+
 ## GUI settings and upgrades
+
+In coin control, hover over an output's amount or confirmation count to see
+its expiry height and remaining blocks at the displayed synced height. This
+is a snapshot when the list is populated; reopening the dialog refreshes it.
+Only confirmed spendable outputs on recycling networks have a fixed expiry
+height. Spending in the expiry block still prevents recycling. The display
+uses block heights rather than a promised calendar date.
 
 The GUI uses separate `ReSatoshi` / `ReSatoshi-Qt` settings, with distinct
 application names for each test network. It does not import the `Bitcoin` /

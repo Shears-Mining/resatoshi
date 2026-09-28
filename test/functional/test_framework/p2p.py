@@ -193,7 +193,8 @@ class P2PConnection(asyncio.Protocol):
         # The initial message to send after the connection was made:
         self.on_connection_send_msg = None
         self.recvbuf = b""
-        self.magic_bytes = MAGIC_BYTES[net]
+        # The test framework uses an empty data-directory suffix for mainnet.
+        self.magic_bytes = MAGIC_BYTES[net or "mainnet"]
         self.p2p_connected_to_node = dstport != 0
 
     def peer_connect(self, dstaddr, dstport, *, net, timeout_factor, supports_v2_p2p):

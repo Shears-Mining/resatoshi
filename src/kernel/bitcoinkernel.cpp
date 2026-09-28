@@ -19,6 +19,7 @@
 #include <logging.h>
 #include <node/blockstorage.h>
 #include <node/chainstate.h>
+#include <node/recycle.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <script/interpreter.h>
@@ -1211,6 +1212,14 @@ btck_BlockSpentOutputs* btck_block_spent_outputs_read(const btck_ChainstateManag
     }
     if (!btck_ChainstateManager::get(chainman).m_chainman->m_blockman.ReadBlockUndo(*block_undo, btck_BlockTreeEntry::get(entry))) {
         LogError("Failed to read block spent outputs data.");
+        return nullptr;
+    }
+    // The on-disk undo may end in recycle metadata, which is not a
+    // transaction's spent outputs. Only normalize this API's private copy.
+    const auto& index{btck_BlockTreeEntry::get(entry)};
+    const auto& consensus{btck_ChainstateManager::get(chainman).m_chainman->GetConsensus()};
+    if (!node::recycle::RemoveStateUndo(*block_undo, index.nHeight, index.nTx, consensus)) {
+        LogError("Block spent outputs count does not match its transactions.");
         return nullptr;
     }
     return btck_BlockSpentOutputs::create(block_undo);

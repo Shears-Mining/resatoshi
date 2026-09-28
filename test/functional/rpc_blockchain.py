@@ -134,6 +134,8 @@ class BlockchainTest(BitcoinTestFramework):
 
     def _test_getblockchaininfo(self):
         self.log.info("Test getblockchaininfo")
+        assert_equal(self.nodes[0].getblockchaininfo(True)['recycling'], {'enabled': False})
+        assert 'recycling' not in self.nodes[0].getblockchaininfo(False)
 
         keys = [
             'bestblockhash',

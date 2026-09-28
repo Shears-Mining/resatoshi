@@ -6,6 +6,7 @@
 #include <node/recycle_serialization.h>
 
 #include <coins.h>
+#include <consensus/params.h>
 #include <consensus/validation.h>
 #include <primitives/block.h>
 #include <script/script.h>
@@ -249,6 +250,16 @@ bool ReadUndo(const CTxUndo& undo, CAmount& pool_before, std::vector<std::pair<C
     if (undo.vprevout.size() != 1 || !Decode(undo.vprevout[0].out.scriptPubKey, data)) return false;
     pool_before = data.pool_before;
     expired = std::move(data.expired);
+    return true;
+}
+
+bool RemoveStateUndo(CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus)
+{
+    if (transaction_count == 0) return false;
+    const bool has_state{consensus.recycle_enabled && height > consensus.recycle_expiry_blocks};
+    const size_t expected{transaction_count - 1 + size_t{has_state}};
+    if (undo.vtxundo.size() != expected) return false;
+    if (has_state) undo.vtxundo.pop_back();
     return true;
 }
 

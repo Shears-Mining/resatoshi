@@ -73,6 +73,15 @@ class RecycleSpendTest(BitcoinTestFramework):
         expiry = self.block(coinbase, signed[:1])
         assert_equal(node.submitblock(expiry.serialize().hex()), None)
         self.sync_all()
+        descriptor = f"raw({script.hex()})"
+        activity = node.getdescriptoractivity([expiry.hash_hex], [descriptor], False, True)["activity"]
+        expired_events = [event for event in activity if event["type"] == "expire"]
+        spend_events = [event for event in activity if event["type"] == "spend"]
+        assert_equal(len(expired_events), 1)
+        assert_equal(expired_events[0]["prevout_txid"], origin.txid_hex)
+        assert_equal(expired_events[0]["prevout_vout"], 1)
+        assert_equal(len(spend_events), 1)
+        assert_equal(spend_events[0]["prevout_vout"], 0)
         for peer in self.nodes:
             stats = peer.getblockstats(expiry.hash_hex)
             assert_equal(stats["expired_outputs"], 1)

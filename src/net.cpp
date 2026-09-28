@@ -28,6 +28,7 @@
 #include <protocol.h>
 #include <random.h>
 #include <scheduler.h>
+#include <util/chaintype.h>
 #include <util/fs.h>
 #include <util/sock.h>
 #include <util/strencodings.h>
@@ -2589,6 +2590,10 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
     auto seed_node_timer = NodeClock::now();
     bool add_addr_fetch{addrman.get().Size() == 0 && !seed_nodes.empty()};
     constexpr std::chrono::seconds ADD_NEXT_SEEDNODE = 10s;
+    // A fresh mainnet node may exhaust all one-shot address fetches during an outage.
+    // Retry through the same proxy-aware path, with bounded exponential backoff.
+    auto seed_retry_delay = 60s;
+    auto next_seed_retry = SteadyClock::now() + seed_retry_delay;
 
     if (!add_fixed_seeds) {
         LogInfo("Fixed seeds are disabled\n");
@@ -2608,6 +2613,20 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
         }
 
         ProcessAddrFetch();
+
+        if (m_params.GetChainType() == ChainType::MAIN && SteadyClock::now() >= next_seed_retry) {
+            if (dnsseed && !gArgs.IsArgSet("-connect") && fNetworkActive &&
+                addrman.get().Size() == 0 && GetNodeCount(ConnectionDirection::Both) == 0 &&
+                !m_params.DNSSeeds().empty()) {
+                LOCK(m_addr_fetches_mutex);
+                if (m_addr_fetches.empty()) {
+                    LogInfo("Retrying DNS seed address fetches: no peers or known addresses\n");
+                    for (const auto& seed : m_params.DNSSeeds()) m_addr_fetches.push_back(seed);
+                    seed_retry_delay = std::min(seed_retry_delay * 2, 900s);
+                }
+            }
+            next_seed_retry = SteadyClock::now() + seed_retry_delay;
+        }
 
         if (!m_interrupt_net->sleep_for(500ms)) {
             return;

@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <coins.h>
+#include <consensus/params.h>
 #include <node/recycle.h>
 #include <node/recycle_serialization.h>
 #include <test/util/setup_common.h>
@@ -34,6 +35,65 @@ CBlock CoinbaseBlock(CAmount value, int unique)
 } // namespace
 
 BOOST_AUTO_TEST_SUITE(recycle_tests)
+
+BOOST_AUTO_TEST_CASE(transaction_undo_excludes_recycle_state)
+{
+    Consensus::Params consensus;
+    consensus.recycle_enabled = true;
+    consensus.recycle_expiry_blocks = 200;
+    CCoinsView base;
+    CCoinsViewCache view{&base};
+    CBlock origin{CoinbaseBlock(2 * COIN, 1)};
+    AddCoins(view, *origin.vtx[0], 1);
+    CTxUndo early;
+    std::string error;
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, 2 * COIN, early, error, nullptr, 200));
+
+    // Before expiry a coinbase-only block has no input records.
+    CBlockUndo before;
+    BOOST_REQUIRE(node::recycle::RemoveStateUndo(before, 200, 1, consensus));
+    BOOST_CHECK(before.vtxundo.empty());
+
+    CBlock expiry{CoinbaseBlock(COIN, 201)};
+    AddCoins(view, *expiry.vtx[0], 201);
+    CTxUndo state;
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, 201, 0, state, error, nullptr, 200));
+    CBlockUndo disk;
+    disk.vtxundo.push_back(state);
+    CBlockUndo exposed{disk};
+    BOOST_REQUIRE(node::recycle::RemoveStateUndo(exposed, 201, 1, consensus));
+    BOOST_CHECK(exposed.vtxundo.empty());
+
+    // Keep every field of a real input record, even when its transaction
+    // follows the coinbase and precedes the internal state entry.
+    CTxUndo transaction;
+    transaction.vprevout.emplace_back(origin.vtx[0]->vout[0], 1, true);
+    disk.vtxundo.insert(disk.vtxundo.begin(), transaction);
+    exposed = disk;
+    BOOST_REQUIRE(node::recycle::RemoveStateUndo(exposed, 201, 2, consensus));
+    BOOST_REQUIRE_EQUAL(exposed.vtxundo.size(), 1U);
+    BOOST_REQUIRE_EQUAL(exposed.vtxundo[0].vprevout.size(), 1U);
+    const auto& input{exposed.vtxundo[0].vprevout[0]};
+    BOOST_CHECK(input.out == origin.vtx[0]->vout[0]);
+    BOOST_CHECK_EQUAL(input.nHeight, 1U);
+    BOOST_CHECK(input.fCoinBase);
+
+    // No mutation on inconsistent input, and no stripping on other networks.
+    BOOST_CHECK(!node::recycle::RemoveStateUndo(exposed, 201, 2, consensus));
+    BOOST_CHECK(!node::recycle::RemoveStateUndo(exposed, 201, 0, consensus));
+    BOOST_CHECK_EQUAL(exposed.vtxundo.size(), 1U);
+    consensus.recycle_enabled = false;
+    BOOST_REQUIRE(node::recycle::RemoveStateUndo(exposed, 201, 2, consensus));
+    BOOST_CHECK_EQUAL(exposed.vtxundo.size(), 1U);
+
+    // Stripping the API copy must leave on-disk recovery information intact.
+    CAmount pool_before;
+    std::vector<std::pair<COutPoint, Coin>> expired;
+    BOOST_REQUIRE(node::recycle::ReadUndo(disk.vtxundo.back(), pool_before, expired));
+    BOOST_CHECK_EQUAL(expired.size(), 1U);
+    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, 201, &disk.vtxundo.back(), 200));
+    BOOST_CHECK(view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));
+}
 
 BOOST_AUTO_TEST_CASE(expiry_reward_and_disconnect)
 {

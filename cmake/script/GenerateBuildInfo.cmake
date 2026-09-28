@@ -12,7 +12,7 @@ endmacro()
 
 if(DEFINED BUILD_INFO_HEADER_PATH AND IS_ABSOLUTE "${BUILD_INFO_HEADER_PATH}")
   if(EXISTS "${BUILD_INFO_HEADER_PATH}")
-    file(STRINGS ${BUILD_INFO_HEADER_PATH} INFO LIMIT_COUNT 1)
+    file(READ ${BUILD_INFO_HEADER_PATH} INFO)
   endif()
 else()
   fatal_error()
@@ -28,7 +28,6 @@ else()
   set(WORKING_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
-set(GIT_TAG)
 set(GIT_COMMIT)
 if(NOT "$ENV{BITCOIN_GENBUILD_NO_GIT}" STREQUAL "1")
   find_package(Git QUIET)
@@ -50,22 +49,6 @@ if(NOT "$ENV{BITCOIN_GENBUILD_NO_GIT}" STREQUAL "1")
       )
 
       execute_process(
-        COMMAND ${GIT_EXECUTABLE} describe --abbrev=0
-        WORKING_DIRECTORY ${WORKING_DIR}
-        OUTPUT_VARIABLE MOST_RECENT_TAG
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
-      )
-
-      execute_process(
-        COMMAND ${GIT_EXECUTABLE} rev-list -1 ${MOST_RECENT_TAG}
-        WORKING_DIRECTORY ${WORKING_DIR}
-        OUTPUT_VARIABLE MOST_RECENT_TAG_COMMIT
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET
-      )
-
-      execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
         WORKING_DIRECTORY ${WORKING_DIR}
         OUTPUT_VARIABLE HEAD_COMMIT
@@ -74,16 +57,15 @@ if(NOT "$ENV{BITCOIN_GENBUILD_NO_GIT}" STREQUAL "1")
       )
 
       execute_process(
-        COMMAND ${GIT_EXECUTABLE} diff-index --quiet HEAD --
+        COMMAND ${GIT_EXECUTABLE} status --porcelain --untracked-files=normal
         WORKING_DIRECTORY ${WORKING_DIR}
-        RESULT_VARIABLE IS_DIRTY
+        OUTPUT_VARIABLE IS_DIRTY
+        OUTPUT_STRIP_TRAILING_WHITESPACE
       )
 
-      if(HEAD_COMMIT STREQUAL MOST_RECENT_TAG_COMMIT AND NOT IS_DIRTY)
-        # If latest commit is tagged and not dirty, then use the tag name.
-        set(GIT_TAG ${MOST_RECENT_TAG})
-      else()
-        # Otherwise, generate suffix from git, i.e. string like "0e0a5173fae3-dirty".
+      # Always record the source commit, including tagged builds.
+      if(HEAD_COMMIT)
+        # Generate suffix from git, i.e. string like "0e0a5173fae3-dirty".
         execute_process(
           COMMAND ${GIT_EXECUTABLE} rev-parse --short=12 HEAD
           WORKING_DIRECTORY ${WORKING_DIR}
@@ -99,15 +81,13 @@ if(NOT "$ENV{BITCOIN_GENBUILD_NO_GIT}" STREQUAL "1")
   endif()
 endif()
 
-if(GIT_TAG)
-  set(NEWINFO "#define BUILD_GIT_TAG \"${GIT_TAG}\"")
-elseif(GIT_COMMIT)
-  set(NEWINFO "#define BUILD_GIT_COMMIT \"${GIT_COMMIT}\"")
+if(GIT_COMMIT)
+  set(NEWINFO "#define BUILD_GIT_COMMIT \"${GIT_COMMIT}\"\n")
 else()
-  set(NEWINFO "// No build information available")
+  set(NEWINFO "// No build information available\n")
 endif()
 
 # Only update the header if necessary.
 if(NOT "${INFO}" STREQUAL "${NEWINFO}")
-  file(WRITE ${BUILD_INFO_HEADER_PATH} "${NEWINFO}\n")
+  file(WRITE ${BUILD_INFO_HEADER_PATH} "${NEWINFO}")
 endif()

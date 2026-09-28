@@ -26,6 +26,8 @@
 
 using namespace btck;
 
+void EnableRecycleTestParams(btck_ChainParameters* params, int lifetime);
+
 std::string random_string(uint32_t length)
 {
     const std::string chars = "0123456789"
@@ -705,10 +707,11 @@ BOOST_AUTO_TEST_CASE(btck_block)
     BOOST_CHECK_THROW(Block{empty_data}, std::runtime_error);
 }
 
-Context create_context(std::shared_ptr<TestKernelNotifications> notifications, ChainType chain_type, std::shared_ptr<TestValidationInterface> validation_interface = nullptr)
+Context create_context(std::shared_ptr<TestKernelNotifications> notifications, ChainType chain_type, std::shared_ptr<TestValidationInterface> validation_interface = nullptr, int recycle_lifetime = 0)
 {
     ContextOptions options{};
     ChainParams params{chain_type};
+    if (recycle_lifetime) EnableRecycleTestParams(params.get(), recycle_lifetime);
     options.SetChainParams(params);
     options.SetNotifications(notifications);
     if (validation_interface) {
@@ -786,6 +789,56 @@ std::unique_ptr<ChainMan> create_chainman(TestDirectory& test_directory,
 
     auto chainman{std::make_unique<ChainMan>(context, chainman_opts)};
     return chainman;
+}
+
+BOOST_AUTO_TEST_CASE(btck_recycle_spent_outputs_disk_tests)
+{
+    // Existing fixtures include a coinbase-only block at 200 and a real
+    // transaction spending height-205 outputs at 206. Activate expiry at
+    // each boundary without mining mainnet or changing the production API.
+    for (const int lifetime : {199, 205}) {
+        auto directory{TestDirectory{"recycle_spent_outputs"}};
+        auto context{create_context(std::make_shared<TestKernelNotifications>(), ChainType::REGTEST, nullptr, lifetime)};
+        std::optional<BlockSpentOutputs> retained;
+        std::optional<Coin> retained_coin;
+        const size_t expected{lifetime == 199 ? 0U : 1U};
+        {
+            auto chainman{create_chainman(directory, false, false, false, false, context)};
+            for (int i{0}; i <= lifetime; ++i) {
+                bool new_block{false};
+                BOOST_REQUIRE(chainman->ProcessBlock(Block{hex_string_to_byte_vec(REGTEST_BLOCK_DATA[i])}, &new_block));
+                BOOST_REQUIRE(new_block);
+            }
+            const auto tip{chainman->GetChain().GetByHeight(lifetime + 1)};
+            const auto previous{*tip.GetPrevious()};
+            BOOST_CHECK_EQUAL(chainman->ReadBlockSpentOutputs(previous).Count(),
+                              chainman->ReadBlock(previous)->CountTransactions() - 1);
+            auto outputs{chainman->ReadBlockSpentOutputs(tip)};
+            BOOST_REQUIRE_EQUAL(outputs.Count(), expected);
+            retained.emplace(outputs); // public API copy, surviving the original and chain manager
+            if (expected) {
+                auto tx_inputs{outputs.GetTxSpentOutputs(0)};
+                BOOST_REQUIRE_EQUAL(tx_inputs.Count(), 2U);
+                auto coin{tx_inputs.GetCoin(0)};
+                BOOST_CHECK_EQUAL(coin.GetConfirmationHeight(), 205U);
+                BOOST_CHECK_EQUAL(coin.GetOutput().Amount(), 100000000);
+                BOOST_CHECK(!coin.IsCoinbase());
+                retained_coin.emplace(coin);
+            }
+        }
+        BOOST_REQUIRE_EQUAL(retained->Count(), expected);
+        if (retained_coin) {
+            BOOST_CHECK_EQUAL(retained_coin->GetConfirmationHeight(), 205U);
+            BOOST_CHECK_EQUAL(retained_coin->GetOutput().Amount(), 100000000);
+            check_equal(retained_coin->GetOutput().GetScriptPubkey().ToBytes(),
+                        retained->GetTxSpentOutputs(0).GetCoin(0).GetOutput().GetScriptPubkey().ToBytes());
+        }
+        // Reopen chainstate and read the actual on-disk undo again. The API
+        // must not have removed the metadata needed for restart/recovery.
+        auto reopened{create_chainman(directory, false, false, false, false, context)};
+        auto reread{reopened->ReadBlockSpentOutputs(reopened->GetChain().GetByHeight(lifetime + 1))};
+        BOOST_CHECK_EQUAL(reread.Count(), expected);
+    }
 }
 
 void chainman_reindex_test(TestDirectory& test_directory)

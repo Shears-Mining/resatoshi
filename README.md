@@ -21,6 +21,12 @@ and the criteria that guide its evolution. The recycling period is defined in
 blocks and corresponds to approximately 100 years at the target block interval;
 see the [network rules](doc/resatoshi.md).
 
+As network participation and independent node operation grow, Resatoshi plans
+to progressively decentralize peer discovery through bootstrap nodes and DNS
+seeds maintained by multiple independent operators, following Bitcoin's
+approach. Throughout this process, Resatoshi will prioritize Bitcoin's existing
+peer discovery mechanisms and minimize unnecessary project-specific changes.
+
 Current upstream integration includes selected fixes from Bitcoin Core 31.1.
 This is not a complete upgrade to that release. See
 [upstream maintenance](doc/upstream-maintenance.md) for the changes incorporated

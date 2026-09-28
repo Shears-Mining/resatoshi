@@ -1366,7 +1366,7 @@ RPCHelpMan getblockchaininfo()
 {
     return RPCHelpMan{"getblockchaininfo",
         "Returns an object containing various state info regarding blockchain processing.\n",
-        {},
+        {{"include_recycling", RPCArg::Type::BOOL, RPCArg::Default{false}, "Include recycling rules and the pool balance at bestblockhash"}},
         RPCResult{
             RPCResult::Type::OBJ, "", "",
             {
@@ -1387,6 +1387,12 @@ RPCHelpMan getblockchaininfo()
                 {RPCResult::Type::NUM, "pruneheight", /*optional=*/true, "the first block unpruned, all previous blocks were pruned (only present if pruning is enabled)"},
                 {RPCResult::Type::BOOL, "automatic_pruning", /*optional=*/true, "whether automatic pruning is enabled (only present if pruning is enabled)"},
                 {RPCResult::Type::NUM, "prune_target_size", /*optional=*/true, "the target size used by pruning (only present if automatic pruning is enabled)"},
+                {RPCResult::Type::OBJ, "recycling", /*optional=*/true, "Only when include_recycling is true; state at bestblockhash", {
+                    {RPCResult::Type::BOOL, "enabled", "Whether recycling is enabled on this network"},
+                    {RPCResult::Type::NUM, "expiry_blocks", /*optional=*/true, "Output lifetime in blocks (enabled networks only)"},
+                    {RPCResult::Type::STR_AMOUNT, "max_reward_per_block", /*optional=*/true, "Maximum recycle reward, excluding subsidy and fees (enabled networks only)"},
+                    {RPCResult::Type::STR_AMOUNT, "pool_balance", /*optional=*/true, "Unclaimed pool after bestblockhash; excludes future expiry (enabled networks only)"},
+                }},
                 {RPCResult::Type::STR_HEX, "signet_challenge", /*optional=*/true, "the block challenge (aka. block script), in hexadecimal (only present if the current network is a signet)"},
                 (IsDeprecatedRPCEnabled("warnings") ?
                     RPCResult{RPCResult::Type::STR, "warnings", "any network and blockchain warnings (DEPRECATED)"} :
@@ -1423,6 +1429,17 @@ RPCHelpMan getblockchaininfo()
     obj.pushKV("initialblockdownload", chainman.IsInitialBlockDownload());
     obj.pushKV("chainwork", tip.nChainWork.GetHex());
     obj.pushKV("size_on_disk", chainman.m_blockman.CalculateCurrentUsage());
+    if (self.Arg<bool>("include_recycling")) {
+        const auto& consensus{chainman.GetConsensus()};
+        UniValue recycling{UniValue::VOBJ};
+        recycling.pushKV("enabled", consensus.recycle_enabled);
+        if (consensus.recycle_enabled) {
+            recycling.pushKV("expiry_blocks", consensus.recycle_expiry_blocks);
+            recycling.pushKV("max_reward_per_block", ValueFromAmount(node::recycle::MAX_REWARD));
+            recycling.pushKV("pool_balance", ValueFromAmount(node::recycle::PoolBalance(active_chainstate.CoinsTip())));
+        }
+        obj.pushKV("recycling", std::move(recycling));
+    }
     obj.pushKV("pruned", chainman.m_blockman.IsPruneMode());
     if (chainman.m_blockman.IsPruneMode()) {
         const auto prune_height{GetPruneHeight(chainman.m_blockman, active_chainstate.m_chain)};
@@ -2536,6 +2553,7 @@ static RPCHelpMan scanblocks()
     return RPCHelpMan{
         "scanblocks",
         "Return relevant blockhashes for given descriptors (requires blockfilterindex).\n"
+        "Basic filters do not report UTXO expiry. Track expiry heights separately and query those blocks with getdescriptoractivity include_expired=true.\n"
         "This call may take several minutes. Make sure to use no RPC timeout (bitcoin-cli -rpcclienttimeout=0)",
         {
             scan_action_arg_desc,
@@ -2726,6 +2744,8 @@ static RPCHelpMan getdescriptoractivity()
         "getdescriptoractivity",
         "Get spend and receive activity associated with a set of descriptors for a set of blocks. "
         "This command pairs well with the `relevant_blocks` output of `scanblocks()`.\n"
+        "On recycling networks, include_expired additionally reports expiry events and confirmed output expiry heights. "
+        "Expiry-only blocks are not found by scanblocks; query the tracked expiry heights explicitly.\n"
         "This call may take several minutes. If you encounter timeouts, try specifying no RPC timeout (bitcoin-cli -rpcclienttimeout=0)",
         {
             RPCArg{"blockhashes", RPCArg::Type::ARR, RPCArg::Optional::NO, "The list of blockhashes to examine for activity. Order doesn't matter. Must be along main chain or an error is thrown.\n", {
@@ -2739,6 +2759,7 @@ static RPCHelpMan getdescriptoractivity()
                 RPCArgOptions{.oneline_description="[scanobjects,...]"},
             },
             {"include_mempool", RPCArg::Type::BOOL, RPCArg::Default{true}, "Whether to include unconfirmed activity"},
+            {"include_expired", RPCArg::Type::BOOL, RPCArg::Default{false}, "Include UTXO expiry events and expiry heights on recycling networks"},
         },
         RPCResult{
             RPCResult::Type::OBJ, "", "", {
@@ -2762,6 +2783,17 @@ static RPCHelpMan getdescriptoractivity()
                         {RPCResult::Type::STR_HEX, "txid", "The txid of the receiving transaction"},
                         {RPCResult::Type::NUM, "vout", "The vout of the receiving output"},
                         {RPCResult::Type::OBJ, "output_spk", "", ScriptPubKeyDoc()},
+                        {RPCResult::Type::NUM, "expiry_height", /*optional=*/true, "Expiry height of a confirmed spendable output, when include_expired is true"},
+                    }},
+                    {RPCResult::Type::OBJ, "", "", {
+                        {RPCResult::Type::STR, "type", "always 'expire'; only returned with include_expired=true"},
+                        {RPCResult::Type::STR_AMOUNT, "amount", "The amount removed by expiry"},
+                        {RPCResult::Type::STR_HEX, "blockhash", "The block in which the output expired"},
+                        {RPCResult::Type::NUM, "height", "The expiry block height"},
+                        {RPCResult::Type::NUM, "creation_height", "The original output's creation height"},
+                        {RPCResult::Type::STR_HEX, "prevout_txid", "The expired output's transaction id"},
+                        {RPCResult::Type::NUM, "prevout_vout", "The expired output index"},
+                        {RPCResult::Type::OBJ, "prevout_spk", "", ScriptPubKeyDoc()},
                     }},
                     // TODO is the skip_type_check avoidable with a heterogeneous ARR?
                 }, /*skip_type_check=*/true},
@@ -2854,6 +2886,10 @@ static RPCHelpMan getdescriptoractivity()
         event.pushKV("txid", tx->GetHash().ToString());
         event.pushKV("vout", vout);
         event.pushKV("output_spk", spkUv);
+        if (self.Arg<bool>("include_expired") && index && chainman.GetConsensus().recycle_enabled &&
+            !txout.scriptPubKey.IsUnspendable()) {
+            event.pushKV("expiry_height", int64_t{index->nHeight} + chainman.GetConsensus().recycle_expiry_blocks);
+        }
 
         return event;
     };
@@ -2891,6 +2927,31 @@ static RPCHelpMan getdescriptoractivity()
                 if (scripts_to_watch.contains(vout.scriptPubKey)) {
                     activity.push_back(AddReceive(vout, blockindex, vout_idx, tx));
                 }
+            }
+        }
+
+        // Expiry is a state transition after the block's transactions. It has no
+        // spending transaction, so never synthesize a spend_txid for these events.
+        if (self.Arg<bool>("include_expired") && chainman.GetConsensus().recycle_enabled &&
+            blockindex->nHeight > chainman.GetConsensus().recycle_expiry_blocks) {
+            CHECK_NONFATAL(block_undo.vtxundo.size() == blockindex->nTx);
+            CAmount pool_before;
+            std::vector<std::pair<COutPoint, Coin>> expired;
+            CHECK_NONFATAL(node::recycle::ReadUndo(block_undo.vtxundo.back(), pool_before, expired));
+            for (const auto& [outpoint, coin] : expired) {
+                if (!scripts_to_watch.contains(coin.out.scriptPubKey)) continue;
+                UniValue event{UniValue::VOBJ};
+                UniValue spk{UniValue::VOBJ};
+                ScriptToUniv(coin.out.scriptPubKey, spk, /*include_hex=*/true, /*include_address=*/true);
+                event.pushKV("type", "expire");
+                event.pushKV("amount", ValueFromAmount(coin.out.nValue));
+                event.pushKV("blockhash", blockindex->GetBlockHash().ToString());
+                event.pushKV("height", blockindex->nHeight);
+                event.pushKV("creation_height", coin.nHeight);
+                event.pushKV("prevout_txid", outpoint.hash.ToString());
+                event.pushKV("prevout_vout", outpoint.n);
+                event.pushKV("prevout_spk", std::move(spk));
+                activity.push_back(std::move(event));
             }
         }
     }

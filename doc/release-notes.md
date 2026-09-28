@@ -8,10 +8,34 @@ Consult the package's accompanying notes for its version and source information.
 
 ## Unreleased maintenance changes
 
+- Identify display release `31.0.0-rsat.1` as ReSatoshi, with the Bitcoin Core
+  base and source revision, while preserving numeric client/protocol versions.
+- Add opt-in `getblockchaininfo include_recycling=true` rules and pool status;
+  existing calls retain their response fields.
+- Show confirmed outputs' expiry heights and remaining blocks in coin-control
+  tooltips, with the synced height used for the calculation.
+
 Current upstream integration includes selected fixes from Bitcoin Core 31.1;
 this is not a complete upgrade to that release. See
 [upstream maintenance](upstream-maintenance.md) for source provenance,
 incorporated fixes, remaining differences, and local validation commands.
+
+- Enable automatic mainnet peer discovery using the two documented bootstrap
+  hostnames and the existing upstream DNS-seed/address-fetch behavior. Retry
+  failed discovery with bounded backoff when there are no peers or known addresses.
+- Set a conservative minimum chain work from verified block 8,000 for initial
+  synchronization protection; keep assume-valid disabled. See the verification
+  and future update policy in [network rules](resatoshi.md#bootstrap-and-minimum-chain-work).
+- Exclude internal recycle undo from the optional kernel library's transaction
+  spent-output API, preserving the on-disk records used for recovery. Test real
+  expiry blocks, transaction inputs, object lifetimes and disk reopen through
+  the public kernel API.
+- Add opt-in `getdescriptoractivity include_expired=true` expiry events and
+  confirmed output expiry heights. Keep default responses and basic compact
+  filters unchanged; document how integrations find expiry-only blocks.
+- Convert large snapshot metadata into a separate SQLite `recycle_state`
+  table while retaining ordinary script limits and bounded write batches.
+  See [integration guidance](recycle-integrations.md).
 
 - Correct actual UTXO count/size changes in `getblockstats` when outputs expire,
   and expose the number removed as `expired_outputs`. Legacy transaction-only
@@ -39,10 +63,10 @@ These maintenance changes preserve the existing ReSatoshi genesis, ASERT,
 UTXO expiry period and recycle reward rules. They do not require a consensus
 activation or change BTC unit conversions.
 
-Node tests and isolated chain replay have passed locally. Qt execution and
-Windows/macOS installation tests remain outstanding. The optional kernel-library
-spent-output API is not ready for recycle-enabled external integrations; see
-[known limitations](upstream-maintenance.md#local-validation).
+Node tests, isolated chain replay and Linux Qt tests have passed locally.
+Windows/macOS installation tests remain outstanding. Optional kernel-library
+integrations require their own build and tests; node-only testing does not
+cover that API.
 
 ## Mainnet
 

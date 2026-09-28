@@ -8,15 +8,19 @@
 #include <consensus/amount.h>
 #include <primitives/transaction.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
 
 class CBlock;
+class CBlockUndo;
 class Coin;
 class CCoinsViewCache;
 class CTxUndo;
+
+namespace Consensus { struct Params; }
 
 namespace node::recycle {
 
@@ -42,6 +46,11 @@ bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CA
 
 /** Read the existing undo payload for index accounting. */
 bool ReadUndo(const CTxUndo& undo, CAmount& pool_before, std::vector<std::pair<COutPoint, Coin>>& expired);
+
+/** Remove internal state from a copy of block undo before exposing transaction inputs.
+ * Returns false, without modifying undo, if its entry count is inconsistent.
+ */
+bool RemoveStateUndo(CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus);
 
 /** Restore a missing/truncated schedule from its original block. */
 bool ScheduleValid(const CCoinsViewCache& view, int height);

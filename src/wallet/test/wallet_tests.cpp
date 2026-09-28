@@ -71,8 +71,29 @@ BOOST_AUTO_TEST_CASE(wallet_interface_expiry)
         BOOST_REQUIRE_EQUAL(coins.size(), 1U);
         BOOST_CHECK(!coins[0].is_spent);
         BOOST_CHECK_EQUAL(coins[0].is_expired, tip_height > *lifetime);
+        BOOST_REQUIRE(coins[0].expiry_height.has_value());
+        BOOST_REQUIRE(coins[0].blocks_until_expiry.has_value());
+        BOOST_CHECK_EQUAL(*coins[0].expiry_height, *lifetime + 1);
+        BOOST_CHECK_EQUAL(*coins[0].blocks_until_expiry, *lifetime + 1 - tip_height);
         BOOST_CHECK_EQUAL(coins[0].txout.nValue, COIN);
     }
+    // Unconfirmed outputs have no fixed creation or expiry height.
+    {
+        LOCK(wallet->cs_wallet);
+        wallet->mapWallet.at(txref->GetHash()).m_state = TxStateInactive{};
+    }
+    const auto unconfirmed{interface->getCoins({outpoint})};
+    BOOST_CHECK(!unconfirmed[0].expiry_height.has_value());
+    BOOST_CHECK(!unconfirmed[0].blocks_until_expiry.has_value());
+
+    auto offline_wallet = std::make_shared<CWallet>(nullptr, "", CreateMockableWalletDatabase());
+    {
+        LOCK(offline_wallet->cs_wallet);
+        offline_wallet->mapWallet.try_emplace(txref->GetHash(), txref, TxStateInactive{});
+    }
+    const auto offline{interfaces::MakeWallet(context, offline_wallet)->getCoins({outpoint})};
+    BOOST_CHECK(!offline[0].expiry_height.has_value());
+    BOOST_CHECK(!offline[0].blocks_until_expiry.has_value());
 }
 
 static CMutableTransaction TestSimpleSpend(const CTransaction& from, uint32_t index, const CKey& key, const CScript& pubkey)

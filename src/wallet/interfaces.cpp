@@ -106,6 +106,17 @@ WalletTxStatus MakeWalletTxStatus(const CWallet& wallet, const CWalletTx& wtx)
     return result;
 }
 
+//! Attach display-only expiry information at the wallet's processed tip.
+void SetOutputExpiry(const CWallet& wallet, WalletTxOut& output) EXCLUSIVE_LOCKS_REQUIRED(wallet.cs_wallet)
+{
+    if (!wallet.HaveChain()) return;
+    if (const auto lifetime{wallet.chain().utxoExpiryBlocks()}; lifetime &&
+        output.depth_in_main_chain > 0 && !output.txout.scriptPubKey.IsUnspendable()) {
+        output.blocks_until_expiry = int64_t{*lifetime} - output.depth_in_main_chain + 1;
+        output.expiry_height = int64_t{wallet.GetLastBlockHeight()} + *output.blocks_until_expiry;
+    }
+}
+
 //! Construct wallet TxOut struct.
 WalletTxOut MakeWalletTxOut(const CWallet& wallet,
     const CWalletTx& wtx,
@@ -118,6 +129,7 @@ WalletTxOut MakeWalletTxOut(const CWallet& wallet,
     result.depth_in_main_chain = depth;
     result.is_spent = wallet.IsSpent(COutPoint(wtx.GetHash(), n));
     result.is_expired = wallet.IsExpired(COutPoint(wtx.GetHash(), n));
+    SetOutputExpiry(wallet, result);
     return result;
 }
 
@@ -130,6 +142,7 @@ WalletTxOut MakeWalletTxOut(const CWallet& wallet,
     result.depth_in_main_chain = output.depth;
     result.is_spent = wallet.IsSpent(output.outpoint);
     result.is_expired = wallet.IsExpired(output.outpoint);
+    SetOutputExpiry(wallet, result);
     return result;
 }
 

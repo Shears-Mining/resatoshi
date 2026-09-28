@@ -26,7 +26,9 @@ get_directory_property(precious_variables CACHE_VARIABLES)
 #=============================
 # Project / Package metadata
 #=============================
-set(CLIENT_NAME "Bitcoin Core")
+set(CLIENT_NAME "ReSatoshi")
+# Display release only; keep upstream numeric client/protocol versions unchanged.
+set(RESATOSHI_RELEASE "31.0.0-rsat.1")
 set(CLIENT_VERSION_MAJOR 31)
 set(CLIENT_VERSION_MINOR 0)
 set(CLIENT_VERSION_BUILD 0)
@@ -52,8 +54,8 @@ set(CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
 
 project(BitcoinCore
   VERSION ${CLIENT_VERSION_MAJOR}.${CLIENT_VERSION_MINOR}.${CLIENT_VERSION_BUILD}
-  DESCRIPTION "Bitcoin client software"
-  HOMEPAGE_URL "https://bitcoincore.org/"
+  DESCRIPTION "ReSatoshi client software"
+  HOMEPAGE_URL "https://gitlab.com/rst-group4210239/RST-project"
   LANGUAGES NONE
 )
 
@@ -64,7 +66,7 @@ endif()
 
 set(COPYRIGHT_HOLDERS "The %s developers")
 set(COPYRIGHT_HOLDERS_FINAL "The ${CLIENT_NAME} developers")
-set(CLIENT_BUGREPORT "https://github.com/bitcoin/bitcoin/issues")
+set(CLIENT_BUGREPORT "https://gitlab.com/rst-group4210239/RST-project/-/issues")
 
 #=============================
 # Language setup

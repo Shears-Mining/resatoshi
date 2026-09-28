@@ -25,8 +25,13 @@ use `bitcoin help` to list its available subcommands.
 | Windows | `%LOCALAPPDATA%\ReSatoshi` |
 
 The configuration filename is `bitcoin.conf`. Mainnet uses P2P port `19333`
-and RPC port `19332`. To connect a new node to the Resatoshi bootstrap node,
-add these two bootstrap hostnames to `bitcoin.conf`:
+and RPC port `19332`. New nodes automatically use the two existing bootstrap
+hostnames through the upstream DNS-seed/address-fetch mechanism. No manual
+peer setting is required with the default networking options. Both hostnames
+are operated by the same bootstrap operator.
+
+For a persistent manual connection, or when automatic seeding is disabled,
+these optional entries can be added to `bitcoin.conf`:
 
 ```ini
 addnode=resatoshi-seed.freeddns.org:19333
@@ -55,6 +60,7 @@ details in public issues or Discord channels.
 
 - [Mainnet rules and chain identity](resatoshi.md)
 - [UTXO recycling and state handling](recycle-state-integrity.md)
+- [Explorer, wallet and snapshot integrations](recycle-integrations.md)
 - [Current source notes](release-notes.md)
 - [Current upstream integration](upstream-maintenance.md)
 - [Security reporting](../SECURITY.md)

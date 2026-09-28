@@ -133,6 +133,10 @@ handles. Reconcile this small local fix with upstream during future updates.
   its size always equals the number of non-coinbase transactions.
 - Preserve wallet expiry handling, including explicit-input sendall, manual
   coin selection, persistent locks, restart and reorg behavior.
+- Keep the ReSatoshi display release, upstream base and source revision distinct.
+  Do not change numeric client/protocol versions solely to rename a release.
+  Preserve the opt-in recycling status fields and the default RPC response.
+  Verify CLI named/positional arguments as well as direct JSON-RPC.
 - Retain BTC/mBTC/bits/sat values and unit conversions. Keep separate GUI
   settings, OS installation/autostart identifiers and `resatoshi:` registration
   so the applications can coexist. Legacy manually entered `bitcoin:` links
@@ -154,13 +158,35 @@ required. Also run affected migration, index, reindex, REST, RPC and P2P tests
 when those paths change. Use the existing mainnet/ASERT tests for chain changes.
 A release needs a fresh-checkout build so missing ignored files cannot conceal
 packaging defects.
+Use the [release validation procedure](release-validation.md) to record source
+identity and platform-specific build, runtime and packaging evidence.
 
 Before distributing GUI binaries, build Qt and run the Qt tests; exercise
 Windows/macOS installation, coexistence and removal on their target platforms.
 Node tests do not substitute for these checks.
 
-Known optional limitation: `BUILD_KERNEL_LIB=OFF` in the validated build.
-The public libbitcoinkernel spent-output API still exposes the internal recycle
-undo entry as a transaction entry. Fix and test that contract before enabling
-or shipping external kernel-library integrations. Do not advertise that API as
-ReSatoshi-ready based on the node tests.
+The optional libbitcoinkernel spent-output reader removes the internal recycle
+undo entry from its private copy before exposing transaction inputs. Preserve
+this distinction during upstream updates. Validate builds with
+`-DBUILD_KERNEL_LIB=ON -DBUILD_KERNEL_TEST=ON` and run `test_kernel` as well as
+the recycle unit tests; node-only tests do not cover the public library API.
+
+The kernel suite includes `btck_recycle_spent_outputs_disk_tests`, processing
+real regtest fixtures across expiry, reading transaction inputs, retaining
+owned copies after chain-manager destruction, and reopening disk state. Its
+short expiry lifetime is configured by a test-only white-box helper; no test
+parameter is added to the public library API.
+
+For the discovery retry and external integration paths, also run:
+
+```sh
+python3 build/test/functional/test_runner.py -j 4 p2p_resatoshi_bootstrap feature_recycle_interfaces feature_recycle_spend tool_utxo_to_sqlite rpc_getdescriptoractivity rpc_scanblocks
+```
+
+The bootstrap test routes every peer through local SOCKS proxies, deliberately
+fails the first attempts, and checks automatic address discovery and block
+synchronization after recovery. It also checks `-dnsseed=0` and `-connect=0`.
+Its `--testnet4` variant verifies that the mainnet retry does not change inherited
+test-network behavior.
+The interface test covers oversized snapshot state, ordinary script bounds,
+opt-in expiry events, rollback and restart. Basic filter semantics stay unchanged.

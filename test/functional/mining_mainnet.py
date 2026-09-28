@@ -11,13 +11,17 @@ that ASERT raises difficulty for block 2 and rejects the unchanged target.
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import (
     assert_equal,
+    assert_raises_rpc_error,
 )
 from test_framework.blocktools import create_coinbase, nbits_str, target_str
 
 from test_framework.messages import (
     CBlock,
+    CBlockHeader,
     SEQUENCE_FINAL,
+    msg_headers,
 )
+from test_framework.p2p import P2PInterface
 
 COINBASE_SCRIPT_PUBKEY="76a914eadbac7f36c37e39361168b7aaee3cb24a25312d88ac"
 INITIAL_N_BITS = 0x1D03A112
@@ -47,6 +51,14 @@ class MiningMainnetTest(BitcoinTestFramework):
         block.vtx[0].nLockTime = 0
         block.vtx[0].vin[0].nSequence = SEQUENCE_FINAL
         block.hashMerkleRoot = block.calc_merkle_root()
+        if height == 1:
+            # A fresh mainnet node must not retain a peer's low-work fork.
+            # Local submitblock below still validates the precomputed block.
+            peer = node.add_p2p_connection(P2PInterface())
+            with node.assert_debug_log(["Ignoring low-work chain (height=1)"]):
+                peer.send_and_ping(msg_headers([CBlockHeader(block)]))
+            assert_raises_rpc_error(-5, "Block not found", node.getblockheader, block.hash_hex)
+            node.disconnect_p2ps()
         block_hex = block.serialize(with_witness=False).hex()
         self.log.debug(block_hex)
         assert_equal(node.submitblock(block_hex), expected_result)
@@ -59,6 +71,10 @@ class MiningMainnetTest(BitcoinTestFramework):
 
     def run_test(self):
         node = self.nodes[0]
+        assert_equal(node.getblockchaininfo(True)['recycling'], {
+            'enabled': True, 'expiry_blocks': 5_256_000,
+            'max_reward_per_block': 1, 'pool_balance': 0,
+        })
         # Clear disk space warning
         node.stderr.seek(0)
         node.stderr.truncate()

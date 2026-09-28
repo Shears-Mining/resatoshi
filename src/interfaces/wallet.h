@@ -21,6 +21,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -418,6 +419,9 @@ struct WalletTxOut
     int depth_in_main_chain = -1;
     bool is_spent = false;
     bool is_expired = false;
+    //! Populated together for confirmed spendable outputs on recycling networks.
+    std::optional<int64_t> expiry_height;
+    std::optional<int64_t> blocks_until_expiry;
 };
 
 //! Migrated wallet info

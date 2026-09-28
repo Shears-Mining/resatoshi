@@ -12,6 +12,7 @@
 #include <qt/bitcoinamountfield.h>
 #include <qt/bitcoinunits.h>
 #include <qt/clientmodel.h>
+#include <qt/coincontroldialog.h>
 #include <qt/optionsmodel.h>
 #include <qt/overviewpage.h>
 #include <qt/platformstyle.h>
@@ -41,6 +42,8 @@
 #include <QObject>
 #include <QPushButton>
 #include <QTimer>
+#include <QTreeWidget>
+#include <QRadioButton>
 #include <QVBoxLayout>
 #include <QTextEdit>
 #include <QListView>
@@ -472,4 +475,51 @@ void WalletTests::walletTests()
     }
 #endif
     TestGUI(m_node);
+}
+
+void WalletTests::coinControlExpiry()
+{
+#ifdef Q_OS_MACOS
+    if (QApplication::platformName() == "minimal") {
+        QSKIP("Use QT_QPA_PLATFORM=cocoa for wallet widgets on macOS.");
+    }
+#endif
+    for (const bool recycle : {false, true}) {
+        TestOpts opts;
+        if (recycle) opts.extra_args = {"-test=recycle"};
+        TestChain100Setup test{ChainType::REGTEST, opts};
+        for (int i = 0; i < 5; ++i) {
+            test.CreateAndProcessBlock({}, GetScriptForRawPubKey(test.coinbaseKey.GetPubKey()));
+        }
+        auto loader = interfaces::MakeWalletLoader(*test.m_node.chain, *Assert(test.m_node.args));
+        test.m_node.wallet_loader = loader.get();
+        m_node.setContext(&test.m_node);
+        const auto wallet = SetupDescriptorsWallet(m_node, test);
+        std::unique_ptr<const PlatformStyle> style{PlatformStyle::instantiate("other")};
+        MiniGUI gui{m_node, style.get()};
+        gui.initModelForWallet(m_node, wallet, style.get());
+        wallet::CCoinControl control;
+        CoinControlDialog dialog{control, gui.walletModel.get(), style.get()};
+        dialog.findChild<QRadioButton*>("radioListMode")->click();
+        const auto tree = dialog.findChild<QTreeWidget*>("treeWidget");
+        QVERIFY(tree);
+        QVERIFY(tree->topLevelItemCount() > 0);
+        for (int i = 0; i < tree->topLevelItemCount(); ++i) {
+            const auto item = tree->topLevelItem(i);
+            const auto txid = Txid::FromHex(item->data(3, Qt::UserRole).toString().toStdString());
+            QVERIFY(txid);
+            const COutPoint outpoint{*txid, item->data(3, Qt::UserRole + 1).toUInt()};
+            const auto coin = gui.walletModel->wallet().getCoins({outpoint}).at(0);
+            if (recycle) {
+                QVERIFY(coin.expiry_height);
+                QVERIFY(coin.blocks_until_expiry);
+                QVERIFY(item->toolTip(5).contains(QString("Expires at block %1").arg(qlonglong{*coin.expiry_height})));
+                QVERIFY(item->toolTip(5).contains(QString("At synced block 105: %1 blocks remaining.").arg(qlonglong{*coin.blocks_until_expiry})));
+                QCOMPARE(item->toolTip(1), item->toolTip(5));
+            } else {
+                QVERIFY(!coin.expiry_height);
+                QVERIFY(item->toolTip(5).isEmpty());
+            }
+        }
+    }
 }

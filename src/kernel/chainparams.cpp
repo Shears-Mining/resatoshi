@@ -114,7 +114,10 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].threshold = 1815; // 90%
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].period = 2016;
 
-        consensus.nMinimumChainWork = uint256{};
+        // Height 8000: 0000000000002714ba4d770189e83f6fb05d8bca671cd22849a8e52fc35d5495.
+        // A conservative header-sync work floor, not a consensus checkpoint.
+        // See doc/resatoshi.md for the verification and update policy.
+        consensus.nMinimumChainWork = uint256{"0000000000000000000000000000000000000000000000000cfed9b27eee9a28"};
         consensus.defaultAssumeValid = uint256{};
 
         // First four bytes of SHA256(genesis_timestamp), distinct from every
@@ -141,13 +144,11 @@ public:
         assert(consensus.hashGenesisBlock == uint256{"0000000379813245fcdd4600969c6f74684f14433badf837be5b8ffa560174ec"});
         assert(genesis.hashMerkleRoot == uint256{"d9effac57f561ba305e519c420626e3841d3b703cf3cfaa8ed1edb8a2b5b156e"});
 
-        // Note that of those which support the service bits prefix, most only support a subset of
-        // possible options.
-        // This is fine at runtime as we'll fall back to using them as an addrfetch if they don't support the
-        // service bits we want, but we should get them updated to support all service bits wanted by any
-        // release ASAP to avoid it where possible.
-        // Bootstrap nodes can be added once ReSatoshi-operated seeds exist.
-        vSeeds.clear();
+        // Existing bootstrap hosts. Upstream DNS seeding falls back to an
+        // ADDR_FETCH connection when service-bit subdomains are unavailable.
+        // These are node hostnames, not independent DNS crawler services.
+        vSeeds.emplace_back("resatoshi-seed.freeddns.org");
+        vSeeds.emplace_back("resatoshi-seed.duckdns.org");
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 60);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 122);

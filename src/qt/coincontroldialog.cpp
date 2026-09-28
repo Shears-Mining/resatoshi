@@ -639,6 +639,13 @@ void CoinControlDialog::updateView()
             // confirmations
             itemOutput->setText(COLUMN_CONFIRMATIONS, QString::number(out.depth_in_main_chain));
             itemOutput->setData(COLUMN_CONFIRMATIONS, Qt::UserRole, QVariant((qlonglong)out.depth_in_main_chain));
+            if (out.expiry_height && out.blocks_until_expiry) {
+                const QString expiry_tip = tr("Expires at block %1 if still unspent after that block's transactions.\nAt synced block %3: %2 blocks remaining.\nThe rule uses block height, not a calendar date.")
+                    .arg(qlonglong{*out.expiry_height}).arg(qlonglong{*out.blocks_until_expiry})
+                    .arg(qlonglong{*out.expiry_height - *out.blocks_until_expiry});
+                itemOutput->setToolTip(COLUMN_CONFIRMATIONS, expiry_tip);
+                itemOutput->setToolTip(COLUMN_AMOUNT, expiry_tip);
+            }
 
             // transaction hash
             itemOutput->setData(COLUMN_ADDRESS, TxHashRole, QString::fromStdString(output.hash.GetHex()));

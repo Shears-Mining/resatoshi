@@ -1386,6 +1386,8 @@ BITCOINKERNEL_API int BITCOINKERNEL_WARN_UNUSED_RESULT btck_chain_contains(
 /**
  * @brief Reads the block spent coins data the passed in block tree entry points to from
  * disk and returns it.
+ * Only non-coinbase transaction inputs are returned; internal recycle-state
+ * undo records are excluded.
  *
  * @param[in] chainstate_manager Non-null.
  * @param[in] block_tree_entry   Non-null.

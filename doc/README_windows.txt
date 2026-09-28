@@ -11,8 +11,9 @@ Run bitcoin-qt.exe from the installed package. The executable retains its
 existing name. The default data directory is %LOCALAPPDATA%\ReSatoshi and
 the configuration filename is bitcoin.conf.
 
-Mainnet uses P2P port 19333 and RPC port 19332. Configure a Resatoshi peer
-with addnode in bitcoin.conf when starting a new node.
+Mainnet uses P2P port 19333 and RPC port 19332. New nodes automatically discover
+peers through the configured bootstrap hostnames. Optional addnode entries in
+bitcoin.conf can be used for persistent manual peer connections.
 
 Documentation:
 https://gitlab.com/rst-group4210239/RST-project/-/blob/main/doc/README.md
