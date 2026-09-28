@@ -18,7 +18,9 @@ class NamedArgumentTest(BitcoinTestFramework):
     def run_test(self):
         node = self.nodes[0]
         h = node.help(command='getblockchaininfo')
-        assert h.startswith('getblockchaininfo\n')
+        assert_equal(h.splitlines()[0], 'getblockchaininfo ( include_recycling )')
+        assert 'recycling' not in node.getblockchaininfo()
+        assert_equal(node.getblockchaininfo(include_recycling=True)['recycling'], {'enabled': False})
 
         assert_raises_rpc_error(-8, 'Unknown named parameter', node.help, random='getblockchaininfo')
 
