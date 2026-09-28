@@ -11,6 +11,11 @@ Run bitcoin-qt.exe from the installed package. The executable retains its
 existing name. The default data directory is %LOCALAPPDATA%\ReSatoshi and
 the configuration filename is bitcoin.conf.
 
+Uninstall removes the packaged programs and documentation, while preserving
+bitcoin.conf, logs and any additional files in the installation folders.
+Folders containing retained files may remain after uninstall. Reinstall also
+preserves an existing bitcoin.conf in the installation folder.
+
 Mainnet uses P2P port 19333 and RPC port 19332. New nodes automatically discover
 peers through the configured bootstrap hostnames. Optional addnode entries in
 bitcoin.conf can be used for persistent manual peer connections.

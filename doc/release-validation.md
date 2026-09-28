@@ -46,6 +46,11 @@ Core and uninstall in a disposable Windows account or VM. A portable executable
 test does not establish installer correctness. Preserve unrelated wallets and
 settings, and record the signing status without describing an unsigned package
 as signed.
+Add sentinel user files under the installed `daemon` and `share` directories
+before uninstall and verify they survive. Check that an edited `bitcoin.conf`
+survives both reinstall and uninstall, and that only empty folders are removed.
+Check Windows file properties and the installed-app listing for the ReSatoshi
+display release; numeric file and protocol versions retain the upstream base.
 
 ## macOS
 

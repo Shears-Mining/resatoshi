@@ -15,14 +15,14 @@ BEGIN
         BLOCK "040904E4" // U.S. English - multilingual (hex)
         BEGIN
             VALUE "CompanyName",        CLIENT_NAME " project"
-            VALUE "FileDescription",    "bitcoin (Bitcoin wrapper executable that can call other executables)"
-            VALUE "FileVersion",        CLIENT_VERSION_STRING
+            VALUE "FileDescription",    "bitcoin (" CLIENT_NAME " wrapper executable that can call other executables)"
+            VALUE "FileVersion",        RESATOSHI_RELEASE
             VALUE "InternalName",       "bitcoin"
             VALUE "LegalCopyright",     COPYRIGHT_STR
             VALUE "LegalTrademarks1",   "Distributed under the MIT software license, see the accompanying file COPYING or http://www.opensource.org/licenses/mit-license.php."
             VALUE "OriginalFilename",   "bitcoin.exe"
-            VALUE "ProductName",        "bitcoin"
-            VALUE "ProductVersion",     CLIENT_VERSION_STRING
+            VALUE "ProductName",        CLIENT_NAME
+            VALUE "ProductVersion",     RESATOSHI_RELEASE
         END
     END
 

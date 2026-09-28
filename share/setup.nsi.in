@@ -59,10 +59,10 @@ BrandingText " "
 ShowInstDetails show
 VIProductVersion @CLIENT_VERSION_MAJOR@.@CLIENT_VERSION_MINOR@.@CLIENT_VERSION_BUILD@.0
 VIAddVersionKey ProductName "@CLIENT_NAME@"
-VIAddVersionKey ProductVersion "@CLIENT_VERSION_STRING@"
+VIAddVersionKey ProductVersion "@RESATOSHI_RELEASE@"
 VIAddVersionKey CompanyName "${COMPANY}"
 VIAddVersionKey CompanyWebsite "${URL}"
-VIAddVersionKey FileVersion "@CLIENT_VERSION_STRING@"
+VIAddVersionKey FileVersion "@RESATOSHI_RELEASE@"
 VIAddVersionKey FileDescription "Installer for @CLIENT_NAME@"
 VIAddVersionKey LegalCopyright "Copyright (C) 2009-@COPYRIGHT_YEAR@ @COPYRIGHT_HOLDERS_FINAL@"
 InstallDirRegKey HKCU "${REGKEY}" Path
@@ -76,9 +76,13 @@ Section -Main SEC0000
     File @abs_top_builddir@/release/@BITCOIN_WRAPPER_NAME@@EXEEXT@
     File /oname=COPYING.txt @abs_top_srcdir@/COPYING
     File /oname=readme.txt @abs_top_srcdir@/doc/README_windows.txt
+    ; Preserve configuration supplied or edited by the user on reinstall.
+    SetOverwrite off
     File @abs_top_srcdir@/share/examples/bitcoin.conf
+    SetOverwrite on
     SetOutPath $INSTDIR\share\rpcauth
-    File @abs_top_srcdir@/share/rpcauth/*.*
+    File @abs_top_srcdir@/share/rpcauth/README.md
+    File @abs_top_srcdir@/share/rpcauth/rpcauth.py
     SetOutPath $INSTDIR\daemon
     File @abs_top_builddir@/release/@BITCOIN_DAEMON_NAME@@EXEEXT@
     File @abs_top_builddir@/release/@BITCOIN_CLI_NAME@@EXEEXT@
@@ -102,7 +106,7 @@ Section -post SEC0001
     CreateShortcut "$SMPROGRAMS\$StartMenuGroup\Uninstall $(^Name).lnk" $INSTDIR\uninstall.exe
     !insertmacro MUI_STARTMENU_WRITE_END
     WriteRegStr HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$(^Name)" DisplayName "$(^Name)"
-    WriteRegStr HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$(^Name)" DisplayVersion "@CLIENT_VERSION_STRING@"
+    WriteRegStr HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$(^Name)" DisplayVersion "@RESATOSHI_RELEASE@"
     WriteRegStr HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$(^Name)" Publisher "${COMPANY}"
     WriteRegStr HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$(^Name)" URLInfoAbout "${URL}"
     WriteRegStr HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$(^Name)" DisplayIcon $INSTDIR\bitcoin-qt.exe
@@ -135,9 +139,17 @@ Section /o -un.Main UNSEC0000
     Delete /REBOOTOK $INSTDIR\@BITCOIN_GUI_NAME@@EXEEXT@
     Delete /REBOOTOK $INSTDIR\COPYING.txt
     Delete /REBOOTOK $INSTDIR\readme.txt
-    Delete /REBOOTOK $INSTDIR\bitcoin.conf
-    RMDir /r /REBOOTOK $INSTDIR\share
-    RMDir /r /REBOOTOK $INSTDIR\daemon
+    ; Remove only packaged files. Keep configuration, logs and user-added files.
+    Delete /REBOOTOK "$INSTDIR\share\rpcauth\README.md"
+    Delete /REBOOTOK "$INSTDIR\share\rpcauth\rpcauth.py"
+    RMDir /REBOOTOK "$INSTDIR\share\rpcauth"
+    RMDir /REBOOTOK "$INSTDIR\share"
+    Delete /REBOOTOK "$INSTDIR\daemon\@BITCOIN_DAEMON_NAME@@EXEEXT@"
+    Delete /REBOOTOK "$INSTDIR\daemon\@BITCOIN_CLI_NAME@@EXEEXT@"
+    Delete /REBOOTOK "$INSTDIR\daemon\@BITCOIN_TX_NAME@@EXEEXT@"
+    Delete /REBOOTOK "$INSTDIR\daemon\@BITCOIN_WALLET_TOOL_NAME@@EXEEXT@"
+    Delete /REBOOTOK "$INSTDIR\daemon\@BITCOIN_TEST_NAME@@EXEEXT@"
+    RMDir /REBOOTOK "$INSTDIR\daemon"
     DeleteRegValue HKCU "${REGKEY}\Components" Main
 SectionEnd
 
@@ -150,8 +162,6 @@ Section -un.post UNSEC0001
     Delete /REBOOTOK "$SMPROGRAMS\$StartMenuGroup\@CLIENT_NAME@ (test signet).lnk"
     Delete /REBOOTOK "$SMSTARTUP\ReSatoshi.lnk"
     Delete /REBOOTOK $INSTDIR\uninstall.exe
-    Delete /REBOOTOK $INSTDIR\debug.log
-    Delete /REBOOTOK $INSTDIR\db.log
     DeleteRegValue HKCU "${REGKEY}" StartMenuGroup
     DeleteRegValue HKCU "${REGKEY}" Path
     DeleteRegKey /IfEmpty HKCU "${REGKEY}\Components"

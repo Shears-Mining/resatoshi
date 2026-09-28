@@ -44,6 +44,13 @@ function(add_windows_deploy_target)
       COMMAND ${CMAKE_STRIP} $<TARGET_FILE:bitcoin-util> -o ${PROJECT_BINARY_DIR}/release/$<TARGET_FILE_NAME:bitcoin-util>
       COMMAND ${CMAKE_STRIP} $<TARGET_FILE:test_bitcoin> -o ${PROJECT_BINARY_DIR}/release/$<TARGET_FILE_NAME:test_bitcoin>
       COMMAND ${MAKENSIS_EXECUTABLE} -V2 ${PROJECT_BINARY_DIR}/bitcoin-win64-setup.nsi
+      DEPENDS bitcoin bitcoin-qt bitcoind bitcoin-cli bitcoin-tx bitcoin-wallet bitcoin-util test_bitcoin
+        ${PROJECT_BINARY_DIR}/bitcoin-win64-setup.nsi
+        ${PROJECT_SOURCE_DIR}/COPYING
+        ${PROJECT_SOURCE_DIR}/doc/README_windows.txt
+        ${PROJECT_SOURCE_DIR}/share/examples/bitcoin.conf
+        ${PROJECT_SOURCE_DIR}/share/rpcauth/README.md
+        ${PROJECT_SOURCE_DIR}/share/rpcauth/rpcauth.py
       VERBATIM
     )
     add_custom_target(deploy DEPENDS ${PROJECT_BINARY_DIR}/bitcoin-win64-setup.exe)
