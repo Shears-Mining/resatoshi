@@ -89,6 +89,7 @@ EXTENDED_SCRIPTS = [
     # Longest test should go first, to favor running tests in parallel
     'feature_pruning.py',
     'feature_dbcrash.py',
+    'feature_recycle_mining_load.py',
     'feature_recycle_full_block.py',
     'feature_index_prune.py',
 ]

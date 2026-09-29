@@ -151,6 +151,17 @@ class RecycleFullBlockTest(BitcoinTestFramework):
         assert_equal(*states)
         self.checkpoints += 1
 
+    def check_exact_utxos(self):
+        # Counts and total value alone could hide replacement of one output by
+        # another. Independently enumerate every live output as well.
+        scripts = (PAY, script_to_p2wsh_script(WITNESS_SCRIPT))
+        scan = self.nodes[0].scantxoutset('start', [f'raw({script.hex()})' for script in scripts])
+        assert_equal(scan['bestblock'], self.tip)
+        actual = {(int(coin['txid'], 16), coin['vout']):
+                  (int(coin['amount'] * COIN), coin['height'], coin['coinbase']) for coin in scan['unspents']}
+        assert actual == self.coins
+        self.exact_utxo_checks += 1
+
     def advance(self, height):
         while self.height < height:
             self.accept(self.candidate())
@@ -173,6 +184,7 @@ class RecycleFullBlockTest(BitcoinTestFramework):
         self.height, self.pool, self.coins = 0, 0, {}
         self.accepted, self.rejected, self.checkpoints = 0, 0, 0
         self.profiles = []
+        self.exact_utxo_checks = 0
         self.timestamp = int(time.time())
         self.tip = self.nodes[0].getbestblockhash()
         for node in self.nodes:
@@ -191,6 +203,7 @@ class RecycleFullBlockTest(BitcoinTestFramework):
         self.accept(block, 'maximum output cohort')
         fanout_id = fanout.txid_int
         self.check()
+        self.check_exact_utxos()
         self.log.info('Consecutive full blocks with 16,300 independent transactions each')
         for offset in (0, 16300):
             txs = [self.transaction([(fanout_id, n)], [CTxOut(1, PAY)]) for n in range(offset, offset + 16300)]
@@ -235,6 +248,27 @@ class RecycleFullBlockTest(BitcoinTestFramework):
         txs = [self.transaction([(fanout_id, n)], [CTxOut(1, PAY)]) for n in range(32600, 48900)]
         block = self.candidate(txs, full=True)
         self.overfull(block)
+        # These failures occur after the transaction overlay has been changed,
+        # unlike weight-limit rejection. Excess reward and an asynchronous
+        # script failure also exercise rollback after mass expiry was applied.
+        self.log.info('Reject late validation failures without leaking modified expiry state')
+        excessive = deepcopy(block)
+        excessive.vtx[0].vout[0].nValue += 1
+        self.solve(excessive)
+        self.reject(excessive, 'bad-cb-amount')
+        bad_script = deepcopy(block)
+        bad_script.vtx[-1].vin[0].scriptSig = BURN
+        bad_script.vtx[0].vout[-1].scriptPubKey = CScript(bytes(bad_script.vtx[0].vout[-1].scriptPubKey)[:-1])
+        self.solve(bad_script)
+        assert_equal(bad_script.get_weight(), MAX_BLOCK_WEIGHT)
+        self.reject(bad_script, 'block-script-verify-flag-failed (OP_RETURN was encountered)')
+        conflict = deepcopy(block)
+        conflict.vtx[-1].vin[0].prevout = deepcopy(conflict.vtx[1].vin[0].prevout)
+        # Keep the conflicting transaction distinct from the first transaction.
+        conflict.vtx[-1].nLockTime = 1
+        self.solve(conflict)
+        assert_equal(conflict.get_weight(), MAX_BLOCK_WEIGHT)
+        self.reject(conflict, 'bad-txns-inputs-missingorspent')
         if self.options.crash_expiry:
             self.restart_node(0, extra_args=self.extra_args[0] + ['-dbbatchsize=1', '-dbcrashratio=1'])
         expiry = self.accept(block, 'full block at mass expiry')
@@ -249,6 +283,7 @@ class RecycleFullBlockTest(BitcoinTestFramework):
                 node.wait_until_stopped(timeout=60)
             self.start_node(0)
         self.check()
+        self.check_exact_utxos()
         self.accept(self.candidate(), 'next cohort expiry')
         self.accept(self.candidate(), 'following cohort expiry')
         self.accept(self.candidate(), 'witness output expiry')
@@ -292,13 +327,14 @@ class RecycleFullBlockTest(BitcoinTestFramework):
         self.check()
         self.advance(501)
         self.check()
+        self.check_exact_utxos()
         assert_equal(len(self.coins), 0)
         assert_equal(self.pool, 0)
         self.restart_node(0, extra_args=self.extra_args[0] + ['-reindex-chainstate'])
         self.check()
         result = dict(legacy=self.options.legacy_bitcoind, small_cache=self.options.small_cache,
                       crash_expiry=self.options.crash_expiry, accepted_blocks=self.accepted,
-                      rejected_blocks=self.rejected, checkpoints=self.checkpoints, profiles=self.profiles,
+                      rejected_blocks=self.rejected, checkpoints=self.checkpoints, exact_utxo_checks=self.exact_utxo_checks, profiles=self.profiles,
                       final_height=self.height, final_utxos=len(self.coins), final_pool=self.pool)
         if self.options.full_block_results:
             Path(self.options.full_block_results).write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')

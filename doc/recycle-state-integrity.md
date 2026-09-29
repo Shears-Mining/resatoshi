@@ -88,10 +88,13 @@ and `--legacy-bitcoind=/path/to/codec-v1/bitcoind` for cross-version comparisons
 `feature_recycle_full_block.py` (extended suite) fills blocks to exactly
 4,000,000 weight units and sends them over P2P. Separate profiles contain
 99,000 spendable outputs, 16,300 independent transactions, and approximately
-4 MB of witness data. It rejects weight-limit
-violations of one and four units, spends at the expiry boundary while tens of
+4 MB of witness data. It rejects weight-limit violations of one and four units,
+plus late failures from excessive reward, invalid script and block double spends.
+It spends at the expiry boundary while tens of
 thousands of outputs expire, and compares UTXO counts, values, MuHash and pool
-balances with an independent ledger. Restart, chainstate reindex, old database
+balances with an independent ledger. Complete output identities, values, heights
+and coinbase flags are also checked at peak load, after expiry and after the
+last cohort disappears. Restart, chainstate reindex, old database
 migration and disconnect/reconnect across mass expiry are included. Use
 `--legacy-bitcoind=/path/to/codec-v1/bitcoind --small-cache --crash-expiry` to
 compare implementations and interrupt a mass-expiry database batch. The small-cache
@@ -99,6 +102,15 @@ phase uses 4 MiB and level-2 startup verification; full-chain level-4 verificati
 then runs with the normal cache budget. These synthetic consensus workloads
 deliberately exceed standard relay policy; they are correctness stress tests,
 not wallet-signature or network throughput benchmarks.
+
+`feature_recycle_mining_load.py` (extended suite) requires standard relay policy
+and loads 10,000 Taproot script-path transactions into both mempools. At their
+inputs' expiry height, it checks near-full mining templates, fees and recycle
+rewards, repeated proposal validation without state mutation, eviction of
+unmined transactions whose inputs expire, reorg/resubmission, restart, and the
+renewed outputs' expiry. `--legacy-bitcoind` compares an older implementation.
+The transactions use OP_TRUE Taproot scripts; this exercises standard policy
+and mining assembly but does not benchmark cryptographic signature verification.
 
 The [September 11 development record](history/recycle-state-integrity-20260911.md)
 is historical validation information, not the current storage design.
