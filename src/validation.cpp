@@ -31,6 +31,7 @@
 #include <logging/timer.h>
 #include <node/blockstorage.h>
 #include <node/recycle.h>
+#include <node/recycle_serialization.h>
 #include <node/utxo_snapshot.h>
 #include <policy/ephemeral_policy.h>
 #include <policy/policy.h>
@@ -810,6 +811,16 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     // Coinbase is only valid in a block, not as a loose transaction
     if (tx.IsCoinBase())
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "coinbase");
+
+    // Policy only: reject internal metadata references before any coin lookup.
+    // Do not change block consensus or exclude ordinary zero-hash outpoints.
+    if (args.m_chainparams.GetConsensus().recycle_enabled) {
+        for (const auto& input : tx.vin) {
+            if (node::recycle::IsStateOutpoint(input.prevout)) {
+                return state.Invalid(TxValidationResult::TX_NOT_STANDARD, "recycle-state-input");
+            }
+        }
+    }
 
     // Rather not work on nonstandard transactions (unless -testnet/-regtest)
     std::string reason;
@@ -1920,6 +1931,8 @@ void Chainstate::InitCoinsDB(
     bool in_memory,
     bool should_wipe)
 {
+    auto coins_options{m_chainman.m_options.coins_view};
+    coins_options.recycle_index = m_chainman.GetConsensus().recycle_enabled;
     m_coins_views = std::make_unique<CoinsViews>(
         DBParams{
             .path = StoragePath(),
@@ -1928,7 +1941,7 @@ void Chainstate::InitCoinsDB(
             .wipe_data = should_wipe,
             .obfuscate = true,
             .options = m_chainman.m_options.coins_db},
-        m_chainman.m_options.coins_view);
+        coins_options);
 
     m_coinsdb_cache_size_bytes = cache_size_bytes;
 }
@@ -4642,25 +4655,6 @@ bool Chainstate::LoadChainTip()
         return false;
     }
     m_chain.SetTip(*pindex);
-    if (m_chainman.GetConsensus().recycle_enabled && !CoinsDB().RecycleStateReady()) {
-        const int first{std::max(1, pindex->nHeight - m_chainman.GetConsensus().recycle_expiry_blocks + 1)};
-        for (int height{first}; height <= pindex->nHeight; ++height) {
-            if (m_chainman.m_interrupt) return false;
-            CCoinsViewCache audit{&CoinsDB()};
-            if (node::recycle::ScheduleValid(audit, height)) continue;
-            CBlock source;
-            if (!m_blockman.ReadBlock(source, *m_chain[height])) {
-                LogError("Cannot repair recycle schedule at height %d: original block is unavailable; rebuild chainstate from complete blocks", height);
-                return false;
-            }
-            node::recycle::RestoreSchedule(CoinsTip(), source, height);
-            LogInfo("Repaired recycle schedule at height %d from original block", height);
-            // Keep repair memory bounded on existing long chains.
-            if (CoinsTip().DynamicMemoryUsage() > 16 * 1024 * 1024) CoinsTip().Flush();
-        }
-        CoinsTip().Flush();
-        CoinsDB().MarkRecycleStateReady();
-    }
     m_chainman.UpdateIBDStatus();
     tip = m_chain.Tip();
 
@@ -5802,6 +5796,12 @@ util::Result<CBlockIndex*> ChainstateManager::ActivateSnapshot(
         }
         return util::Error{std::move(reason)};
     };
+
+    if (GetConsensus().recycle_enabled &&
+        !snapshot_chainstate->CoinsDB().UpgradeRecycleIndex([&] { return bool{m_interrupt}; })) {
+        LOCK(::cs_main);
+        return cleanup_bad_snapshot(Untranslated("Interrupted while initializing snapshot recycle index"));
+    }
 
     if (auto res{this->PopulateAndValidateSnapshot(*snapshot_chainstate, coins_file, metadata)}; !res) {
         LOCK(::cs_main);

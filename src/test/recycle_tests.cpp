@@ -292,7 +292,8 @@ BOOST_FIXTURE_TEST_CASE(large_state_disk_and_undo_roundtrip, BasicTestingSetup)
         origin.vtx[0] = MakeTransactionRef(std::move(tx));
         const COutPoint schedule_key{Txid{}, 1'000'001};
         {
-            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {}};
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             CCoinsViewCache view{&db};
             AddCoins(view, *origin.vtx[0], 1);
             CTxUndo unused;
@@ -302,25 +303,11 @@ BOOST_FIXTURE_TEST_CASE(large_state_disk_and_undo_roundtrip, BasicTestingSetup)
             view.Flush();
         }
         {
-            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {}};
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             CCoinsViewCache view{&db};
-            BOOST_REQUIRE(node::recycle::ScheduleValid(view, 1));
-            const auto original_schedule{view.AccessCoin(schedule_key).out.scriptPubKey};
-            if (count >= 278) BOOST_REQUIRE(original_schedule.size() > MAX_SCRIPT_SIZE);
-            auto cursor{db.Cursor()};
-            bool saw_schedule{false};
-            while (cursor->Valid()) {
-                COutPoint key;
-                Coin coin;
-                BOOST_REQUIRE(cursor->GetKey(key));
-                BOOST_REQUIRE(cursor->GetValue(coin));
-                if (key == schedule_key) {
-                    saw_schedule = true;
-                    BOOST_CHECK(coin.out.scriptPubKey == original_schedule);
-                }
-                cursor->Next();
-            }
-            BOOST_REQUIRE(saw_schedule);
+            BOOST_CHECK(!view.HaveCoin(schedule_key));
+            BOOST_CHECK_EQUAL(view.GetCoinsByHeight(1).size(), count);
             const int height{1 + node::recycle::EXPIRY_BLOCKS};
             CBlock expiry{CoinbaseBlock(50 * COIN + count, count + 1)};
             BOOST_REQUIRE_EQUAL(node::recycle::AvailableReward(view, expiry, height), count);
@@ -333,10 +320,11 @@ BOOST_FIXTURE_TEST_CASE(large_state_disk_and_undo_roundtrip, BasicTestingSetup)
             bytes << block_undo;
             CBlockUndo restored;
             bytes >> restored;
-            BOOST_REQUIRE(restored.vtxundo.back().vprevout[0].out.scriptPubKey.size() > MAX_SCRIPT_SIZE);
+            if (count == 1000) BOOST_REQUIRE(restored.vtxundo.back().vprevout[0].out.scriptPubKey.size() > MAX_SCRIPT_SIZE);
             BOOST_REQUIRE(node::recycle::RollforwardBlock(view, expiry, height, 50 * COIN, &restored.vtxundo.back()));
             BOOST_REQUIRE(node::recycle::DisconnectBlock(view, height, &restored.vtxundo.back()));
-            BOOST_CHECK(view.AccessCoin(schedule_key).out.scriptPubKey == original_schedule);
+            BOOST_CHECK(!view.HaveCoin(schedule_key));
+            BOOST_CHECK_EQUAL(view.GetCoinsByHeight(1).size(), count);
             BOOST_CHECK(!view.HaveCoin(COutPoint{Txid{}, std::numeric_limits<uint32_t>::max()}));
             for (int n{0}; n < count; ++n) BOOST_CHECK(view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), static_cast<uint32_t>(n)}));
         }
@@ -393,14 +381,14 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
     Records expired_records;
     std::shared_future<void> pending_shutdown;
     {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {}};
-        db.MarkRecycleStateReady();
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+        BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
         CCoinsViewCache view{&db};
         AddCoins(view, *origin.vtx[0], 1);
         CTxUndo unused;
         std::string error;
         BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, VALUE, unused, error));
-        BOOST_REQUIRE(view.AccessCoin(COutPoint{Txid{}, 1'000'001}).out.scriptPubKey.size() > MAX_SCRIPT_SIZE);
+        BOOST_CHECK_EQUAL(view.GetCoinsByHeight(1).size(), COUNT);
         view.SetBestBlock(uint256{1});
         view.Flush();
         original_records = snapshot(db);
@@ -420,10 +408,11 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
     BOOST_REQUIRE(pending_shutdown.wait_for(std::chrono::seconds{0}) == std::future_status::ready);
     pending_shutdown.get();
     {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {}};
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
         BOOST_CHECK(same_records(snapshot(db), expired_records));
         BOOST_CHECK(db.GetBestBlock() == uint256{2});
         BOOST_REQUIRE(db.RecycleStateReady());
+        BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
         CCoinsViewCache view{&db};
         BOOST_REQUIRE(view.GetBestBlock() == uint256{2});
         BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), VALUE);
@@ -435,7 +424,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
 
         BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &expiry_undo));
         BOOST_REQUIRE(view.SpendCoin(COutPoint{expiry.vtx[0]->GetHash(), 0}));
-        BOOST_REQUIRE(node::recycle::ScheduleValid(view, 1));
+        BOOST_CHECK_EQUAL(view.GetCoinsByHeight(1).size(), COUNT);
         BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), 0);
         view.SetBestBlock(uint256{1});
         view.Flush();
@@ -443,34 +432,11 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
         compact_and_resize(db);
     }
     {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {}};
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
         BOOST_CHECK(same_records(snapshot(db), original_records));
         BOOST_CHECK(db.GetBestBlock() == uint256{1});
         BOOST_CHECK(db.RecycleStateReady());
     }
-}
-
-BOOST_AUTO_TEST_CASE(repair_truncated_schedule_from_block)
-{
-    CCoinsView base;
-    CCoinsViewCache view{&base};
-    CBlock origin{CoinbaseBlock(COIN, 100)};
-    CMutableTransaction tx{*origin.vtx[0]};
-    tx.vout.assign(300, CTxOut{1, CScript{} << OP_TRUE});
-    origin.vtx[0] = MakeTransactionRef(std::move(tx));
-    AddCoins(view, *origin.vtx[0], 1);
-    CTxUndo undo;
-    std::string error;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, COIN, undo, error));
-    const COutPoint key{Txid{}, 1'000'001};
-    const auto expected{view.AccessCoin(key).out.scriptPubKey};
-    Coin damaged{view.AccessCoin(key)};
-    damaged.out.scriptPubKey = CScript{OP_RETURN};
-    view.SpendCoin(key);
-    view.AddCoin(key, std::move(damaged), false, true);
-    BOOST_REQUIRE(!node::recycle::ScheduleValid(view, 1));
-    node::recycle::RestoreSchedule(view, origin, 1);
-    BOOST_CHECK(view.AccessCoin(key).out.scriptPubKey == expected);
 }
 
 BOOST_AUTO_TEST_CASE(metadata_reader_bounds_and_truncation)
@@ -495,16 +461,100 @@ BOOST_AUTO_TEST_CASE(metadata_reader_bounds_and_truncation)
     BOOST_CHECK_THROW((truncated >> Using<node::recycle::MetadataScriptCompression>(decoded)), std::ios_base::failure);
 }
 
-BOOST_AUTO_TEST_CASE(missing_schedule_is_not_zero_reward)
+BOOST_FIXTURE_TEST_CASE(index_migration_and_interruption, BasicTestingSetup)
 {
-    CCoinsView base;
-    CCoinsViewCache view{&base};
-    const CBlock block{CoinbaseBlock(COIN, 101)};
-    BOOST_CHECK_THROW(node::recycle::AvailableReward(view, block, node::recycle::EXPIRY_BLOCKS + 1), std::runtime_error);
-    CTxUndo undo;
-    std::string error;
-    BOOST_CHECK(!node::recycle::ConnectBlock(view, block, node::recycle::EXPIRY_BLOCKS + 1, COIN, undo, error));
-    BOOST_CHECK_EQUAL(error, "missing or corrupt recycle expiry record");
+    const auto path{m_path_root / "legacy-index"};
+    CBlock block{CoinbaseBlock(COIN, 101)};
+    CMutableTransaction transaction{*block.vtx[0]};
+    transaction.vout.push_back(transaction.vout[0]);
+    block.vtx[0] = MakeTransactionRef(std::move(transaction));
+    const COutPoint output{block.vtx[0]->GetHash(), 0};
+    const COutPoint schedule{Txid{}, 1'000'001};
+    const COutPoint pool{Txid{}, std::numeric_limits<uint32_t>::max()};
+    {
+        // Legacy DB: UTXO, truncated schedule, and an existing pool balance.
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {}};
+        CCoinsViewCache view{&db};
+        AddCoins(view, *block.vtx[0], 1);
+        view.AddCoin(schedule, Coin{CTxOut{0, CScript{OP_RETURN}}, 1, false}, false, true);
+        view.AddCoin(pool, Coin{CTxOut{7 * COIN, CScript{OP_RETURN}}, 201, false}, false, true);
+        view.SetBestBlock(uint256{42});
+        view.Flush();
+    }
+    {
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true, .batch_write_bytes = 1}};
+        BOOST_CHECK_THROW(db.GetCoinsByHeight(1), std::runtime_error);
+        int calls{0};
+        BOOST_CHECK(!db.UpgradeRecycleIndex([&] { return ++calls == 4; }));
+        BOOST_CHECK(!db.RecycleStateReady());
+        BOOST_CHECK(!db.HaveCoin(schedule));
+    }
+    {
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true, .batch_write_bytes = 1}};
+        BOOST_CHECK(!db.NeedsUpgrade());
+        BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+        BOOST_CHECK(db.RecycleStateReady());
+        BOOST_CHECK(!db.HaveCoin(schedule));
+        BOOST_CHECK(db.GetBestBlock() == uint256{42});
+        const std::set<COutPoint> expected{output, COutPoint{block.vtx[0]->GetHash(), 1}};
+        BOOST_CHECK(db.GetCoinsByHeight(1) == expected);
+        CCoinsViewCache view{&db};
+        BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 7 * COIN);
+        BOOST_REQUIRE(view.GetBestBlock() == uint256{42});
+        for (const auto& outpoint : expected) BOOST_REQUIRE(view.SpendCoin(outpoint));
+        view.Flush();
+        BOOST_CHECK(db.GetCoinsByHeight(1).empty());
+        BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+        BOOST_CHECK(db.GetCoinsByHeight(1).empty());
+    }
+}
+
+BOOST_FIXTURE_TEST_CASE(index_cache_overlays_and_overwrites, BasicTestingSetup)
+{
+    CCoinsViewDB db{{.path = m_path_root / "index-cache", .cache_bytes = 1 << 20}, {.recycle_index = true}};
+    BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+    CCoinsViewCache parent{&db};
+    const CBlock block{CoinbaseBlock(COIN, 102)};
+    const COutPoint output{block.vtx[0]->GetHash(), 0};
+    AddCoins(parent, *block.vtx[0], 1);
+    parent.SetBestBlock(uint256{1});
+    parent.Flush();
+    BOOST_CHECK_EQUAL(parent.GetCoinsByHeight(1).size(), 1U);
+    CoinsViewOverlay child{&parent};
+    BOOST_CHECK_EQUAL(child.GetCoinsByHeight(1).size(), 1U);
+    {
+        auto reset{child.CreateResetGuard()};
+        BOOST_REQUIRE(child.SpendCoin(output));
+        BOOST_CHECK(child.GetCoinsByHeight(1).empty());
+        BOOST_CHECK_EQUAL(parent.GetCoinsByHeight(1).size(), 1U);
+        child.AddCoin(output, Coin{block.vtx[0]->vout[0], 2, true}, false);
+        BOOST_CHECK_EQUAL(child.GetCoinsByHeight(2).size(), 1U);
+    }
+    BOOST_CHECK_EQUAL(child.GetCoinsByHeight(1).size(), 1U);
+    BOOST_CHECK(child.GetCoinsByHeight(2).empty());
+    // Same outpoint overwritten at a different height, including cached parents.
+    child.AddCoin(output, Coin{block.vtx[0]->vout[0], 2, true}, true);
+    child.SetBestBlock(uint256{2});
+    child.Sync();
+    BOOST_CHECK(parent.GetCoinsByHeight(1).empty());
+    BOOST_CHECK_EQUAL(parent.GetCoinsByHeight(2).size(), 1U);
+    parent.Sync();
+    BOOST_CHECK(db.GetCoinsByHeight(1).empty());
+    BOOST_CHECK_EQUAL(db.GetCoinsByHeight(2).size(), 1U);
+    parent.Uncache(output);
+    BOOST_CHECK_EQUAL(parent.GetCoinsByHeight(2).size(), 1U);
+    BOOST_REQUIRE(parent.SpendCoin(output));
+    parent.Sync();
+    BOOST_CHECK(db.GetCoinsByHeight(2).empty());
+    // Repeated create/spend does not retain historical reservations.
+    for (int h{3}; h < 1003; ++h) {
+        parent.AddCoin(output, Coin{block.vtx[0]->vout[0], h, true}, false);
+        BOOST_CHECK_EQUAL(parent.GetCoinsByHeight(h).size(), 1U);
+        parent.Sync();
+        BOOST_REQUIRE(parent.SpendCoin(output));
+        parent.Sync();
+        BOOST_CHECK(db.GetCoinsByHeight(h).empty());
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

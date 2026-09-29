@@ -33,7 +33,7 @@ CAmount PoolBalance(const CCoinsViewCache& view);
 /** Return the maximum recycle reward a candidate block may claim. */
 CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int height, int expiry_blocks = EXPIRY_BLOCKS);
 
-/** Apply expiry, pool accounting, and creation of the current height's expiry record. */
+/** Apply indexed UTXO expiry and pool accounting. */
 bool ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
                   CTxUndo& undo, std::string& error, std::vector<COutPoint>* expired = nullptr, int expiry_blocks = EXPIRY_BLOCKS);
 
@@ -51,10 +51,6 @@ bool ReadUndo(const CTxUndo& undo, CAmount& pool_before, std::vector<std::pair<C
  * Returns false, without modifying undo, if its entry count is inconsistent.
  */
 bool RemoveStateUndo(CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus);
-
-/** Restore a missing/truncated schedule from its original block. */
-bool ScheduleValid(const CCoinsViewCache& view, int height);
-void RestoreSchedule(CCoinsViewCache& view, const CBlock& block, int height);
 
 } // namespace node::recycle
 

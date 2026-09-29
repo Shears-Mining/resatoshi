@@ -108,6 +108,13 @@ static ChainstateLoadResult CompleteChainstateInitialization(
                                                                      "rebuild the chainstate database.")};
         }
 
+        // Build the derived index before replay/verification. This also works
+        // on partially flushed legacy databases: replay updates both keys.
+        if (chainman.GetConsensus().recycle_enabled &&
+            !chainstate->CoinsDB().UpgradeRecycleIndex([&] { return bool{chainman.m_interrupt}; })) {
+            return {ChainstateLoadStatus::FAILURE, _("Interrupted while rebuilding recycle index")};
+        }
+
         // ReplayBlocks is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
         if (!chainstate->ReplayBlocks()) {
             return {ChainstateLoadStatus::FAILURE, _("Unable to replay blocks. You will need to rebuild the database using -reindex-chainstate.")};
@@ -123,10 +130,6 @@ static ChainstateLoadResult CompleteChainstateInitialization(
                 return {ChainstateLoadStatus::FAILURE, _("Error initializing block database")};
             }
             assert(chainstate->m_chain.Tip() != nullptr);
-        } else if (chainman.GetConsensus().recycle_enabled) {
-            // A new chainstate has no legacy records to audit. This marker
-            // also prevents old binaries from reopening the repaired state.
-            chainstate->CoinsDB().MarkRecycleStateReady();
         }
     }
 

@@ -54,7 +54,7 @@ class RecycleTest(BitcoinTestFramework):
         origin_txid = origin.txid_hex
 
         # Only the first block has spendable outputs, making pool accounting
-        # deterministic. Its schedule is larger than MAX_SCRIPT_SIZE.
+        # deterministic. Legacy nodes stored a schedule larger than MAX_SCRIPT_SIZE.
         self.generatetodescriptor(node, 199, "raw(6a)")
         assert_equal(wallet.getbalance(), Decimal("27.8"))
         assert_equal(len(wallet.listunspent()), 278)

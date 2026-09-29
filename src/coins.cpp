@@ -23,6 +23,8 @@ void CCoinsView::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashBlo
     for (auto it{cursor.Begin()}; it != cursor.End(); it = cursor.NextAndMaybeErase(*it)) { }
 }
 
+std::set<COutPoint> CCoinsView::GetCoinsByHeight(uint32_t height) const { return {}; }
+
 std::unique_ptr<CCoinsViewCursor> CCoinsView::Cursor() const { return nullptr; }
 
 bool CCoinsView::HaveCoin(const COutPoint &outpoint) const
@@ -39,7 +41,42 @@ std::vector<uint256> CCoinsViewBacked::GetHeadBlocks() const { return base->GetH
 void CCoinsViewBacked::SetBackend(CCoinsView &viewIn) { base = &viewIn; }
 void CCoinsViewBacked::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashBlock) { base->BatchWrite(cursor, hashBlock); }
 std::unique_ptr<CCoinsViewCursor> CCoinsViewBacked::Cursor() const { return base->Cursor(); }
+std::set<COutPoint> CCoinsViewBacked::GetCoinsByHeight(uint32_t height) const { return base->GetCoinsByHeight(height); }
 size_t CCoinsViewBacked::EstimateSize() const { return base->EstimateSize(); }
+
+void CCoinsViewCache::IndexCoin(const COutPoint& outpoint, const Coin& coin) const
+{
+    if (m_height_index && !coin.IsSpent() && !coin.out.scriptPubKey.IsUnspendable()) {
+        m_height_index->emplace(uint32_t{coin.nHeight}, outpoint);
+    }
+}
+
+void CCoinsViewCache::UnindexCoin(const COutPoint& outpoint, const Coin& coin) const
+{
+    if (m_height_index && !coin.IsSpent() && !coin.out.scriptPubKey.IsUnspendable()) {
+        m_height_index->erase({coin.nHeight, outpoint});
+    }
+}
+
+std::set<COutPoint> CCoinsViewCache::GetCoinsByHeight(uint32_t height) const
+{
+    if (!m_height_index) {
+        m_height_index = std::make_unique<HeightIndex>();
+        for (const auto& [outpoint, entry] : cacheCoins) IndexCoin(outpoint, entry.coin);
+    }
+    auto outputs{base->GetCoinsByHeight(height)};
+    // Only inspect matching base entries, not the entire cache at every block.
+    std::erase_if(outputs, [&](const COutPoint& outpoint) {
+        const auto it{cacheCoins.find(outpoint)};
+        return it != cacheCoins.end() && (it->second.coin.IsSpent() ||
+            it->second.coin.nHeight != height || it->second.coin.out.scriptPubKey.IsUnspendable());
+    });
+    for (auto it{m_height_index->lower_bound({height, COutPoint{Txid{}, 0}})};
+         it != m_height_index->end() && it->first == height; ++it) {
+        outputs.insert(it->second);
+    }
+    return outputs;
+}
 
 std::optional<Coin> CCoinsViewCache::PeekCoin(const COutPoint& outpoint) const
 {
@@ -57,7 +94,8 @@ CCoinsViewCache::CCoinsViewCache(CCoinsView* baseIn, bool deterministic) :
 }
 
 size_t CCoinsViewCache::DynamicMemoryUsage() const {
-    return memusage::DynamicUsage(cacheCoins) + cachedCoinsUsage;
+    return memusage::DynamicUsage(cacheCoins) + cachedCoinsUsage +
+        (m_height_index ? sizeof(HeightIndex) + memusage::DynamicUsage(*m_height_index) : 0);
 }
 
 std::optional<Coin> CCoinsViewCache::FetchCoinFromBase(const COutPoint& outpoint) const
@@ -70,6 +108,7 @@ CCoinsMap::iterator CCoinsViewCache::FetchCoin(const COutPoint &outpoint) const 
     if (inserted) {
         if (auto coin{FetchCoinFromBase(outpoint)}) {
             ret->second.coin = std::move(*coin);
+            IndexCoin(outpoint, ret->second.coin);
             cachedCoinsUsage += ret->second.coin.DynamicMemoryUsage();
             Assert(!ret->second.coin.IsSpent());
         } else {
@@ -116,7 +155,9 @@ void CCoinsViewCache::AddCoin(const COutPoint &outpoint, Coin&& coin, bool possi
         Assume(TrySub(m_dirty_count, it->second.IsDirty()));
         Assume(TrySub(cachedCoinsUsage, it->second.coin.DynamicMemoryUsage()));
     }
+    UnindexCoin(outpoint, it->second.coin);
     it->second.coin = std::move(coin);
+    IndexCoin(outpoint, it->second.coin);
     CCoinsCacheEntry::SetDirty(*it, m_sentinel);
     ++m_dirty_count;
     if (fresh) CCoinsCacheEntry::SetFresh(*it, m_sentinel);
@@ -133,6 +174,7 @@ void CCoinsViewCache::EmplaceCoinInternalDANGER(COutPoint&& outpoint, Coin&& coi
     const auto mem_usage{coin.DynamicMemoryUsage()};
     auto [it, inserted] = cacheCoins.try_emplace(std::move(outpoint), std::move(coin));
     if (inserted) {
+        IndexCoin(it->first, it->second.coin);
         CCoinsCacheEntry::SetDirty(*it, m_sentinel);
         ++m_dirty_count;
         cachedCoinsUsage += mem_usage;
@@ -161,6 +203,7 @@ bool CCoinsViewCache::SpendCoin(const COutPoint &outpoint, Coin* moveout) {
            (uint32_t)it->second.coin.nHeight,
            (int64_t)it->second.coin.out.nValue,
            (bool)it->second.coin.IsCoinBase());
+    UnindexCoin(outpoint, it->second.coin);
     if (moveout) {
         *moveout = std::move(it->second.coin);
     }
@@ -230,6 +273,7 @@ void CCoinsViewCache::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& ha
                 CCoinsCacheEntry::SetDirty(*itUs, m_sentinel);
                 ++m_dirty_count;
                 cachedCoinsUsage += entry.coin.DynamicMemoryUsage();
+                IndexCoin(itUs->first, entry.coin);
                 // We can mark it FRESH in the parent if it was FRESH in the child
                 // Otherwise it might have just been flushed from the parent's cache
                 // and already exist in the grandparent
@@ -245,6 +289,7 @@ void CCoinsViewCache::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& ha
                 throw std::logic_error("FRESH flag misapplied to coin that exists in parent cache");
             }
 
+            UnindexCoin(itUs->first, itUs->second.coin);
             if (itUs->second.IsFresh() && it->second.coin.IsSpent()) {
                 // The grandparent cache does not have an entry, and the coin
                 // has been spent. We can just delete it from the parent cache.
@@ -262,6 +307,7 @@ void CCoinsViewCache::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& ha
                     itUs->second.coin = it->second.coin;
                 }
                 cachedCoinsUsage += itUs->second.coin.DynamicMemoryUsage();
+                IndexCoin(itUs->first, itUs->second.coin);
                 if (!itUs->second.IsDirty()) {
                     CCoinsCacheEntry::SetDirty(*itUs, m_sentinel);
                     ++m_dirty_count;
@@ -282,6 +328,7 @@ void CCoinsViewCache::Flush(bool reallocate_cache)
     base->BatchWrite(cursor, hashBlock);
     Assume(m_dirty_count == 0);
     cacheCoins.clear();
+    m_height_index.reset();
     if (reallocate_cache) {
         ReallocateCache();
     }
@@ -302,6 +349,7 @@ void CCoinsViewCache::Sync()
 void CCoinsViewCache::Reset() noexcept
 {
     cacheCoins.clear();
+    m_height_index.reset();
     cachedCoinsUsage = 0;
     m_dirty_count = 0;
     SetBestBlock(uint256::ZERO);
@@ -318,6 +366,7 @@ void CCoinsViewCache::Uncache(const COutPoint& hash)
                (uint32_t)it->second.coin.nHeight,
                (int64_t)it->second.coin.out.nValue,
                (bool)it->second.coin.IsCoinBase());
+        UnindexCoin(it->first, it->second.coin);
         cacheCoins.erase(it);
     }
 }
@@ -425,4 +474,9 @@ bool CCoinsViewErrorCatcher::HaveCoin(const COutPoint& outpoint) const
 std::optional<Coin> CCoinsViewErrorCatcher::PeekCoin(const COutPoint& outpoint) const
 {
     return ExecuteBackedWrapper<std::optional<Coin>>([&]() { return CCoinsViewBacked::PeekCoin(outpoint); }, m_err_callbacks);
+}
+
+std::set<COutPoint> CCoinsViewErrorCatcher::GetCoinsByHeight(uint32_t height) const
+{
+    return ExecuteBackedWrapper<std::set<COutPoint>>([&]() { return CCoinsViewBacked::GetCoinsByHeight(height); }, m_err_callbacks);
 }

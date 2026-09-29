@@ -23,6 +23,7 @@
 #include <exception>
 #include <future>
 #include <iterator>
+#include <limits>
 #include <utility>
 
 static constexpr uint8_t DB_COIN{'C'};
@@ -30,8 +31,11 @@ static constexpr uint8_t DB_BEST_BLOCK{'B'};
 static constexpr uint8_t DB_HEAD_BLOCKS{'H'};
 // Keys used in previous version that might still be found in the DB:
 static constexpr uint8_t DB_COINS{'c'};
-// Old binaries reject databases containing this key via NeedsUpgrade().
+// Codec-aware older ReSatoshi binaries reject versions other than 1.
 static constexpr uint8_t DB_RECYCLE_CODEC{'r'};
+static constexpr uint8_t DB_RECYCLE_HEIGHT{'E'};
+static constexpr int RECYCLE_INDEX_VERSION{2};
+static constexpr int RECYCLE_INDEX_BUILDING{3};
 
 // Threshold for warning when writing this many dirty cache entries to disk.
 static constexpr size_t WARN_FLUSH_COINS_COUNT{10'000'000};
@@ -45,18 +49,13 @@ bool CCoinsViewDB::NeedsUpgrade()
     uint8_t key{0};
     if (cursor->Valid() && cursor->GetKey(key) && key == DB_COINS) return true;
     int version{0};
-    return m_db->Exists(DB_RECYCLE_CODEC) && (!m_db->Read(DB_RECYCLE_CODEC, version) || version != 1);
+    return m_db->Exists(DB_RECYCLE_CODEC) && (!m_db->Read(DB_RECYCLE_CODEC, version) || (version != 1 && version != RECYCLE_INDEX_VERSION && version != RECYCLE_INDEX_BUILDING));
 }
 
 bool CCoinsViewDB::RecycleStateReady() const
 {
     int version{0};
-    return m_db->Read(DB_RECYCLE_CODEC, version) && version == 1;
-}
-
-void CCoinsViewDB::MarkRecycleStateReady()
-{
-    m_db->Write(DB_RECYCLE_CODEC, 1, /*fSync=*/true);
+    return m_db->Read(DB_RECYCLE_CODEC, version) && version == RECYCLE_INDEX_VERSION;
 }
 
 namespace {
@@ -69,7 +68,88 @@ struct CoinEntry {
     SERIALIZE_METHODS(CoinEntry, obj) { READWRITE(obj.key, obj.outpoint->hash, VARINT(obj.outpoint->n)); }
 };
 
+// Exact-height lookups only: fixed-width height followed by the full outpoint.
+struct HeightEntry {
+    uint8_t key{DB_RECYCLE_HEIGHT};
+    uint32_t height{0};
+    COutPoint outpoint{Txid{}, 0};
+    SERIALIZE_METHODS(HeightEntry, obj) { READWRITE(obj.key, obj.height, obj.outpoint); }
+};
+
 } // namespace
+
+bool CCoinsViewDB::UpgradeRecycleIndex(const std::function<bool()>& interrupted)
+{
+    if (!m_options.recycle_index || RecycleStateReady()) return true;
+    // Mark before the first mutation. Legacy binaries that know the codec
+    // marker must not open a partially migrated database.
+    m_db->Write(DB_RECYCLE_CODEC, RECYCLE_INDEX_BUILDING, /*fSync=*/true);
+    CDBBatch batch{*m_db};
+    auto flush = [&] {
+        if (batch.ApproximateSize() > m_options.batch_write_bytes) {
+            m_db->WriteBatch(batch);
+            batch.Clear();
+        }
+    };
+    // Restartable rebuild; never trust an incomplete prior index.
+    std::unique_ptr<CDBIterator> cursor{m_db->NewIterator()};
+    for (cursor->Seek(DB_RECYCLE_HEIGHT); cursor->Valid(); cursor->Next()) {
+        uint8_t prefix;
+        if (!cursor->GetKey(prefix)) throw std::runtime_error("Unreadable recycle index key");
+        if (prefix != DB_RECYCLE_HEIGHT) break;
+        if (interrupted()) return false;
+        HeightEntry entry;
+        if (!cursor->GetKey(entry)) throw std::runtime_error("Corrupt recycle index key");
+        batch.Erase(entry);
+        flush();
+    }
+    m_db->WriteBatch(batch);
+    batch.Clear();
+    cursor.reset(m_db->NewIterator());
+    for (cursor->Seek(DB_COIN); cursor->Valid(); cursor->Next()) {
+        uint8_t prefix;
+        if (!cursor->GetKey(prefix)) throw std::runtime_error("Unreadable coin key");
+        if (prefix != DB_COIN) break;
+        if (interrupted()) return false;
+        COutPoint outpoint;
+        CoinEntry entry{&outpoint};
+        if (!cursor->GetKey(entry)) throw std::runtime_error("Corrupt coin key");
+        if (node::recycle::IsStateOutpoint(outpoint) && outpoint.n != std::numeric_limits<uint32_t>::max()) {
+            // No need to deserialize legacy schedules, even truncated ones.
+            batch.Erase(entry);
+        } else {
+            Coin coin;
+            if (!cursor->GetValue(coin)) throw std::runtime_error("Corrupt coin during recycle index rebuild");
+            if (!coin.out.scriptPubKey.IsUnspendable()) {
+                batch.Write(HeightEntry{DB_RECYCLE_HEIGHT, coin.nHeight, outpoint}, uint8_t{0});
+            }
+        }
+        flush();
+    }
+    batch.Write(DB_RECYCLE_CODEC, RECYCLE_INDEX_VERSION);
+    m_db->WriteBatch(batch, /*fSync=*/true);
+    LogInfo("Rebuilt recycle height index from current UTXOs; removed legacy schedules");
+    return true;
+}
+
+std::set<COutPoint> CCoinsViewDB::GetCoinsByHeight(uint32_t height) const
+{
+    if (!m_options.recycle_index || !RecycleStateReady()) {
+        throw std::runtime_error("Recycle height index is not ready");
+    }
+    std::set<COutPoint> outputs;
+    std::unique_ptr<CDBIterator> cursor{m_db->NewIterator()};
+    for (cursor->Seek(HeightEntry{DB_RECYCLE_HEIGHT, height}); cursor->Valid(); cursor->Next()) {
+        uint8_t prefix;
+        if (!cursor->GetKey(prefix)) throw std::runtime_error("Unreadable recycle index key");
+        if (prefix != DB_RECYCLE_HEIGHT) break;
+        HeightEntry entry;
+        if (!cursor->GetKey(entry)) throw std::runtime_error("Corrupt recycle index key");
+        if (entry.height != height) break;
+        outputs.insert(entry.outpoint);
+    }
+    return outputs;
+}
 
 CCoinsViewDB::CCoinsViewDB(DBParams db_params, CoinsViewOptions options) :
     m_db_params{std::move(db_params)},
@@ -168,6 +248,17 @@ void CCoinsViewDB::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashB
     for (auto it{cursor.Begin()}; it != cursor.End();) {
         if (it->second.IsDirty()) {
             CoinEntry entry(&it->first);
+            if (m_options.recycle_index) {
+                // The old height is no longer present in a spent cache entry.
+                // Read the persisted coin and update both keys in the SAME batch,
+                // including across interrupted flushes and BIP30 overwrites.
+                if (const auto old{GetCoin(it->first)}; old && !old->out.scriptPubKey.IsUnspendable()) {
+                    batch.Erase(HeightEntry{DB_RECYCLE_HEIGHT, old->nHeight, it->first});
+                }
+                if (!it->second.coin.IsSpent() && !it->second.coin.out.scriptPubKey.IsUnspendable()) {
+                    batch.Write(HeightEntry{DB_RECYCLE_HEIGHT, it->second.coin.nHeight, it->first}, uint8_t{0});
+                }
+            }
             if (it->second.coin.IsSpent()) {
                 batch.Erase(entry);
             } else {
@@ -202,7 +293,8 @@ void CCoinsViewDB::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashB
 
 size_t CCoinsViewDB::EstimateSize() const
 {
-    return m_db->EstimateSize(DB_COIN, uint8_t(DB_COIN + 1));
+    return m_db->EstimateSize(DB_COIN, uint8_t(DB_COIN + 1)) +
+        m_db->EstimateSize(DB_RECYCLE_HEIGHT, uint8_t(DB_RECYCLE_HEIGHT + 1));
 }
 
 std::optional<std::string> CCoinsViewDB::GetDBProperty(const std::string& property)

@@ -13,7 +13,7 @@ import subprocess
 import sys
 
 from test_framework.blocktools import create_block, create_coinbase
-from test_framework.messages import COIN, CTxOut, ser_varint
+from test_framework.messages import COIN, CTxOut, ser_compact_size, ser_varint
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, assert_raises, assert_raises_rpc_error
 
@@ -52,15 +52,11 @@ class RecycleInterfacesTest(BitcoinTestFramework):
                 assert_equal(con.execute('SELECT COUNT(*), SUM(value) FROM utxos').fetchone(), (278, 278 * COIN // 10))
                 states = con.execute('SELECT txid, vout, scriptpubkey FROM recycle_state').fetchall()
                 assert_equal(len(states), snapshot['coins_written'] - 278)
-                assert_equal(len(states), 1)
-                txid, vout, spk = states[0]
-                assert_equal(txid, '00' * 32 if fmt == 'hex' else bytes(32))
-                assert vout >= 1_000_001
-                if fmt == 'hex':
-                    spk = bytes.fromhex(spk)
-                assert len(spk) > 10000
-                assert_equal(spk[0], 0x6a)
+                assert_equal(len(states), 0)
 
+        # Keep a legacy oversized metadata fixture to test old snapshot tools.
+        spk = b'\x6a' + ser_compact_size(278) + b''.join(
+            coinbase.txid_int.to_bytes(32, 'little') + n.to_bytes(4, 'little') for n in range(278))
         spec = importlib.util.spec_from_file_location('utxo_converter', tool)
         converter = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(converter)
@@ -78,6 +74,11 @@ class RecycleInterfacesTest(BitcoinTestFramework):
         # magic and ensure Bitcoin's namespace does not admit oversized state.
         fixture = bytearray(Path(snapshot['path']).read_bytes())
         main_snapshot = Path(self.options.tmpdir) / 'main-header.dat'
+        # Inject one historical schedule into the new snapshot's coin stream.
+        fixture[43:51] = (279).to_bytes(8, 'little')
+        legacy_record = (bytes(32) + ser_compact_size(1) + ser_compact_size(1_000_001)
+                         + ser_varint(2) + ser_varint(0) + encoded)
+        fixture[51:51] = legacy_record
         fixture[7:11] = bytes.fromhex('47d92434')
         main_snapshot.write_bytes(fixture)
         main_db = Path(self.options.tmpdir) / 'main-header.sqlite'

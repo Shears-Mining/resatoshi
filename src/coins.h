@@ -22,7 +22,9 @@
 #include <cstdint>
 
 #include <functional>
+#include <memory>
 #include <unordered_map>
+#include <set>
 
 /**
  * A UTXO entry.
@@ -319,6 +321,9 @@ public:
     //! May populate the cache. Use PeekCoin() to perform a non-caching lookup.
     virtual bool HaveCoin(const COutPoint &outpoint) const;
 
+    /** Spendable outpoints created at height, including unflushed changes. */
+    virtual std::set<COutPoint> GetCoinsByHeight(uint32_t height) const;
+
     //! Retrieve the block hash whose state this CCoinsView currently represents
     virtual uint256 GetBestBlock() const;
 
@@ -354,6 +359,7 @@ public:
     std::optional<Coin> GetCoin(const COutPoint& outpoint) const override;
     std::optional<Coin> PeekCoin(const COutPoint& outpoint) const override;
     bool HaveCoin(const COutPoint &outpoint) const override;
+    std::set<COutPoint> GetCoinsByHeight(uint32_t height) const override;
     uint256 GetBestBlock() const override;
     std::vector<uint256> GetHeadBlocks() const override;
     void SetBackend(CCoinsView &viewIn);
@@ -368,6 +374,11 @@ class CCoinsViewCache : public CCoinsViewBacked
 {
 private:
     const bool m_deterministic;
+    // Lazily allocated: ordinary networks and pre-expiry caches pay no cost.
+    using HeightIndex = std::set<std::pair<uint32_t, COutPoint>>;
+    mutable std::unique_ptr<HeightIndex> m_height_index;
+    void IndexCoin(const COutPoint& outpoint, const Coin& coin) const;
+    void UnindexCoin(const COutPoint& outpoint, const Coin& coin) const;
 
 protected:
     /**
@@ -406,6 +417,7 @@ public:
     std::optional<Coin> GetCoin(const COutPoint& outpoint) const override;
     std::optional<Coin> PeekCoin(const COutPoint& outpoint) const override;
     bool HaveCoin(const COutPoint &outpoint) const override;
+    std::set<COutPoint> GetCoinsByHeight(uint32_t height) const override;
     uint256 GetBestBlock() const override;
     void SetBestBlock(const uint256 &hashBlock);
     void BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashBlock) override;
@@ -580,6 +592,7 @@ public:
 
     std::optional<Coin> GetCoin(const COutPoint& outpoint) const override;
     bool HaveCoin(const COutPoint &outpoint) const override;
+    std::set<COutPoint> GetCoinsByHeight(uint32_t height) const override;
     std::optional<Coin> PeekCoin(const COutPoint& outpoint) const override;
 
 private:

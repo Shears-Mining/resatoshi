@@ -26,6 +26,8 @@ class uint256;
 
 //! User-controlled performance and debug options.
 struct CoinsViewOptions {
+    //! Maintain the derived creation-height index on recycling networks.
+    bool recycle_index{false};
     //! Maximum database write batch size in bytes.
     size_t batch_write_bytes{DEFAULT_DB_CACHE_BATCH};
     //! If non-zero, randomly exit when the database is flushed with (1/ratio) probability.
@@ -48,6 +50,7 @@ public:
 
     std::optional<Coin> GetCoin(const COutPoint& outpoint) const override;
     bool HaveCoin(const COutPoint &outpoint) const override;
+    std::set<COutPoint> GetCoinsByHeight(uint32_t height) const override;
     uint256 GetBestBlock() const override;
     std::vector<uint256> GetHeadBlocks() const override;
     void BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashBlock) override;
@@ -56,7 +59,8 @@ public:
     //! Whether an unsupported database format is used.
     bool NeedsUpgrade();
     bool RecycleStateReady() const;
-    void MarkRecycleStateReady();
+    /** Rebuild from UTXOs, discard legacy schedules, and resume safely after interruption. */
+    bool UpgradeRecycleIndex(const std::function<bool()>& interrupted);
     size_t EstimateSize() const override;
 
     //! Dynamically alter the underlying leveldb cache size.
