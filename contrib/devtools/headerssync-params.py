@@ -6,16 +6,26 @@
 """Script to find the optimal parameters for the headerssync module through simulation."""
 
 import argparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from math import log, exp, sqrt
 import random
+
+def utc_datetime(value):
+    """Interpret dates without an offset as UTC, and normalize explicit offsets."""
+    try:
+        parsed = datetime.fromisoformat(value)
+        return parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed.astimezone(timezone.utc)
+    except (ValueError, OverflowError) as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
+
 
 # Defaults preserve the upstream Bitcoin profile. Pass the fork's verified
 # genesis, work-floor header count and planning horizon explicitly.
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--genesis', type=datetime.fromisoformat, default=datetime(2009, 1, 3))
+parser.add_argument('--genesis', type=utc_datetime, default=utc_datetime('2009-01-03'))
 parser.add_argument('--minchainwork-headers', type=int, default=938343)
-parser.add_argument('--horizon', type=datetime.fromisoformat, default=datetime(2028, 10, 10))
+parser.add_argument('--horizon', type=utc_datetime, default=utc_datetime('2028-10-10'))
+parser.add_argument('--attack-cost-headers', type=int, help='lower bound on headers transmitted per attack attempt; defaults to minchainwork-headers')
 parser.add_argument('--seed', type=int, default=0)
 parser.add_argument('--evaluate', nargs=2, type=int, metavar=('PERIOD', 'BUFFER'))
 args = parser.parse_args()
@@ -23,6 +33,12 @@ if args.minchainwork_headers <= 0 or args.horizon <= args.genesis:
     parser.error('require positive header count and a horizon after genesis')
 if args.evaluate and any(value <= 0 for value in args.evaluate):
     parser.error('period and buffer must be positive')
+if args.attack_cost_headers is None:
+    args.attack_cost_headers = args.minchainwork_headers
+if not 0 < args.attack_cost_headers <= args.minchainwork_headers:
+    parser.error('attack cost must be positive and no larger than minchainwork-headers')
+if not args.evaluate and 6 * ((args.horizon - args.genesis) // timedelta(seconds=1)) <= args.minchainwork_headers:
+    parser.error('optimization requires the horizon header bound to exceed minchainwork-headers')
 random.seed(args.seed)
 
 # Parameters:
@@ -148,7 +164,7 @@ NET_HEADERRATE = ATTACK_BANDWIDTH / NET_HEADER_SIZE
 LIMIT_FRACTION = LIMIT_HEADERRATE / NET_HEADERRATE
 
 # How many headers we permit attackers to cause being accepted per attack. [headers/attack]
-ATTACK_HEADERS = LIMIT_FRACTION * MINCHAINWORK_HEADERS
+ATTACK_HEADERS = LIMIT_FRACTION * args.attack_cost_headers
 
 
 def find_max_headers(when):
@@ -201,6 +217,11 @@ def attack_rate(period, bufsize, limit=None):
             # - The number of forged headers in the redownload buffer:
             forged_in_buf = HEADER_BATCH_COUNT - honest
 
+            # Skip batches that cannot release any header; avoid work linear in buffer size.
+            skip_batches = max(0, (bufsize - forged_in_buf) // HEADER_BATCH_COUNT + 1)
+            after_good_commit += skip_batches * HEADER_BATCH_COUNT
+            forged_in_buf += skip_batches * HEADER_BATCH_COUNT
+
             # Now iterate over the next batches of headers received, adding contributions to the
             # rate variable.
             while True:
@@ -209,7 +230,10 @@ def attack_rate(period, bufsize, limit=None):
                 forged_in_buf -= accept_forged_headers
                 if accept_forged_headers:
                     # The probability the attack has not been detected yet at this point:
-                    prob = 0.5 ** (after_good_commit // period)
+                    exponent = after_good_commit // period
+                    if exponent >= 1075:  # Further terms also round to zero in binary64.
+                        break
+                    prob = 0.5 ** exponent
                     # Update attack rate, divided by align_choices to average over the alignments.
                     rate += accept_forged_headers * prob / len(align_choices)
                     # If this means we exceed limit, bail out early (performance optimization).
@@ -227,6 +251,8 @@ def attack_rate(period, bufsize, limit=None):
             max_rate = rate
             max_honest = honest
 
+    if max_rate == 0:
+        raise ArithmeticError('attack probability is below floating-point resolution; this does not mean zero risk')
     return max_rate, max_honest
 
 
@@ -294,7 +320,7 @@ def optimize(when):
     approx_ratio = lambert_w(log(4) * memory_scale / ATTACK_HEADERS**2) / log(4)
     # Use those for a first attempt.
     print("Searching configurations:")
-    period = int(sqrt(memory_scale / approx_ratio) + 0.5)
+    period = max(1, int(sqrt(memory_scale / approx_ratio) + 0.5))
     bufsize = find_bufsize(period, ATTACK_HEADERS, when)
     mem = memory_usage(period, bufsize, when)
     best = (period, bufsize, mem)
@@ -350,10 +376,11 @@ def analyze(when):
     # Compute accurate statistics for the best found configuration.
     _, mem_mainchain, mem_timewarp = memory_usage(period, bufsize, when)
     headers_per_attack, _ = attack_rate(period, bufsize)
-    attack_volume = NET_HEADER_SIZE * MINCHAINWORK_HEADERS
+    attack_volume = NET_HEADER_SIZE * args.attack_cost_headers
     print(f"Expected forged headers per attack: {headers_per_attack:.12g}; limit: {ATTACK_HEADERS:.12g}; within budget: {headers_per_attack < ATTACK_HEADERS}")
     # And report them.
     print()
+    print(f"Attack cost lower bound: {args.attack_cost_headers} headers; observed work-floor chain: {MINCHAINWORK_HEADERS} headers")
     print(f"Genesis: {GENESIS_TIME.isoformat()}; seed: {args.seed}; evaluated: {bool(args.evaluate)}")
     print(f"Given current min chainwork headers of {MINCHAINWORK_HEADERS}, the selected parameters for low")
     print(f"memory usage on mainchain for release until {TIME:%Y-%m-%d} is:")
@@ -372,4 +399,7 @@ def analyze(when):
     print(f"  (where each attack costs {attack_volume / 8388608:.3f} MiB bandwidth)")
 
 
-analyze(TIME)
+try:
+    analyze(TIME)
+except ArithmeticError as error:
+    parser.error(str(error))

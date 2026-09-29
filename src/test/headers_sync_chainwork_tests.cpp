@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <limits>
 #include <vector>
 
 #include <boost/test/unit_test.hpp>
@@ -262,7 +263,7 @@ struct AsertHeaderChain {
     std::vector<CBlockIndex> indexes{401};
     std::vector<uint256> hashes{401};
 
-    explicit AsertHeaderChain(const CChainParams& chain_params) : params{chain_params.GetConsensus()}
+    explicit AsertHeaderChain(const CChainParams& chain_params, const uint256& merkle_root = uint256::ZERO) : params{chain_params.GetConsensus()}
     {
         params.nASERTHalfLife = 172800;
         params.fPowNoRetargeting = false;
@@ -274,6 +275,7 @@ struct AsertHeaderChain {
             if (h > 0) {
                 const auto& previous{headers[h - 1]};
                 header.hashPrevBlock = previous.GetHash();
+                header.hashMerkleRoot = merkle_root;
                 const int64_t intervals[]{600, 601, 599, 900, 300, 1, 1199};
                 header.nTime = previous.nTime + intervals[h % 7];
                 header.nBits = CalculateASERT(arith_uint256{}.SetCompact(headers[0].nBits),
@@ -361,6 +363,78 @@ BOOST_AUTO_TEST_CASE(asert_reject_in_range_incorrect_targets)
     const CBlockHeader bad{incorrect(bad_height)};
     BOOST_CHECK(!sync.ProcessNextHeaders(std::span{&bad, 1}, true).success);
     BOOST_CHECK(sync.GetState() == State::FINAL);
+}
+
+BOOST_AUTO_TEST_CASE(asert_timestamp_extremes)
+{
+    AsertHeaderChain chain{Params()};
+    const uint32_t anchor_time{chain.headers[0].nTime};
+    for (const uint32_t previous_time : {uint32_t{0}, anchor_time - 1, anchor_time, std::numeric_limits<uint32_t>::max()}) {
+        chain.headers[1].nTime = previous_time;
+        chain.hashes[1] = chain.headers[1].GetHash();
+        auto& previous{chain.indexes[1]};
+        previous.nTime = previous_time;
+        CBlockHeader next{chain.headers[2]};
+        next.hashPrevBlock = chain.hashes[1];
+        next.nBits = CalculateASERT(arith_uint256{}.SetCompact(chain.headers[0].nBits),
+            chain.params.nPowTargetSpacing,
+            int64_t{previous_time} - (int64_t{anchor_time} - chain.params.nPowTargetSpacing),
+            1, UintToArith256(chain.params.powLimit), chain.params.nASERTHalfLife).GetCompact();
+        BOOST_CHECK_EQUAL(GetNextWorkRequired(&previous, &next, chain.params), next.nBits);
+        if (previous_time == 0) BOOST_CHECK_EQUAL(next.nBits, arith_uint256{1}.GetCompact());
+        if (previous_time == std::numeric_limits<uint32_t>::max()) BOOST_CHECK_EQUAL(next.nBits, UintToArith256(chain.params.powLimit).GetCompact());
+        // One successor avoids wrapping cumulative work when the target is 1.
+        // These synthetic timestamps test target arithmetic, not MTP validity.
+        HeadersSyncState sync{0, chain.params, {1, 0}, previous, previous.nChainWork + GetBlockProof(next)};
+        BOOST_REQUIRE(sync.ProcessNextHeaders(std::span{&next, 1}, true).success);
+        BOOST_REQUIRE(sync.GetState() == State::REDOWNLOAD);
+        const auto result{sync.ProcessNextHeaders(std::span{&next, 1}, true)};
+        BOOST_REQUIRE(result.success);
+        BOOST_REQUIRE_EQUAL(result.pow_validated_headers.size(), 1U);
+        BOOST_CHECK(result.pow_validated_headers[0].GetHash() == next.GetHash());
+        BOOST_CHECK(sync.GetState() == State::FINAL);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(asert_valid_target_alternate_chain)
+{
+    AsertHeaderChain honest{Params()};
+    AsertHeaderChain alternate{Params(), uint256::ONE};
+    for (size_t h{1}; h < honest.headers.size(); ++h) {
+        BOOST_CHECK_EQUAL(honest.headers[h].nBits, alternate.headers[h].nBits);
+        BOOST_CHECK(honest.hashes[h] != alternate.hashes[h]);
+    }
+    // The alternate chain has correct targets and linkage, but different
+    // commitments. Accidental acceptance of all 128 bits has probability 2^-128.
+    HeadersSyncState sync{0, honest.params, {1, 256}, honest.indexes[0], honest.indexes.back().nChainWork};
+    BOOST_REQUIRE(sync.ProcessNextHeaders(std::span{honest.headers}.subspan(1), true).success);
+    BOOST_REQUIRE(sync.GetState() == State::REDOWNLOAD);
+    const auto result{sync.ProcessNextHeaders(std::span{alternate.headers}.subspan(1, 128), true)};
+    BOOST_CHECK(!result.success);
+    BOOST_CHECK(!result.request_more);
+    BOOST_CHECK(result.pow_validated_headers.empty());
+    BOOST_CHECK(sync.GetState() == State::FINAL);
+}
+
+BOOST_AUTO_TEST_CASE(asert_failed_batch_returns_no_headers)
+{
+    AsertHeaderChain chain{Params()};
+    for (const size_t already_returned : {0, 5}) {
+        HeadersSyncState sync{0, chain.params, {7, 0}, chain.indexes[0], chain.indexes.back().nChainWork};
+        BOOST_REQUIRE(sync.ProcessNextHeaders(std::span{chain.headers}.subspan(1), true).success);
+        if (already_returned) {
+            const auto prior{sync.ProcessNextHeaders(std::span{chain.headers}.subspan(1, already_returned), true)};
+            BOOST_REQUIRE(prior.success);
+            BOOST_REQUIRE_EQUAL(prior.pow_validated_headers.size(), already_returned);
+        }
+        std::vector<CBlockHeader> batch{chain.headers.begin() + already_returned + 1, chain.headers.begin() + 18};
+        batch.back().nBits = 0x1d00ffff;
+        const auto result{sync.ProcessNextHeaders(batch, true)};
+        BOOST_CHECK(!result.success);
+        BOOST_CHECK(!result.request_more);
+        BOOST_CHECK(result.pow_validated_headers.empty());
+        BOOST_CHECK(sync.GetState() == State::FINAL);
+    }
 }
 
 BOOST_AUTO_TEST_CASE(asert_disabled_retains_no_retarget_behavior)
