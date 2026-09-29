@@ -145,3 +145,17 @@ before the final batch, complete ordered replay, and rejection of a late
 invalid target in either phase. The original `headers_sync_state` target
 retains arbitrary malformed-header exploration. These state tests do not
 replace caller-level proof-of-work, MTP or network validation tests.
+
+
+`p2p_headers_presync_asert` complements the direct state target by passing
+serialized `headers` messages through the connection test transport and
+PeerManager. It selects one of the three peer connection types, sends 2–16
+full batches of exact ASERT headers to that same peer, and checks the reported
+presync height after each message. A final full batch with a wrong target in
+its last header must end that presync. Proof of work uses the fuzz framework's
+deterministic shortcut, including for the malformed target, so the failure
+exercises difficulty-transition validation. Generated work remains below the
+test floor and the permanent block index must never grow. The original
+`p2p_headers_presync` keeps arbitrary headers, compact blocks and blocks.
+This target intentionally stays below the work floor; the direct state target
+covers redownload and buffer release separately.

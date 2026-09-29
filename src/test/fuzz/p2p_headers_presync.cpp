@@ -4,6 +4,7 @@
 
 #include <arith_uint256.h>
 #include <blockencodings.h>
+#include <chain.h>
 #include <net.h>
 #include <net_processing.h>
 #include <netmessagemaker.h>
@@ -51,6 +52,9 @@ public:
     }
 
     void ResetAndInitialize() EXCLUSIVE_LOCKS_REQUIRED(NetEventsInterface::g_msgproc_mutex);
+    int64_t PresyncHeight(size_t peer) const;
+    void SendMessage(size_t peer, CSerializedNetMsg&& msg)
+        EXCLUSIVE_LOCKS_REQUIRED(NetEventsInterface::g_msgproc_mutex);
     void SendMessage(FuzzedDataProvider& fuzzed_data_provider, CSerializedNetMsg&& msg)
         EXCLUSIVE_LOCKS_REQUIRED(NetEventsInterface::g_msgproc_mutex);
 };
@@ -87,8 +91,21 @@ void HeadersSyncSetup::ResetAndInitialize()
 
 void HeadersSyncSetup::SendMessage(FuzzedDataProvider& fuzzed_data_provider, CSerializedNetMsg&& msg)
 {
+    SendMessage(fuzzed_data_provider.ConsumeIntegralInRange<size_t>(0, m_connections.size() - 1), std::move(msg));
+}
+
+int64_t HeadersSyncSetup::PresyncHeight(size_t peer) const
+{
+    CNodeStateStats stats;
+    const bool found = m_node.peerman->GetNodeStateStats(m_connections.at(peer)->GetId(), stats);
+    assert(found);
+    return stats.presync_height;
+}
+
+void HeadersSyncSetup::SendMessage(size_t peer, CSerializedNetMsg&& msg)
+{
     auto& connman = static_cast<ConnmanTestMsg&>(*m_node.connman);
-    CNode& connection = *PickValue(fuzzed_data_provider, m_connections);
+    CNode& connection = *m_connections.at(peer);
 
     connman.FlushSendBuffer(connection);
     (void)connman.ReceiveMsgFrom(connection, std::move(msg));
@@ -105,7 +122,7 @@ CBlockHeader ConsumeHeader(FuzzedDataProvider& fuzzed_data_provider, const uint2
     CBlockHeader header;
     header.nNonce = 0;
     // Either use the previous difficulty or let the fuzzer choose. The upper target in the
-    // range comes from the bits value of the genesis block, which is 0x1d00ffff. The lower
+    // range comes from Bitcoin's genesis (not ReSatoshi's), 0x1d00ffff. The lower
     // target comes from the bits value of mainnet block 840000, which is 0x17034219.
     // Calling lower_target.SetCompact(0x17034219) and upper_target.SetCompact(0x1d00ffff)
     // should return the values below.
@@ -160,8 +177,8 @@ void initialize()
         MakeNoLogFileContext<HeadersSyncSetup>(ChainType::MAIN,
                                                {
                                                    // This target exercises the headers pre-sync anti-DoS
-                                                   // threshold, while a new ReSatoshi chain intentionally
-                                                   // has no default minimum chain work yet.
+                                                   // threshold with a floor above every generated chain,
+                                                   // independent of the deployed mainnet work floor.
                                                    .extra_args = {"-minimumchainwork=0000000000000000000000000000000000000001128750f82f4c366153a3a030"},
                                                    .setup_validation_interface = false,
                                                }),
@@ -251,4 +268,66 @@ FUZZ_TARGET(p2p_headers_presync, .init = initialize)
     // to meet the anti-DoS work threshold. So, if at any point the block index grew in size, then there's a bug
     // in the headers pre-sync logic.
     assert(WITH_LOCK(cs_main, return chainman.m_blockman.m_block_index.size()) == original_index_size);
+}
+
+// Keep the arbitrary-header target above. This target deliberately reaches
+// successive presync messages through PeerManager using exact ASERT targets.
+FUZZ_TARGET(p2p_headers_presync_asert, .init = initialize)
+{
+    SeedRandomStateForTest(SeedRand::ZEROS);
+    FuzzedDataProvider provider{buffer.data(), buffer.size()};
+    SteadyClockContext steady_ctx{};
+    auto& setup = *g_testing_setup;
+    auto& chainman = *setup.m_node.chainman;
+    const auto& consensus = chainman.GetParams().GetConsensus();
+    const CBlockHeader genesis{chainman.GetParams().GenesisBlock()};
+    const CBlockIndex anchor{genesis};
+    CBlockHeader previous{genesis};
+    int64_t height{0};
+    // At most 17 * 16 headers spaced at most 1200 seconds apart.
+    SetMockTime(int64_t{genesis.nTime} + 400000);
+
+    LOCK(NetEventsInterface::g_msgproc_mutex);
+    setup.ResetAndInitialize();
+    const size_t peer = provider.ConsumeIntegralInRange<size_t>(0, 2);
+    const size_t batches = provider.ConsumeIntegralInRange<size_t>(2, 16);
+    const size_t original_size{WITH_LOCK(cs_main, return chainman.m_blockman.m_block_index.size())};
+    arith_uint256 work{WITH_LOCK(cs_main, return chainman.m_best_header->nChainWork)};
+    auto next_batch = [&] {
+        // Empty CBlocks serialize the required zero transaction count after
+        // each header in the P2P headers message.
+        std::vector<CBlock> headers;
+        for (size_t i = 0; i < FUZZ_MAX_HEADERS_RESULTS; ++i) {
+            CBlock header;
+            header.nVersion = 4;
+            header.hashPrevBlock = previous.GetHash();
+            header.nTime = previous.nTime + provider.ConsumeIntegralInRange<uint32_t>(1, 1200);
+            header.nBits = GetNextASERTWorkRequired(anchor, height, previous.nTime, consensus);
+            header.hashMerkleRoot = ConsumeUInt256(provider);
+            FinalizeHeader(header, chainman);
+            work += GetBlockProof(CBlockIndex{header});
+            headers.push_back(header);
+            previous = header;
+            ++height;
+        }
+        assert(work < chainman.MinimumChainWork());
+        return headers;
+    };
+    for (size_t batch = 0; batch < batches; ++batch) {
+        const auto headers = next_batch();
+        setup.SendMessage(peer, NetMsg::Make(NetMsgType::HEADERS, TX_WITH_WITNESS(headers)));
+        assert(setup.PresyncHeight(peer) == height);
+        assert(WITH_LOCK(cs_main, return chainman.m_blockman.m_block_index.size()) == original_size);
+    }
+
+    auto invalid = next_batch();
+    // Fail late in an otherwise valid continuation. Retain valid PoW so this
+    // tests the exact ASERT check, not the caller's proof-of-work rejection.
+    invalid.back().nBits ^= 1;
+    FinalizeHeader(invalid.back(), chainman);
+    // Conservatively count both versions of the last header.
+    assert(work + GetBlockProof(CBlockIndex{invalid.back()}) < chainman.MinimumChainWork());
+    setup.SendMessage(peer, NetMsg::Make(NetMsgType::HEADERS, TX_WITH_WITNESS(invalid)));
+    assert(setup.PresyncHeight(peer) == -1);
+    assert(WITH_LOCK(cs_main, return chainman.m_blockman.m_block_index.size()) == original_size);
 }
