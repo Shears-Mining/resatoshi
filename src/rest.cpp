@@ -346,7 +346,9 @@ static bool rest_spent_txouts(const std::any& context, HTTPRequest* req, const s
     if (pblockindex->nHeight > 0 && !chainman->m_blockman.ReadBlockUndo(block_undo, *pblockindex)) {
         return RESTERR(req, HTTP_NOT_FOUND, hashStr + " undo not available");
     }
-    if (!node::recycle::RemoveStateUndo(block_undo, pblockindex->nHeight, pblockindex->nTx, chainman->GetConsensus())) {
+    // Read after the undo is available; block receipt can update nTx under cs_main.
+    const auto transaction_count{WITH_LOCK(cs_main, return pblockindex->nTx)};
+    if (!node::recycle::RemoveStateUndo(block_undo, pblockindex->nHeight, transaction_count, chainman->GetConsensus())) {
         return RESTERR(req, HTTP_INTERNAL_SERVER_ERROR, hashStr + " undo data inconsistent with block");
     }
 
