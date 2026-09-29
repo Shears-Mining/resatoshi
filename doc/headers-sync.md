@@ -64,8 +64,11 @@ also excludes allocator, connection and other node overhead.
 
 The tool accepts ISO dates and timestamps; missing offsets mean UTC and explicit
 offsets are normalized to UTC. Invalid optimization horizons fail with a usage
-error. Probabilities below its floating-point resolution fail explicitly rather
-than being presented as zero risk. Run the CLI regression tests with
+error. Observed header counts must fit the model's horizon bound, including
+in evaluation mode; optimization additionally requires a strictly positive gap.
+Probabilities below floating-point resolution, or reciprocal attack costs beyond
+its finite range, fail explicitly before printing a result rather than being
+presented as zero risk or infinite attack cost. Run the CLI regression tests with
 `python3 contrib/devtools/test_headerssync_params.py`.
 
 For a more conservative attack-cost assumption, keep the observed chain length

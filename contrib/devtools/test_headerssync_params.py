@@ -50,6 +50,30 @@ class HeadersSyncParamsTest(unittest.TestCase):
                 self.assertIn('does not mean zero risk', result.stderr)
                 self.assertNotIn('within budget:', result.stdout)
 
+    def test_header_count_model_bound(self):
+        for cost in ((), ('--attack-cost-headers', '1')):
+            with self.subTest(cost=cost):
+                result = self.run_model('--minchainwork-headers', str(10**400),
+                                        '--evaluate', '1', '1', *cost, expected=2)
+                self.assertIn('exceeds the model horizon header bound', result.stderr)
+                self.assertEqual(result.stdout, '')
+        common = ('--genesis', '2026-09-04', '--horizon', '2026-09-04T00:00:01')
+        self.run_model(*common, '--minchainwork-headers', '6', '--evaluate', '1', '1')
+        self.run_model(*common, '--minchainwork-headers', '7', '--evaluate', '1', '1', expected=2)
+        self.run_model(*common, '--minchainwork-headers', '6', expected=2)
+
+    def test_reciprocal_overflow(self):
+        # Cover both sides of the binary64 reciprocal boundary, and a much
+        # smaller positive subnormal rate. No success output on range errors.
+        finite = self.run_model('--evaluate', '1', '1022')
+        self.assertNotIn('inf attacks', finite.stdout)
+        self.assertIn('- Attack rate:', finite.stdout)
+        for buffer in ('1023', '1073'):
+            with self.subTest(buffer=buffer):
+                result = self.run_model('--evaluate', '1', buffer, expected=2)
+                self.assertIn('does not mean infinite attack cost', result.stderr)
+                self.assertEqual(result.stdout, '')
+
     def test_small_period(self):
         result = self.run_model('--evaluate', '1', '2')
         self.assertIn('Expected forged headers per attack: 0.125;', result.stdout)

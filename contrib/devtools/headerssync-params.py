@@ -7,7 +7,7 @@
 
 import argparse
 from datetime import datetime, timedelta, timezone
-from math import log, exp, sqrt
+from math import log, exp, sqrt, isfinite
 import random
 
 def utc_datetime(value):
@@ -37,7 +37,10 @@ if args.attack_cost_headers is None:
     args.attack_cost_headers = args.minchainwork_headers
 if not 0 < args.attack_cost_headers <= args.minchainwork_headers:
     parser.error('attack cost must be positive and no larger than minchainwork-headers')
-if not args.evaluate and 6 * ((args.horizon - args.genesis) // timedelta(seconds=1)) <= args.minchainwork_headers:
+horizon_header_bound = 6 * ((args.horizon - args.genesis) // timedelta(seconds=1))
+if args.minchainwork_headers > horizon_header_bound:
+    parser.error('minchainwork-headers exceeds the model horizon header bound')
+if not args.evaluate and horizon_header_bound == args.minchainwork_headers:
     parser.error('optimization requires the horizon header bound to exceed minchainwork-headers')
 random.seed(args.seed)
 
@@ -376,6 +379,9 @@ def analyze(when):
     # Compute accurate statistics for the best found configuration.
     _, mem_mainchain, mem_timewarp = memory_usage(period, bufsize, when)
     headers_per_attack, _ = attack_rate(period, bufsize)
+    attacks_per_header = 1 / headers_per_attack
+    if not isfinite(attacks_per_header):
+        raise ArithmeticError('inverse attack rate exceeds floating-point range; this does not mean infinite attack cost')
     attack_volume = NET_HEADER_SIZE * args.attack_cost_headers
     print(f"Expected forged headers per attack: {headers_per_attack:.12g}; limit: {ATTACK_HEADERS:.12g}; within budget: {headers_per_attack < ATTACK_HEADERS}")
     # And report them.
@@ -395,7 +401,7 @@ def analyze(when):
     print("Properties:")
     print(f"- Per-peer memory for mainchain sync: {mem_mainchain / 8192:.3f} KiB")
     print(f"- Per-peer memory for timewarp attack: {mem_timewarp / 8192:.3f} KiB")
-    print(f"- Attack rate: {1/headers_per_attack:.1f} attacks for 1 header of memory growth")
+    print(f"- Attack rate: {attacks_per_header:.1f} attacks for 1 header of memory growth")
     print(f"  (where each attack costs {attack_volume / 8388608:.3f} MiB bandwidth)")
 
 
