@@ -77,5 +77,13 @@ The latter accepts `--legacy-bitcoind=/path/to/codec-v1/bitcoind` to compare bot
 implementations on the same blocks, upgrade a legacy DB, and test downgrade
 refusal. `-regtest -test=recycle` uses a 200-block lifetime.
 
+`feature_recycle_boundary.py` additionally compares both implementations against
+an independent Python UTXO/pool ledger through height 750. It covers expiry ±1,
+maturity and halving boundaries, same-block parents/children, double spends,
+zero-valued outputs, partial rewards, branch switching and renewed lifetimes.
+Use `--small-cache --crash-height=200` (or 201/202) for partial-write recovery at
+each expiry boundary, `--boundary-seed=N` for repeatable randomized workloads,
+and `--legacy-bitcoind=/path/to/codec-v1/bitcoind` for cross-version comparisons.
+
 The [September 11 development record](history/recycle-state-integrity-20260911.md)
 is historical validation information, not the current storage design.

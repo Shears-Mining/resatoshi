@@ -264,6 +264,7 @@ BASE_SCRIPTS = [
     'feature_utxo_set_hash.py',
     'feature_recycle.py',
     'feature_recycle_index.py',
+    'feature_recycle_boundary.py',
     'feature_recycle_spend.py',
     'feature_recycle_interfaces.py',
     'wallet_sendall_recycle.py',
