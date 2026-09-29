@@ -74,6 +74,25 @@ class HeadersSyncParamsTest(unittest.TestCase):
                 self.assertIn('does not mean infinite attack cost', result.stderr)
                 self.assertEqual(result.stdout, '')
 
+    def test_resource_budgets(self):
+        for options, message in (
+            (('--evaluate', '100000000', '1'), 'work budget exceeded'),
+            (('--evaluate', '10000', '1', '--max-work', '1000'), 'work budget exceeded'),
+            (('--evaluate', '1', '1', '--max-work', '2001'), 'work budget exceeded'),
+            (('--genesis', '2026-01-01', '--horizon', '2026-07-14',
+              '--minchainwork-headers', '100000000'), 'candidate budget exceeded'),
+            (('--minchainwork-headers', '2', '--max-candidates', '1'), 'candidate budget exceeded'),
+            (('--max-work', '0'), 'resource budgets must be positive'),
+            (('--max-candidates', '-1'), 'resource budgets must be positive'),
+        ):
+            with self.subTest(options=options):
+                result = self.run_model(*options, expected=2)
+                self.assertIn(message, result.stderr)
+                self.assertNotIn('m_headers_sync_params =', result.stdout)
+        # Raising the explicit budget restores the same result, not a partial approximation.
+        result = self.run_model('--evaluate', '1', '1', '--max-work', '10000')
+        self.assertIn('Expected forged headers per attack: 0.25;', result.stdout)
+
     def test_small_period(self):
         result = self.run_model('--evaluate', '1', '2')
         self.assertIn('Expected forged headers per attack: 0.125;', result.stdout)

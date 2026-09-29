@@ -116,3 +116,32 @@ header has an incorrect target. These use synthetic headers to isolate difficult
 and commitment checks; they do not assert MTP validity or mine real PoW. The
 alternate-chain test checks 128 commitment bits, retaining the existing random
 hash salt (accidental collision probability 2^-128 under the bit model).
+
+### Calculator resource budgets and transient memory
+
+The calculator bounds cumulative alignment, probability-tail and candidate-scan steps with
+`--max-work` (default 100,000,000), and bounds the optimizer's candidate list
+with `--max-candidates` (default 1,000,000). Exceeding either budget exits with
+an error and does not emit selected C++ parameters. Optimizer progress printed
+before an error is provisional. Budgets can be increased explicitly for an
+intentional larger local calculation; large profiles such as the upstream default
+optimization may need a higher `--max-work`. These are deterministic work/allocation
+bounds, not wall-clock deadlines or process RSS limits. Alignment iteration
+uses a lazy range. The limits do not change the probability model or silently
+truncate a search to produce a result.
+
+The table's memory figures describe modeled commitment bits and retained
+compressed headers, not a measured process RSS ceiling. During redownload,
+a whole incoming batch is checked before ready headers are removed. With a
+6,000-header buffer and a 2,000-header batch, the queue can temporarily hold
+8,000 compressed headers (375 KiB at 48 bytes each), while still below the
+work threshold. Incoming and returned full-header vectors, commitments,
+container allocations and other peer state add memory beyond that figure.
+This transient allowance does not change consensus or the selected parameters.
+
+The `headers_sync_asert` fuzz target constructs exact ASERT targets with a
+reachable work threshold. Every input checks presync, redownload, release
+before the final batch, complete ordered replay, and rejection of a late
+invalid target in either phase. The original `headers_sync_state` target
+retains arbitrary malformed-header exploration. These state tests do not
+replace caller-level proof-of-work, MTP or network validation tests.

@@ -27,6 +27,10 @@ parser.add_argument('--minchainwork-headers', type=int, default=938343)
 parser.add_argument('--horizon', type=utc_datetime, default=utc_datetime('2028-10-10'))
 parser.add_argument('--attack-cost-headers', type=int, help='lower bound on headers transmitted per attack attempt; defaults to minchainwork-headers')
 parser.add_argument('--seed', type=int, default=0)
+parser.add_argument('--max-work', type=int, default=100_000_000,
+                    help='maximum cumulative simulation and candidate-scan steps (default: 100000000)')
+parser.add_argument('--max-candidates', type=int, default=1_000_000,
+                    help='maximum optimization candidate count (default: 1000000)')
 parser.add_argument('--evaluate', nargs=2, type=int, metavar=('PERIOD', 'BUFFER'))
 args = parser.parse_args()
 if args.minchainwork_headers <= 0 or args.horizon <= args.genesis:
@@ -42,7 +46,26 @@ if args.minchainwork_headers > horizon_header_bound:
     parser.error('minchainwork-headers exceeds the model horizon header bound')
 if not args.evaluate and horizon_header_bound == args.minchainwork_headers:
     parser.error('optimization requires the horizon header bound to exceed minchainwork-headers')
+if args.max_work <= 0 or args.max_candidates <= 0:
+    parser.error('resource budgets must be positive')
+if not args.evaluate and args.minchainwork_headers > args.max_candidates:
+    parser.error('optimization candidate budget exceeded; increase --max-candidates explicitly')
 random.seed(args.seed)
+
+
+class WorkBudget:
+    """Deterministic bound on simulation work across the entire invocation."""
+
+    def __init__(self, remaining):
+        self.remaining = remaining
+
+    def consume(self, steps=1):
+        if steps > self.remaining:
+            raise ArithmeticError('simulation work budget exceeded; no configuration selected; increase --max-work explicitly')
+        self.remaining -= steps
+
+
+work_budget = WorkBudget(args.max_work)
 
 # Parameters:
 
@@ -193,6 +216,11 @@ def attack_rate(period, bufsize, limit=None):
     value in limit.
     """
 
+    # Even without tail terms, a full evaluation needs one step per alignment.
+    # Reject impossible requests before entering a very large range. Limited
+    # optimizer probes may exit early, so charge those as they run instead.
+    if limit is None:
+        work_budget.consume(HEADER_BATCH_COUNT * (period if RANDOMIZE_OFFSET else 1))
     max_rate = None
     max_honest = None
     # Let the current batch 0 being received be the first one in which the attacker starts lying.
@@ -208,12 +236,14 @@ def attack_rate(period, bufsize, limit=None):
         # the alignments are randomized, try all values. If not, the attacker can know/choose
         # the alignment, and will always start forging right after a commitment.
         if RANDOMIZE_OFFSET:
-            align_choices = list(range(period))
+            align_choices = range(period)
         else:
             align_choices = [(honest - 1) % period]
         # Now loop over those possible alignment values, computing the average attack rate
         # over them by dividing each contribution by len(align_choices).
         for align in align_choices:
+            if limit is not None:
+                work_budget.consume()
             # These state variables capture the situation after receiving the first batch.
             # - The number of headers received after the last commitment for an honest block:
             after_good_commit = HEADER_BATCH_COUNT - honest + ((honest - align - 1) % period)
@@ -228,6 +258,7 @@ def attack_rate(period, bufsize, limit=None):
             # Now iterate over the next batches of headers received, adding contributions to the
             # rate variable.
             while True:
+                work_budget.consume()
                 # Process the first HEADER_BATCH_COUNT headers in the buffer:
                 accept_forged_headers = max(forged_in_buf - bufsize, 0)
                 forged_in_buf -= accept_forged_headers
@@ -331,12 +362,14 @@ def optimize(when):
     print(f"- Initial: period={period}, buffer={bufsize}, mem={mem[0] / 8192:.3f} KiB")
 
     # Consider all period values between 1 and MINCHAINWORK_HEADERS, except the one just tried.
+    work_budget.consume(MINCHAINWORK_HEADERS)
     periods = [iv for iv in range(1, MINCHAINWORK_HEADERS + 1) if iv != period]
     # Iterate, picking a random element from periods, computing its corresponding bufsize, and
     # then using the result to shrink the period.
     while True:
         # Remove all periods whose memory usage for low-work long chain sync exceed the best
         # memory usage we've found so far.
+        work_budget.consume(len(periods))
         periods = [p for p in periods if find_max_headers(when) // p < best[2][0]]
         # Stop if there is nothing left to try.
         if len(periods) == 0:
@@ -346,6 +379,7 @@ def optimize(when):
         # The buffer size (at a given attack level) cannot shrink as the period grows. Find the
         # largest period smaller than the selected one we know the buffer size for, and use that
         # as a lower bound to find_bufsize.
+        work_budget.consume(len(maps))
         min_bufsize = max([(p, b) for p, b in maps if p < period] + [(0,0)])[1]
         bufsize = find_bufsize(period, ATTACK_HEADERS, when, best[2][0], min_bufsize)
         if bufsize is not None:
@@ -357,6 +391,7 @@ def optimize(when):
             if ASSUME_CONVEX:
                 # Remove all periods that are on the other side of the former best as the new
                 # best.
+                work_budget.consume(len(periods))
                 periods = [p for p in periods if (p < best[0]) == (period < best[0])]
             best = (period, bufsize, mem)
             print(f"- New best: period={period}, buffer={bufsize}, mem={mem[0] / 8192:.3f} KiB")
@@ -365,6 +400,7 @@ def optimize(when):
             if ASSUME_CONVEX:
                 # Remove all periods that are on the other side of the tried configuration as the
                 # best one.
+                work_budget.consume(len(periods))
                 periods = [p for p in periods if (p < period) == (best[0] < period)]
 
     # Return the result.
