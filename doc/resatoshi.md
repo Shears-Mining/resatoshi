@@ -17,6 +17,9 @@ Sources: [mainnet parameters](../src/kernel/chainparams.cpp),
 
 ## Mining and activation
 
+Header presynchronization and its reproducible anti-DoS parameters are described
+in [header synchronization](headers-sync.md).
+
 SHA-256d proof of work targets one block every 600 seconds. ASERT adjusts
 mainnet difficulty with a half-life of 172,800 seconds. The initial subsidy is
 50 coins and halves every 210,000 blocks.

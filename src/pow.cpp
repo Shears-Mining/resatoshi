@@ -23,16 +23,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         const CBlockIndex* anchor = pindexLast->GetAncestor(0);
         assert(anchor != nullptr);
 
-        // The virtual parent of the genesis anchor is one target interval
-        // before genesis. This makes block 1 retain the genesis target and
-        // establishes an ideal schedule from genesis onward.
-        const int64_t anchor_parent_time = anchor->GetBlockTime() - params.nPowTargetSpacing;
-        return CalculateASERT(arith_uint256{}.SetCompact(anchor->nBits),
-                              params.nPowTargetSpacing,
-                              pindexLast->GetBlockTime() - anchor_parent_time,
-                              pindexLast->nHeight - anchor->nHeight,
-                              UintToArith256(params.powLimit),
-                              params.nASERTHalfLife).GetCompact();
+        return GetNextASERTWorkRequired(*anchor, pindexLast->nHeight, pindexLast->GetBlockTime(), params);
     }
 
     // Only change once per difficulty adjustment interval
@@ -64,6 +55,19 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     assert(pindexFirst);
 
     return CalculateNextWorkRequired(pindexLast, pindexFirst->GetBlockTime(), params);
+}
+
+unsigned int GetNextASERTWorkRequired(const CBlockIndex& anchor, int64_t previous_height, int64_t previous_time, const Consensus::Params& params)
+{
+    // The virtual parent of the genesis anchor is one target interval
+    // before genesis. Keep this identical for full validation and headersync.
+    const int64_t anchor_parent_time = anchor.GetBlockTime() - params.nPowTargetSpacing;
+    return CalculateASERT(arith_uint256{}.SetCompact(anchor.nBits),
+                          params.nPowTargetSpacing,
+                          previous_time - anchor_parent_time,
+                          previous_height - anchor.nHeight,
+                          UintToArith256(params.powLimit),
+                          params.nASERTHalfLife).GetCompact();
 }
 
 unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params& params)
@@ -109,8 +113,8 @@ bool PermittedDifficultyTransition(const Consensus::Params& params, int64_t heig
 {
     if (params.fPowAllowMinDifficultyBlocks) return true;
 
-    // Header pre-synchronization lacks the timestamps and anchor needed to
-    // recompute ASERT. ContextualCheckBlockHeader performs the exact check.
+    // This context-free API can only check the ASERT target range. Headersync
+    // and full header validation use GetNextASERTWorkRequired for exact checks.
     if (params.nASERTHalfLife > 0) return DeriveTarget(new_nbits, params.powLimit).has_value();
 
     if (height % params.DifficultyAdjustmentInterval() == 0) {

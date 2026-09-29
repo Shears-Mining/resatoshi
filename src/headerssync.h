@@ -206,6 +206,10 @@ private:
      * buffer for later processing */
     bool ValidateAndStoreRedownloadedHeader(const CBlockHeader& header);
 
+    /** Check exact ASERT targets when enabled, otherwise retain legacy bounds. */
+    bool CheckDifficultyTransition(int64_t previous_height, uint32_t previous_bits,
+                                   uint32_t previous_time, const CBlockHeader& current) const;
+
     /** Return a set of headers that satisfy our proof-of-work threshold */
     std::vector<CBlockHeader> PopHeadersReadyForAcceptance();
 
@@ -221,6 +225,9 @@ private:
 
     /** Store the last block in our block index that the peer's chain builds from */
     const CBlockIndex& m_chain_start;
+
+    /** Fixed ASERT anchor; null on networks without active ASERT retargeting. */
+    const CBlockIndex* const m_asert_anchor;
 
     /** Minimum work that we're looking for on this chain. */
     const arith_uint256 m_minimum_required_work;
@@ -254,6 +261,9 @@ private:
 
     /** Height of last header in m_redownloaded_headers */
     int64_t m_redownload_buffer_last_height{0};
+
+    /** Previous header time must survive draining the redownload buffer. */
+    uint32_t m_redownload_buffer_last_time{0};
 
     /** Hash of last header in m_redownloaded_headers (initialized to
      * m_chain_start). We have to cache it because we don't have hashPrevBlock

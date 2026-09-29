@@ -26,6 +26,9 @@ class arith_uint256;
  */
 std::optional<arith_uint256> DeriveTarget(unsigned int nBits, uint256 pow_limit);
 
+/** Exact ASERT target from a fixed genesis anchor and the preceding header. */
+unsigned int GetNextASERTWorkRequired(const CBlockIndex& anchor, int64_t previous_height, int64_t previous_time, const Consensus::Params& params);
+
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params&);
 unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params&);
 

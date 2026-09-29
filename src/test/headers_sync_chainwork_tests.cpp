@@ -8,10 +8,12 @@
 #include <headerssync.h>
 #include <net_processing.h>
 #include <pow.h>
+#include <pow/asert.h>
 #include <test/util/common.h>
 #include <test/util/setup_common.h>
 #include <validation.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <vector>
 
@@ -250,6 +252,127 @@ BOOST_AUTO_TEST_CASE(too_little_work)
         /*exp_request_more=*/false,
         /*exp_headers_size=*/0, /*exp_pow_validated_prev=*/std::nullopt,
         /*exp_locator_hash=*/std::nullopt);
+}
+
+// The formula below is the pre-refactor full-validation calculation, kept
+// independent of the shared helper so agreement cannot be tautological.
+struct AsertHeaderChain {
+    Consensus::Params params;
+    std::vector<CBlockHeader> headers{401};
+    std::vector<CBlockIndex> indexes{401};
+    std::vector<uint256> hashes{401};
+
+    explicit AsertHeaderChain(const CChainParams& chain_params) : params{chain_params.GetConsensus()}
+    {
+        params.nASERTHalfLife = 172800;
+        params.fPowNoRetargeting = false;
+        params.powLimit = ArithToUint256(arith_uint256{}.SetCompact(0x1d00ffff));
+        headers[0] = chain_params.GenesisBlock();
+        headers[0].nBits = 0x1c70ffff;
+        for (size_t h{0}; h < headers.size(); ++h) {
+            auto& header{headers[h]};
+            if (h > 0) {
+                const auto& previous{headers[h - 1]};
+                header.hashPrevBlock = previous.GetHash();
+                const int64_t intervals[]{600, 601, 599, 900, 300, 1, 1199};
+                header.nTime = previous.nTime + intervals[h % 7];
+                header.nBits = CalculateASERT(arith_uint256{}.SetCompact(headers[0].nBits),
+                    params.nPowTargetSpacing,
+                    int64_t{previous.nTime} - (int64_t{headers[0].nTime} - params.nPowTargetSpacing),
+                    h - 1, UintToArith256(params.powLimit), params.nASERTHalfLife).GetCompact();
+            }
+            // Synthetic headers exercise target transitions only. The caller
+            // checks proof of work before entering HeadersSyncState.
+            hashes[h] = header.GetHash();
+            indexes[h].nVersion = header.nVersion;
+            indexes[h].hashMerkleRoot = header.hashMerkleRoot;
+            indexes[h].nTime = header.nTime;
+            indexes[h].nBits = header.nBits;
+            indexes[h].nNonce = header.nNonce;
+            indexes[h].phashBlock = &hashes[h];
+            indexes[h].nHeight = h;
+            indexes[h].pprev = h ? &indexes[h - 1] : nullptr;
+            indexes[h].BuildSkip();
+            indexes[h].nChainWork = GetBlockProof(indexes[h]) + (h ? indexes[h - 1].nChainWork : arith_uint256{});
+            if (h) BOOST_REQUIRE_EQUAL(GetNextWorkRequired(&indexes[h - 1], &header, params), header.nBits);
+        }
+    }
+};
+
+BOOST_AUTO_TEST_CASE(asert_exact_sync_boundaries)
+{
+    AsertHeaderChain chain{Params()};
+    // Fork-point anchoring, single-header and large batches, including an
+    // empty redownload queue between calls. Min-difficulty flags must not
+    // bypass ASERT, matching GetNextWorkRequired's precedence.
+    for (const bool min_difficulty : {false, true}) {
+        chain.params.fPowAllowMinDifficultyBlocks = min_difficulty;
+        for (const size_t start : {0, 1, 255}) {
+            for (const size_t batch : {1, 17, 2000}) {
+                for (const size_t buffer : {0, 1, 11}) {
+                    HeadersSyncState sync{0, chain.params, {7, buffer}, chain.indexes[start], chain.indexes.back().nChainWork};
+                    std::vector<CBlockHeader> accepted;
+                    for (int phase{0}; phase < 2; ++phase) {
+                        for (size_t next{start + 1}; next < chain.headers.size(); next += batch) {
+                            const auto result{sync.ProcessNextHeaders(std::span{chain.headers}.subspan(next, std::min(batch, chain.headers.size() - next)), true)};
+                            BOOST_REQUIRE(result.success);
+                            accepted.insert(accepted.end(), result.pow_validated_headers.begin(), result.pow_validated_headers.end());
+                        }
+                        BOOST_CHECK(sync.GetState() == (phase ? State::FINAL : State::REDOWNLOAD));
+                    }
+                    BOOST_REQUIRE_EQUAL(accepted.size(), chain.headers.size() - start - 1);
+                    for (size_t n{0}; n < accepted.size(); ++n) BOOST_CHECK(accepted[n].GetHash() == chain.hashes[start + n + 1]);
+                }
+            }
+        }
+    }
+}
+
+class InspectableHeadersSync : public HeadersSyncState {
+public:
+    using HeadersSyncState::HeadersSyncState;
+    size_t CommitmentOffset() const { return m_commit_offset; }
+};
+
+BOOST_AUTO_TEST_CASE(asert_reject_in_range_incorrect_targets)
+{
+    AsertHeaderChain chain{Params()};
+    const auto incorrect = [&](size_t height) {
+        CBlockHeader bad{chain.headers[height]};
+        bad.nBits = 0x1d00ffff;
+        BOOST_REQUIRE(bad.nBits != chain.headers[height].nBits);
+        BOOST_REQUIRE(DeriveTarget(bad.nBits, chain.params.powLimit));
+        return bad;
+    };
+    for (const size_t bad_height : {1, 17, 255, 400}) {
+        HeadersSyncState sync{0, chain.params, {7, 11}, chain.indexes[0], chain.indexes.back().nChainWork};
+        if (bad_height > 1) BOOST_REQUIRE(sync.ProcessNextHeaders(std::span{chain.headers}.subspan(1, bad_height - 1), true).success);
+        const CBlockHeader bad{incorrect(bad_height)};
+        BOOST_CHECK(!sync.ProcessNextHeaders(std::span{&bad, 1}, true).success);
+        BOOST_CHECK(sync.GetState() == State::FINAL);
+    }
+    InspectableHeadersSync sync{0, chain.params, {31, 0}, chain.indexes[0], chain.indexes.back().nChainWork};
+    BOOST_REQUIRE(sync.ProcessNextHeaders(std::span{chain.headers}.subspan(1), true).success);
+    BOOST_REQUIRE(sync.GetState() == State::REDOWNLOAD);
+    // No commitment is checked at the corrupted height: failure must come
+    // from exact difficulty validation, not a random commitment mismatch.
+    const size_t bad_height{sync.CommitmentOffset() == 1 ? 2U : 1U};
+    if (bad_height > 1) BOOST_REQUIRE(sync.ProcessNextHeaders(std::span{chain.headers}.subspan(1, bad_height - 1), true).success);
+    const CBlockHeader bad{incorrect(bad_height)};
+    BOOST_CHECK(!sync.ProcessNextHeaders(std::span{&bad, 1}, true).success);
+    BOOST_CHECK(sync.GetState() == State::FINAL);
+}
+
+BOOST_AUTO_TEST_CASE(asert_disabled_retains_no_retarget_behavior)
+{
+    auto params{Params().GetConsensus()};
+    params.nASERTHalfLife = 1;
+    BOOST_REQUIRE(params.fPowNoRetargeting);
+    const auto& headers{FirstChain()};
+    HeadersSyncState sync{0, params, {COMMITMENT_PERIOD, REDOWNLOAD_BUFFER_SIZE}, chain_start, CHAIN_WORK};
+    BOOST_REQUIRE(sync.ProcessNextHeaders(headers, true).success);
+    BOOST_REQUIRE(sync.ProcessNextHeaders(headers, true).success);
+    BOOST_CHECK(sync.GetState() == State::FINAL);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -303,6 +303,8 @@ BOOST_AUTO_TEST_CASE(ChainParams_MAIN_sanity)
                       "0000000000000000000000000000000000000000000000000cfed9b27eee9a28");
     BOOST_CHECK(params->GetConsensus().defaultAssumeValid.IsNull());
     BOOST_CHECK(params->FixedSeeds().empty());
+    BOOST_CHECK_EQUAL(params->HeadersSync().commitment_period, 191U);
+    BOOST_CHECK_EQUAL(params->HeadersSync().redownload_buffer_size, 6000U);
     BOOST_CHECK_EQUAL(params->Bech32HRP(), "rsat");
     BOOST_CHECK(!params->AssumeutxoForHeight(840'000));
 }
