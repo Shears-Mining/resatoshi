@@ -85,5 +85,20 @@ Use `--small-cache --crash-height=200` (or 201/202) for partial-write recovery a
 each expiry boundary, `--boundary-seed=N` for repeatable randomized workloads,
 and `--legacy-bitcoind=/path/to/codec-v1/bitcoind` for cross-version comparisons.
 
+`feature_recycle_full_block.py` (extended suite) fills blocks to exactly
+4,000,000 weight units and sends them over P2P. Separate profiles contain
+99,000 spendable outputs, 16,300 independent transactions, and approximately
+4 MB of witness data. It rejects weight-limit
+violations of one and four units, spends at the expiry boundary while tens of
+thousands of outputs expire, and compares UTXO counts, values, MuHash and pool
+balances with an independent ledger. Restart, chainstate reindex, old database
+migration and disconnect/reconnect across mass expiry are included. Use
+`--legacy-bitcoind=/path/to/codec-v1/bitcoind --small-cache --crash-expiry` to
+compare implementations and interrupt a mass-expiry database batch. The small-cache
+phase uses 4 MiB and level-2 startup verification; full-chain level-4 verification
+then runs with the normal cache budget. These synthetic consensus workloads
+deliberately exceed standard relay policy; they are correctness stress tests,
+not wallet-signature or network throughput benchmarks.
+
 The [September 11 development record](history/recycle-state-integrity-20260911.md)
 is historical validation information, not the current storage design.
