@@ -15,6 +15,7 @@
 #include <index/txindex.h>
 #include <node/blockstorage.h>
 #include <node/context.h>
+#include <node/recycle.h>
 #include <primitives/block.h>
 #include <primitives/transaction.h>
 #include <rpc/blockchain.h>
@@ -345,10 +346,8 @@ static bool rest_spent_txouts(const std::any& context, HTTPRequest* req, const s
     if (pblockindex->nHeight > 0 && !chainman->m_blockman.ReadBlockUndo(block_undo, *pblockindex)) {
         return RESTERR(req, HTTP_NOT_FOUND, hashStr + " undo not available");
     }
-    if (chainman->GetConsensus().recycle_enabled &&
-        pblockindex->nHeight > chainman->GetConsensus().recycle_expiry_blocks &&
-        block_undo.vtxundo.size() == pblockindex->nTx) {
-        block_undo.vtxundo.pop_back(); // Internal recycle state is not a spent transaction output.
+    if (!node::recycle::RemoveStateUndo(block_undo, pblockindex->nHeight, pblockindex->nTx, chainman->GetConsensus())) {
+        return RESTERR(req, HTTP_INTERNAL_SERVER_ERROR, hashStr + " undo data inconsistent with block");
     }
 
     switch (rf) {

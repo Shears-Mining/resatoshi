@@ -120,7 +120,10 @@ bool Apply(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_
             const Coin& coin{view.AccessCoin(outpoint)};
             if (!coin.IsSpent() && coin.nHeight == origin) {
                 Coin expired;
-                if (!view.SpendCoin(outpoint, &expired)) return false;
+                if (!view.SpendCoin(outpoint, &expired)) {
+                    error = "recycle expiry: SpendCoin failed";
+                    return false;
+                }
                 expired_value += expired.out.nValue;
                 if (expired_outpoints) expired_outpoints->push_back(outpoint);
                 undo_data.expired.emplace_back(outpoint, std::move(expired));

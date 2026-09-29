@@ -2,27 +2,96 @@
 # Copyright (c) 2026 The ReSatoshi developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-"""Check snapshot tooling and opt-in descriptor expiry across a reorg."""
+"""Check snapshot tooling, REST undo, and opt-in descriptor expiry across a reorg."""
 
 from decimal import Decimal
+import http.client
 import importlib.util
 import io
+import json
 from pathlib import Path
 import sqlite3
 import subprocess
 import sys
+import urllib.parse
 
 from test_framework.blocktools import create_block, create_coinbase
-from test_framework.messages import COIN, CTxOut, ser_compact_size, ser_varint
+from test_framework.messages import COIN, CTxOut, MAGIC_BYTES, deser_block_spent_outputs, hash256, ser_compact_size, ser_varint
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_raises, assert_raises_rpc_error
+from test_framework.util import assert_equal, assert_raises, assert_raises_rpc_error, util_xor
+from test_framework.wallet import MiniWallet
 
 
 class RecycleInterfacesTest(BitcoinTestFramework):
     def set_test_params(self):
         self.num_nodes = 1
         self.setup_clean_chain = True
-        self.extra_args = [['-test=recycle', '-blockfilterindex']]
+        self.extra_args = [['-test=recycle', '-blockfilterindex', '-rest']]
+
+    def spent_outputs(self, blockhash, fmt, status=200):
+        url = urllib.parse.urlparse(self.nodes[0].url)
+        conn = http.client.HTTPConnection(url.hostname, url.port, timeout=self.nodes[0].rpc_timeout)
+        try:
+            conn.request('GET', f'/rest/spenttxouts/{blockhash}.{fmt}')
+            response = conn.getresponse()
+            body = response.read()
+            assert_equal(response.status, status)
+            return body
+        finally:
+            conn.close()
+
+    def check_spent_outputs(self, blockhash):
+        block = self.nodes[0].getblock(blockhash, 3)
+        binary = self.spent_outputs(blockhash, 'bin')
+        assert_equal(bytes.fromhex(self.spent_outputs(blockhash, 'hex').decode()), binary)
+        stream = io.BytesIO(binary)
+        decoded = deser_block_spent_outputs(stream)
+        assert_equal(stream.read(), b'')
+        decoded_json = json.loads(self.spent_outputs(blockhash, 'json'), parse_float=Decimal)
+        assert_equal(len(decoded), len(decoded_json), len(block['tx']))
+        for tx, inputs, inputs_json in zip(block['tx'], decoded, decoded_json):
+            expected = [(vin['prevout']['scriptPubKey']['hex'], vin['prevout']['value'])
+                        for vin in tx['vin'] if 'coinbase' not in vin]
+            assert_equal([(txout.scriptPubKey.hex(), Decimal(txout.nValue) / COIN) for txout in inputs], expected)
+            assert_equal([(prevout['scriptPubKey']['hex'], prevout['value']) for prevout in inputs_json], expected)
+
+    def check_inconsistent_undo(self, blockhash):
+        node = self.nodes[0]
+        previous = bytes.fromhex(node.getblockheader(blockhash)['previousblockhash'])[::-1]
+        self.wait_until(lambda: node.getindexinfo()['basic block filter index']['synced'])
+        self.stop_node(0)
+        path = node.blocks_path / 'rev00000.dat'
+        original = path.read_bytes()
+        key = node.read_xor_key()
+        data = bytearray(util_xor(original, key, offset=0))
+        offset = 0
+        matches = []
+        while data[offset:offset + 4] == MAGIC_BYTES['regtest']:
+            start = offset + 8
+            size = int.from_bytes(data[offset + 4:start], 'little')
+            end = start + size
+            if hash256(previous + data[start:end]) == data[end:end + 32]:
+                matches.append(offset)
+            offset = end + 32
+        assert_equal(len(matches), 1)
+        start = matches[0] + 8
+        # A valid checksum with no transaction/state undo records: readable,
+        # but inconsistent with this post-expiry block. Keep other offsets intact.
+        payload = b'\x00'
+        data[start - 4:start] = len(payload).to_bytes(4, 'little')
+        data[start:start + 33] = payload + hash256(previous + payload)
+        try:
+            path.write_bytes(util_xor(data, key, offset=0))
+            self.start_node(0, extra_args=self.extra_args[0] + ['-checklevel=0'])
+            for fmt in ('json', 'hex', 'bin'):
+                assert b'undo data inconsistent with block' in self.spent_outputs(blockhash, fmt, status=500)
+        finally:
+            if node.running:
+                self.stop_node(0)
+            path.write_bytes(original)
+        self.start_node(0)
+        self.check_spent_outputs(blockhash)
+        assert node.verifychain(4, 0)
 
     def run_test(self):
         node = self.nodes[0]
@@ -144,6 +213,19 @@ class RecycleInterfacesTest(BitcoinTestFramework):
         self.restart_node(0)
         assert_equal(node.getblockchaininfo(True)['recycling'], rules)
         assert_equal(node.getdescriptoractivity(hashes, [desc], False, True)['activity'], events)
+
+        self.log.info('Check REST undo at genesis and before/at/after first expiry')
+        self.generatetodescriptor(node, 1, 'raw(6a)')
+        for height in (0, 1, 200, 201, 202):
+            self.check_spent_outputs(node.getblockhash(height))
+        self.log.info('Check real transaction inputs survive recycle undo filtering')
+        wallet = MiniWallet(node)
+        self.generate(wallet, 101)
+        wallet.send_self_transfer(from_node=node)
+        tip = self.generate(wallet, 1)[0]
+        assert_equal(len(node.getblock(tip)['tx']), 2)
+        self.check_spent_outputs(tip)
+        self.check_inconsistent_undo(tip)
 
 
 if __name__ == '__main__':
