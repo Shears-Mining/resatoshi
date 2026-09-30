@@ -193,7 +193,7 @@ bool CoinStatsIndex::CustomAppend(const interfaces::BlockInfo& block)
     }
 
     const auto& consensus{Params().GetConsensus()};
-    if (consensus.recycle_enabled && block.height > consensus.recycle_expiry_blocks) {
+    if (node::recycle::ExpectsStateUndo(block.height, consensus)) {
         if (!block.undo_data || !block.data || block.undo_data->vtxundo.size() != block.data->vtx.size()) return false;
         CAmount pool_before{0};
         std::vector<std::pair<COutPoint, Coin>> expired;
@@ -418,7 +418,7 @@ bool CoinStatsIndex::RevertBlock(const interfaces::BlockInfo& block)
     }
 
     const auto& consensus{Params().GetConsensus()};
-    if (consensus.recycle_enabled && block.height > consensus.recycle_expiry_blocks) {
+    if (node::recycle::ExpectsStateUndo(block.height, consensus)) {
         if (block.undo_data->vtxundo.size() != block.data->vtx.size()) return false;
         CAmount pool_before{0};
         std::vector<std::pair<COutPoint, Coin>> expired;

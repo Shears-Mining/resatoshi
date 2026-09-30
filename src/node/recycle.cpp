@@ -212,10 +212,15 @@ bool ReadUndo(const CTxUndo& undo, CAmount& pool_before, std::vector<std::pair<C
     return true;
 }
 
+bool ExpectsStateUndo(int height, const Consensus::Params& consensus)
+{
+    return consensus.recycle_enabled && height > consensus.recycle_expiry_blocks;
+}
+
 bool RemoveStateUndo(CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus)
 {
     if (transaction_count == 0) return false;
-    const bool has_state{consensus.recycle_enabled && height > consensus.recycle_expiry_blocks};
+    const bool has_state{ExpectsStateUndo(height, consensus)};
     const size_t expected{transaction_count - 1 + size_t{has_state}};
     if (undo.vtxundo.size() != expected) return false;
     if (has_state) undo.vtxundo.pop_back();

@@ -2156,7 +2156,7 @@ static RPCHelpMan getblockstats()
 
     const auto& consensus{chainman.GetParams().GetConsensus()};
     if ((do_all || SetHasKeys(stats, "utxo_increase_actual", "utxo_size_inc_actual", "expired_outputs")) &&
-        consensus.recycle_enabled && pindex.nHeight > consensus.recycle_expiry_blocks) {
+        node::recycle::ExpectsStateUndo(pindex.nHeight, consensus)) {
         // Expiry removes coins without transaction inputs. The extra undo entry
         // records only coins actually recycled, not those spent in this block.
         CHECK_NONFATAL(blockUndo.vtxundo.size() == block.vtx.size());
@@ -2932,9 +2932,8 @@ static RPCHelpMan getdescriptoractivity()
 
         // Expiry is a state transition after the block's transactions. It has no
         // spending transaction, so never synthesize a spend_txid for these events.
-        if (self.Arg<bool>("include_expired") && chainman.GetConsensus().recycle_enabled &&
-            blockindex->nHeight > chainman.GetConsensus().recycle_expiry_blocks) {
-            CHECK_NONFATAL(block_undo.vtxundo.size() == blockindex->nTx);
+        if (self.Arg<bool>("include_expired") && node::recycle::ExpectsStateUndo(blockindex->nHeight, chainman.GetConsensus())) {
+            CHECK_NONFATAL(block_undo.vtxundo.size() == block.vtx.size());
             CAmount pool_before;
             std::vector<std::pair<COutPoint, Coin>> expired;
             CHECK_NONFATAL(node::recycle::ReadUndo(block_undo.vtxundo.back(), pool_before, expired));

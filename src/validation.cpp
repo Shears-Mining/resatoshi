@@ -2206,7 +2206,7 @@ DisconnectResult Chainstate::DisconnectBlock(const CBlock& block, const CBlockIn
     }
 
     const bool recycle_enabled{m_chainman.GetConsensus().recycle_enabled};
-    const size_t recycle_undos{recycle_enabled && pindex->nHeight - m_chainman.GetConsensus().recycle_expiry_blocks >= 1 ? 1U : 0U};
+    const size_t recycle_undos{node::recycle::ExpectsStateUndo(pindex->nHeight, m_chainman.GetConsensus()) ? 1U : 0U};
     if (blockUndo.vtxundo.size() + 1 != block.vtx.size() + recycle_undos) {
         LogError("DisconnectBlock(): block and undo data inconsistent\n");
         return DISCONNECT_FAILED;
@@ -4878,7 +4878,7 @@ bool Chainstate::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& in
         AddCoins(inputs, *tx, pindex->nHeight, true);
     }
     if (!m_chainman.GetConsensus().recycle_enabled) return true;
-    const bool has_recycle_undo{pindex->nHeight - m_chainman.GetConsensus().recycle_expiry_blocks >= 1};
+    const bool has_recycle_undo{node::recycle::ExpectsStateUndo(pindex->nHeight, m_chainman.GetConsensus())};
     const CTxUndo* recycle_undo{has_recycle_undo && block_undo.vtxundo.size() >= block.vtx.size()
                                     ? &block_undo.vtxundo.back()
                                     : nullptr};

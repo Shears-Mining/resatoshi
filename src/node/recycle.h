@@ -47,6 +47,11 @@ bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CA
 /** Read the existing undo payload for index accounting. */
 bool ReadUndo(const CTxUndo& undo, CAmount& pool_before, std::vector<std::pair<COutPoint, Coin>>& expired);
 
+/** Whether the network rules require an internal state undo entry at this height.
+ * Does not inspect or modify undo data.
+ */
+bool ExpectsStateUndo(int height, const Consensus::Params& consensus);
+
 /** Remove internal state from a copy of block undo before exposing transaction inputs.
  * Returns false, without modifying undo, if its entry count is inconsistent.
  */
