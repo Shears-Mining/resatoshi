@@ -35,13 +35,20 @@ Sources: [difficulty calculation](../src/pow.cpp),
 
 ### Bootstrap and minimum chain work
 
-Fresh nodes discover peers through `resatoshi-seed.freeddns.org` and
-`resatoshi-seed.duckdns.org`. These are the existing operator's bootstrap
-hostnames, not two independent operators. If a hostname does not support
+Builds from the current `main` source discover peers through
+`seed.resatoshi.org`, `resatoshi-seed.freeddns.org`, and
+`resatoshi-seed.duckdns.org`. The first entry is a DNS crawler that returns
+candidate peer addresses through service-bit queries, including
+`x9.seed.resatoshi.org` for NODE_NETWORK and NODE_WITNESS. The other two entries
+are the existing operator's bootstrap hostnames. If a hostname does not support
 service-bit DNS queries, the upstream networking code falls back to connecting
-to that host and requesting peer addresses. Normal `-dnsseed`, `-connect`,
-`-proxy`, and manual-peer controls still apply. Independent bootstrap operators
-remain desirable as the network grows.
+to that host and requesting peer addresses.
+
+The list is compiled into the node; older binaries retain their previous list.
+DNS responses assist peer discovery, while nodes validate the chain themselves.
+Normal `-dnsseed`, `-connect`, `-proxy`, and manual-peer controls still apply.
+Multiple hostnames do not establish operator independence; independently
+operated seeds remain desirable as the network grows.
 
 If a fresh mainnet node has neither peers nor known addresses, it retries seed address
 fetches after 60 seconds, doubling the interval up to 15 minutes after each

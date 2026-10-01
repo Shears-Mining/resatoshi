@@ -297,7 +297,8 @@ BOOST_AUTO_TEST_CASE(ChainParams_MAIN_sanity)
     BOOST_CHECK_EQUAL(params->GetDefaultPort(), 19333);
     const MessageStartChars expected_magic{0x47, 0xd9, 0x24, 0x34};
     BOOST_CHECK(params->MessageStart() == expected_magic);
-    const std::vector<std::string> expected_seeds{"resatoshi-seed.freeddns.org", "resatoshi-seed.duckdns.org"};
+    const std::vector<std::string> expected_seeds{
+        "seed.resatoshi.org", "resatoshi-seed.freeddns.org", "resatoshi-seed.duckdns.org"};
     BOOST_CHECK(params->DNSSeeds() == expected_seeds);
     BOOST_CHECK_EQUAL(params->GetConsensus().nMinimumChainWork.ToString(),
                       "0000000000000000000000000000000000000000000000000cfed9b27eee9a28");

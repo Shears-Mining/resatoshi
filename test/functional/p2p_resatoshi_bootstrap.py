@@ -63,7 +63,8 @@ class ResatoshiBootstrapTest(BitcoinTestFramework):
             if self.options.testnet4:
                 self.check_inherited_seeds()
                 return
-            pending = {"resatoshi-seed.freeddns.org", "resatoshi-seed.duckdns.org"}
+            mainnet_seeds = {"seed.resatoshi.org", "resatoshi-seed.freeddns.org", "resatoshi-seed.duckdns.org"}
+            pending = mainnet_seeds.copy()
             while pending:
                 command = self.proxy.queue.get(timeout=30 * self.options.timeout_factor)
                 assert isinstance(command, Socks5Command), command
@@ -96,7 +97,7 @@ class ResatoshiBootstrapTest(BitcoinTestFramework):
             self.log.info("Wait for backoff retry, address discovery and block sync")
             command = self.proxy.queue.get(timeout=90 * self.options.timeout_factor)
             assert isinstance(command, Socks5Command), command
-            assert command.addr.decode("ascii") in {"resatoshi-seed.freeddns.org", "resatoshi-seed.duckdns.org"}
+            assert command.addr.decode("ascii") in mainnet_seeds
             self.wait_until(lambda: len(node.getnodeaddresses(0)) > 0)
             self.wait_until(lambda: node.getbestblockhash() == block.hash_hex)
             assert any(peer["connection_type"] == "outbound-full-relay" for peer in node.getpeerinfo())

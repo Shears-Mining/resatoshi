@@ -25,10 +25,15 @@ use `bitcoin help` to list its available subcommands.
 | Windows | `%LOCALAPPDATA%\ReSatoshi` |
 
 The configuration filename is `bitcoin.conf`. Mainnet uses P2P port `19333`
-and RPC port `19332`. New nodes automatically use the two existing bootstrap
-hostnames through the upstream DNS-seed/address-fetch mechanism. No manual
-peer setting is required with the default networking options. Both hostnames
-are operated by the same bootstrap operator.
+and RPC port `19332`. Builds from the current `main` source automatically use
+`seed.resatoshi.org` alongside the existing `resatoshi-seed.freeddns.org` and
+`resatoshi-seed.duckdns.org` bootstrap entries. The DNS crawler answers
+service-bit queries such as `x9.seed.resatoshi.org`; existing bootstrap hosts
+remain available through the upstream DNS-seed/address-fetch mechanism.
+No manual peer setting is required with the default networking options.
+These names do not establish independent operators or availability. The seed
+list is compiled into the node; existing binaries retain their previous list
+until replaced with a build containing the new seed.
 
 For a persistent manual connection, or when automatic seeding is disabled,
 these optional entries can be added to `bitcoin.conf`:

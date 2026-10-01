@@ -144,6 +144,9 @@ public:
         assert(consensus.hashGenesisBlock == uint256{"0000000379813245fcdd4600969c6f74684f14433badf837be5b8ffa560174ec"});
         assert(genesis.hashMerkleRoot == uint256{"d9effac57f561ba305e519c420626e3841d3b703cf3cfaa8ed1edb8a2b5b156e"});
 
+        // ReSatoshi DNS crawler with service-bit filtering.
+        vSeeds.emplace_back("seed.resatoshi.org");
+
         // Existing bootstrap hosts. Upstream DNS seeding falls back to an
         // ADDR_FETCH connection when service-bit subdomains are unavailable.
         // These are node hostnames, not independent DNS crawler services.
