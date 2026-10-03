@@ -1,0 +1,346 @@
+{
+  "schema_version": 1,
+  "kind": "maintainer-reported local maintenance validation",
+  "source_commit": "aea436a0d39a14d28ed392777f170815b353a59c",
+  "base_main_commit": "2e72eeaec752e3bd64365e9df9c900a3635d56b9",
+  "source_tree": "8ffd101ae3be097d39cc888559e8c7157adf6264",
+  "completed_utc": "2026-10-03T04:52:12.822269+00:00",
+  "status": "passed within the listed scope",
+  "hosted_ci": {
+    "configured_or_run": false,
+    "policy": "Local validation only; no GitLab CI requested."
+  },
+  "build": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "compiler": "c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "cmake": "cmake version 4.2.3",
+    "cpu": "AMD Ryzen 7 7840HS w/ Radeon 780M Graphics",
+    "memory_total": "MemTotal:       14163612 kB",
+    "build_type": {
+      "linux": "incremental RelWithDebInfo",
+      "windows": "incremental Release"
+    },
+    "windows_os": "Microsoft Windows [Version 10.0.26200.9445]",
+    "windows_compiler": "x86_64-w64-mingw32-g++ (GCC) 13-posix"
+  },
+  "scope": {
+    "production_code": [
+      "src/net.cpp",
+      "src/net.h"
+    ],
+    "consensus_changed": false,
+    "chainstate_format_changed": false,
+    "wallet_logic_changed": false,
+    "main_merged": false,
+    "remote_pushed": false,
+    "vps_changed": false
+  },
+  "tests": {
+    "linux_ctest": {
+      "passed": 157,
+      "failed": 0,
+      "skipped": 0,
+      "command": "DIR_UNIT_TEST_DATA=<unit-test-assets> ctest --test-dir build -j4 --output-on-failure --timeout 600",
+      "includes": [
+        "two real-worker direct DNS recovery cases",
+        "recycle corruption/rebuild cases",
+        "kernel spent-output tests"
+      ]
+    },
+    "functional": [
+      {
+        "test": "feature_proxy.py",
+        "status": "Passed",
+        "duration(seconds)": "5"
+      },
+      {
+        "test": "feature_recycle_interfaces.py",
+        "status": "Passed",
+        "duration(seconds)": "2"
+      },
+      {
+        "test": "feature_recycle_spend.py",
+        "status": "Passed",
+        "duration(seconds)": "7"
+      },
+      {
+        "test": "feature_settings.py",
+        "status": "Passed",
+        "duration(seconds)": "3"
+      },
+      {
+        "test": "p2p_add_connections.py",
+        "status": "Passed",
+        "duration(seconds)": "7"
+      },
+      {
+        "test": "p2p_dns_seeds.py",
+        "status": "Passed",
+        "duration(seconds)": "25"
+      },
+      {
+        "test": "p2p_private_broadcast.py",
+        "status": "Passed",
+        "duration(seconds)": "16"
+      },
+      {
+        "test": "p2p_private_broadcast_retry_v1.py",
+        "status": "Passed",
+        "duration(seconds)": "2"
+      },
+      {
+        "test": "p2p_resatoshi_bootstrap.py",
+        "status": "Passed",
+        "duration(seconds)": "61"
+      },
+      {
+        "test": "p2p_resatoshi_bootstrap.py --inactive",
+        "status": "Passed",
+        "duration(seconds)": "253"
+      },
+      {
+        "test": "p2p_resatoshi_bootstrap.py --stale-inbound",
+        "status": "Passed",
+        "duration(seconds)": "186"
+      },
+      {
+        "test": "p2p_resatoshi_bootstrap.py --testnet4",
+        "status": "Passed",
+        "duration(seconds)": "65"
+      },
+      {
+        "test": "p2p_seednode.py",
+        "status": "Passed",
+        "duration(seconds)": "2"
+      },
+      {
+        "test": "rpc_getblockstats_recycle.py",
+        "status": "Passed",
+        "duration(seconds)": "1"
+      },
+      {
+        "test": "rpc_getdescriptoractivity.py",
+        "status": "Passed",
+        "duration(seconds)": "0"
+      },
+      {
+        "test": "rpc_net.py --v1transport",
+        "status": "Passed",
+        "duration(seconds)": "10"
+      },
+      {
+        "test": "rpc_net.py --v2transport",
+        "status": "Passed",
+        "duration(seconds)": "9"
+      },
+      {
+        "test": "rpc_scanblocks.py",
+        "status": "Passed",
+        "duration(seconds)": "0"
+      },
+      {
+        "test": "tool_utxo_to_sqlite.py",
+        "status": "Passed",
+        "duration(seconds)": "1"
+      },
+      {
+        "test": "wallet_basic.py",
+        "status": "Passed",
+        "duration(seconds)": "14"
+      },
+      {
+        "test": "wallet_lockunspent_recycle.py",
+        "status": "Passed",
+        "duration(seconds)": "1"
+      },
+      {
+        "test": "wallet_sendall_recycle.py",
+        "status": "Passed",
+        "duration(seconds)": "1"
+      }
+    ],
+    "windows_units": {
+      "selected_passed": 72,
+      "failed": 0,
+      "unselected": 695,
+      "command": "build-ci-windows/bin/test_bitcoin.exe --run_test=net_tests,netbase_tests,addrman_tests,recycle_tests --report_level=short"
+    },
+    "legacy_comparison": {
+      "legacy_version": "ReSatoshi daemon version v31.0.0-rsat.1-g70f72f8dca31 (Bitcoin Core base 31.0.0) bitcoind",
+      "legacy_sha256": "255e9e7b8ab251774c6bb93e56abf959fa098d99600a9cb0c3231460ac7ab19c",
+      "source_commit": "aea436a0d39a14d28ed392777f170815b353a59c",
+      "checks": [
+        {
+          "name": "index",
+          "command": [
+            "python3",
+            "build/test/functional/feature_recycle_index.py",
+            "--configfile=${REPO}/build/test/config.ini",
+            "--legacy-bitcoind=${HOME}/resatoshi/bootstrap-bin/70f72f8dca31/bitcoind",
+            "--tmpdir=/tmp/resatoshi-dns-legacy-index",
+            "--portseed=931",
+            "--crash-upgrade"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 4.587
+        },
+        {
+          "name": "boundary",
+          "command": [
+            "python3",
+            "build/test/functional/feature_recycle_boundary.py",
+            "--configfile=${REPO}/build/test/config.ini",
+            "--legacy-bitcoind=${HOME}/resatoshi/bootstrap-bin/70f72f8dca31/bitcoind",
+            "--tmpdir=/tmp/resatoshi-dns-legacy-boundary",
+            "--portseed=932",
+            "--small-cache",
+            "--crash-height=201",
+            "--boundary-results=${AUDIT}/boundary-results.json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 8.139
+        },
+        {
+          "name": "full_block",
+          "command": [
+            "python3",
+            "build/test/functional/feature_recycle_full_block.py",
+            "--configfile=${REPO}/build/test/config.ini",
+            "--legacy-bitcoind=${HOME}/resatoshi/bootstrap-bin/70f72f8dca31/bitcoind",
+            "--tmpdir=/tmp/resatoshi-dns-legacy-full_block",
+            "--portseed=933",
+            "--small-cache",
+            "--crash-expiry",
+            "--full-block-results=${AUDIT}/full-block-results.json"
+          ],
+          "exit_code": 0,
+          "elapsed_seconds": 86.415
+        }
+      ]
+    },
+    "lint": "Full local lint runner passed."
+  },
+  "regression_evidence": [
+    "Service-bit DNS recovery failed on the base production code and passed after sharing startup/retry discovery.",
+    "Large initial addrman exposed a delayed retry in the intermediate implementation; the final code interrupts the initial wait and both worker tests pass.",
+    "Missing, phantom and wrong-height index entries were injected in test databases; tests characterize the ready-marker limitation and rebuild behavior."
+  ],
+  "initial_environment_failures": [
+    "The sandboxed preliminary CTest run failed ipc_tests with Operation not permitted and timed out sock_tests after denied socket operations.",
+    "The final complete CTest run outside that sandbox passed all 157 suites; no test was disabled to obtain this result."
+  ],
+  "artifacts": {
+    "build/bin/bitcoind": "377e3ec0de2dc70193d3210ce7d9835652bf607bdcf395110ea7ae5fc9316b89",
+    "build/bin/bitcoin-cli": "07c3e5a0cfb762c73ec76fc5d939873c79a7034c850290feb251ff9cc4f1fb5c",
+    "build/bin/test_bitcoin": "094966885781c9c3aedf83aef2258329ab0eaa28d4ebc8b27f093250e9c6ae6a",
+    "build-ci-windows/bin/bitcoind.exe": "14e09c7c6fd6a684e989f8d80df0b7e02139b1c99899f7082924f6f98f22ad98",
+    "build-ci-windows/bin/bitcoin-cli.exe": "08129355368bb21fc3dc6fe0d68eb5c3301159c146d2683814198c6bbd567f80",
+    "build-ci-windows/bin/test_bitcoin.exe": "5b9d087e6f683b10cc791e62f1ea512865f252b3598e8b677273154e854a6fc8",
+    "source-aea436a.tar.gz": "157404e9be8c22cf457e2f317335e95ba3d3bf643defe43267d56530ec606975"
+  },
+  "evidence": {
+    "availability": "Prepared locally, not uploaded by this task.",
+    "bundle": "validation-aea436a.tar.gz",
+    "logs": [
+      {
+        "file": "ctest-final.log",
+        "sha256": "8f47e1c661f82fc1db9a2500e5e46d77022586492971122f34a71cb67d480dc9"
+      },
+      {
+        "file": "ctest-final.xml",
+        "sha256": "fe9543e6ecdaf9c58016b8ae6cef72b1cbbdc84f8961d419e7f72b796042c2a4"
+      },
+      {
+        "file": "functional-final.log",
+        "sha256": "7b6e713eeb97c75bdad3e4cd56615afaa778db9c7877a8c0895d5ca2355fa2fa"
+      },
+      {
+        "file": "functional-final.csv",
+        "sha256": "dc671640652229abb7460fb86de3532ec974e3b64f27ac9e0f2157572b49fd6f"
+      },
+      {
+        "file": "windows-unit-final.log",
+        "sha256": "4834c6134ca0ae0ff5a68c006228000184375701e38506a6d64aaffbdfae8c0f"
+      },
+      {
+        "file": "lint-final.log",
+        "sha256": "0eb4e33bd0a56e5301c51ca115152e900c34ec20420caba5639227f8a9afcfa1"
+      },
+      {
+        "file": "build-final.log",
+        "sha256": "d20022e83b4832b5e8e46b200d44b5bc9137591cd2c7900fa65f73ee6ea800b6"
+      },
+      {
+        "file": "windows-build-final.log",
+        "sha256": "de5cef82b0ca57541b68dd95ae4c5db50ed4a7815e96e0bf4893a484809849a7"
+      },
+      {
+        "file": "dns-before.log",
+        "sha256": "082853c78c572c9a83d59c1c063bd4fb63fa3a5d0ec574568576eaa853aeade4"
+      },
+      {
+        "file": "startup-delay-before.log",
+        "sha256": "ffe5755ebb138fe09938cd55616095121f4b49a2a765b0d7da1f0ace71a966e4"
+      },
+      {
+        "file": "startup-delay-after.log",
+        "sha256": "fd1b9af5d4f71cab8eb1a600cb9f6416c07a0802f7957c6009c928f251831ffa"
+      },
+      {
+        "file": "legacy-index.log",
+        "sha256": "093f58e8076e3826807b18131a7391403f6a417fc053e10ec94640b519bc4dec"
+      },
+      {
+        "file": "legacy-boundary.log",
+        "sha256": "65012e812639939914543d2bca782ca84738e920115465b83232543c0c7e8616"
+      },
+      {
+        "file": "legacy-full_block.log",
+        "sha256": "dfc2d78724fea0b6a8699055911713f990afeacd6f9fbe2c79a648a397772c73"
+      },
+      {
+        "file": "legacy-results.json",
+        "sha256": "77de1aa693ad2d6014bb033c89420e20d4aaaf0724140cb8ec86ca3af422a35b"
+      },
+      {
+        "file": "boundary-results.json",
+        "sha256": "a8fbe8bbf4122764f248e17013147c4413b083508430280f5eec8c1d29bb0954"
+      },
+      {
+        "file": "full-block-results.json",
+        "sha256": "2a90b971719e77585c86b50a322159667d9f2fb83c6afb2e6295ca2ef0ac7056"
+      },
+      {
+        "file": "asert-wait-model.json",
+        "sha256": "8feabe5a70950211660cbb3f858035b9330336bb4be6e93d4748b8f3617c3773"
+      },
+      {
+        "file": "environment.json",
+        "sha256": "db772b46ae937eb1ba50a8ef8aa0ad7ead2a7bff04e8b7b766daf5d3bf20f09d"
+      },
+      {
+        "file": "linux-version.txt",
+        "sha256": "e737d3eef233fc4ce0ed2ba8895504087fd08a0e12c8ad11c2f5e008b6ffee6d"
+      },
+      {
+        "file": "windows-version.txt",
+        "sha256": "e737d3eef233fc4ce0ed2ba8895504087fd08a0e12c8ad11c2f5e008b6ffee6d"
+      },
+      {
+        "file": "artifact-hashes.json",
+        "sha256": "8ceebc797ab8850acecd9815bdb9e0f674f68098eb8fd2f6ef38f4e9bfcfc5a9"
+      }
+    ],
+    "sanitization": "Home/repository paths replaced with placeholders; terminal color codes removed. Hashes refer to these review copies."
+  },
+  "limits": [
+    "Incremental maintenance builds, not fresh-checkout release builds or independently reproduced artifacts.",
+    "No macOS, installer, GUI runtime, sanitizer or full extended functional-suite run in this task.",
+    "No production VPS deployment, public DNS uptime check, mining hashrate measurement or operator-independence audit.",
+    "Synthetic full-block timings describe this local host; low-end VPS memory, disk-write and sustained-throughput qualification remains unmeasured.",
+    "No new startup-wide index audit or repair RPC. Corruption tests do not prove arbitrary corruption is detected.",
+    "ASERT wait estimates assume fixed remaining hashrate and current target for the next block; no consensus change was made.",
+    "Hashes identify the tested local binaries and archive; they do not attest to a separately distributed executable."
+  ]
+}
