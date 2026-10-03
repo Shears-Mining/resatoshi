@@ -20,9 +20,11 @@ this is not a complete upgrade to that release. See
 [upstream maintenance](upstream-maintenance.md) for source provenance,
 incorporated fixes, remaining differences, and local validation commands.
 
-- Enable automatic mainnet peer discovery using the two documented bootstrap
-  hostnames and the existing upstream DNS-seed/address-fetch behavior. Retry
-  failed discovery with bounded backoff when there are no peers or known addresses.
+- Enable automatic mainnet peer discovery using `seed.resatoshi.org`, the two
+  documented bootstrap hostnames and upstream DNS-seed/address-fetch behavior. Retry
+  failed discovery with bounded backoff when there are no established automatic
+  outbound full-relay or block-relay peers, including with stale known addresses
+  or inbound-only connections. Recovery or network deactivation resets the timer.
 - Set a conservative minimum chain work from verified block 8,000 for initial
   synchronization protection; keep assume-valid disabled. See the verification
   and future update policy in [network rules](resatoshi.md#bootstrap-and-minimum-chain-work).

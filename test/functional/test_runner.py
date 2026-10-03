@@ -308,6 +308,8 @@ BASE_SCRIPTS = [
     'mining_basic.py',
     'mining_mainnet.py',
     'p2p_resatoshi_bootstrap.py',
+    'p2p_resatoshi_bootstrap.py --stale-inbound',
+    'p2p_resatoshi_bootstrap.py --inactive',
     'p2p_resatoshi_bootstrap.py --testnet4',
     'feature_signet.py',
     'p2p_mutated_blocks.py',

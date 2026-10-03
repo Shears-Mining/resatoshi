@@ -50,11 +50,16 @@ Normal `-dnsseed`, `-connect`, `-proxy`, and manual-peer controls still apply.
 Multiple hostnames do not establish operator independence; independently
 operated seeds remain desirable as the network grows.
 
-If a fresh mainnet node has neither peers nor known addresses, it retries seed address
-fetches after 60 seconds, doubling the interval up to 15 minutes after each
-retry. This allows recovery after a temporary bootstrap outage without a
-restart. Retries use the existing proxy-aware address-fetch path and require
-network activity and automatic DNS seeding; explicit `-connect` disables them.
+If a mainnet node has no established automatic outbound full-relay or block-relay
+peer for 60 seconds, it retries seed address fetches, doubling the interval up to
+15 minutes after each retry. Stale known addresses, inbound peers, and temporary
+address-fetch or feeler connections do not suppress recovery. An established
+automatic outbound peer resets the backoff and postpones further retries.
+Network deactivation also resets the timer, so reactivation allows a fresh
+60-second recovery window. Retries use the existing proxy-aware address-fetch
+path and require network activity and automatic DNS seeding; explicit `-connect`
+disables them. Manual `-addnode` connections alone do not suppress automatic
+discovery; use `-dnsseed=0` to disable seed queries.
 Inherited Bitcoin test networks retain their upstream seed retry behavior.
 
 The default minimum chain work is

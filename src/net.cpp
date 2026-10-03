@@ -2590,10 +2590,13 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
     auto seed_node_timer = NodeClock::now();
     bool add_addr_fetch{addrman.get().Size() == 0 && !seed_nodes.empty()};
     constexpr std::chrono::seconds ADD_NEXT_SEEDNODE = 10s;
-    // A fresh mainnet node may exhaust all one-shot address fetches during an outage.
+    // Known addresses and inbound peers need not provide outbound connectivity.
     // Retry through the same proxy-aware path, with bounded exponential backoff.
+    const bool retry_seed_fetches{m_params.GetChainType() == ChainType::MAIN && dnsseed &&
+                                 !gArgs.IsArgSet("-connect") && !m_params.DNSSeeds().empty()};
     auto seed_retry_delay = 60s;
     auto next_seed_retry = SteadyClock::now() + seed_retry_delay;
+    bool had_outbound{false};
 
     if (!add_fixed_seeds) {
         LogInfo("Fixed seeds are disabled\n");
@@ -2614,18 +2617,27 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
 
         ProcessAddrFetch();
 
-        if (m_params.GetChainType() == ChainType::MAIN && SteadyClock::now() >= next_seed_retry) {
-            if (dnsseed && !gArgs.IsArgSet("-connect") && fNetworkActive &&
-                addrman.get().Size() == 0 && GetNodeCount(ConnectionDirection::Both) == 0 &&
-                !m_params.DNSSeeds().empty()) {
+        if (retry_seed_fetches) {
+            bool have_outbound{false};
+            // ForEachNode excludes incomplete handshakes and disconnecting peers.
+            // Temporary address-fetch/feeler connections do not establish recovery.
+            ForEachNode([&](const CNode* node) {
+                have_outbound |= node->IsFullOutboundConn() || node->IsBlockOnlyConn();
+            });
+            const auto now{SteadyClock::now()};
+            if (!fNetworkActive || have_outbound || had_outbound) {
+                seed_retry_delay = 60s;
+                next_seed_retry = now + seed_retry_delay;
+            } else if (now >= next_seed_retry) {
                 LOCK(m_addr_fetches_mutex);
                 if (m_addr_fetches.empty()) {
-                    LogInfo("Retrying DNS seed address fetches: no peers or known addresses\n");
+                    LogInfo("Retrying DNS seed address fetches: no established automatic outbound peers\n");
                     for (const auto& seed : m_params.DNSSeeds()) m_addr_fetches.push_back(seed);
                     seed_retry_delay = std::min(seed_retry_delay * 2, 900s);
                 }
+                next_seed_retry = now + seed_retry_delay;
             }
-            next_seed_retry = SteadyClock::now() + seed_retry_delay;
+            had_outbound = have_outbound;
         }
 
         if (!m_interrupt_net->sleep_for(500ms)) {
@@ -2634,10 +2646,13 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
 
         PerformReconnections();
 
-        CountingSemaphoreGrant<> grant(*semOutbound);
+        // Keep observing recovery even when all automatic slots are occupied.
+        // Other networks retain the existing blocking wait.
+        CountingSemaphoreGrant<> grant(*semOutbound, /*fTry=*/retry_seed_fetches);
         if (m_interrupt_net->interrupted()) {
             return;
         }
+        if (!grant) continue;
 
         const std::unordered_set<Network> fixed_seed_networks{GetReachableEmptyNetworks()};
         if (add_fixed_seeds && !fixed_seed_networks.empty()) {
