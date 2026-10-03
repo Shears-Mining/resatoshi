@@ -220,6 +220,11 @@ public:
      *                         2014 (removed in commit 93a18a3)
      */
     mapValue_t mapValue;
+    //! Optional confirmed origins for external inputs, keyed by outpoint.
+    //! A block anchor must be checked against the wallet tip before using it.
+    std::map<COutPoint, std::pair<int, uint256>> input_origins;
+    std::string EncodeInputOrigins() const;
+    void DecodeInputOrigins(const std::string& encoded);
     std::vector<std::pair<std::string, std::string> > vOrderForm;
     unsigned int nTimeReceived; //!< time received by this node
     /**
@@ -258,6 +263,7 @@ public:
     void Init()
     {
         mapValue.clear();
+        input_origins.clear();
         vOrderForm.clear();
         nTimeReceived = 0;
         nTimeSmart = 0;
@@ -285,6 +291,8 @@ public:
     void Serialize(Stream& s) const
     {
         mapValue_t mapValueCopy = mapValue;
+        mapValueCopy.erase("recycle_input_origins");
+        if (!input_origins.empty()) mapValueCopy["recycle_input_origins"] = EncodeInputOrigins();
 
         mapValueCopy["fromaccount"] = "";
         if (nOrderPos != -1) {
@@ -317,6 +325,8 @@ public:
         s >> TX_WITH_WITNESS(tx) >> serialized_block_hash >> dummy_vector1 >> serializedIndex >> dummy_vector2 >> mapValue >> vOrderForm >> dummy_int >> nTimeReceived >> dummy_bool >> dummy_bool;
 
         m_state = TxStateInterpretSerialized({serialized_block_hash, serializedIndex});
+        if (const auto it{mapValue.find("recycle_input_origins")}; it != mapValue.end()) DecodeInputOrigins(it->second);
+        mapValue.erase("recycle_input_origins");
 
         const auto it_op = mapValue.find("n");
         nOrderPos = (it_op != mapValue.end()) ? LocaleIndependentAtoi<int64_t>(it_op->second) : -1;

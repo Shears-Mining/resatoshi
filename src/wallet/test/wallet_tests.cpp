@@ -17,6 +17,7 @@
 #include <policy/policy.h>
 #include <rpc/server.h>
 #include <script/solver.h>
+#include <streams.h>
 #include <test/util/common.h>
 #include <test/util/logging.h>
 #include <test/util/random.h>
@@ -70,12 +71,40 @@ BOOST_AUTO_TEST_CASE(expired_input_ancestry)
     BOOST_CHECK(!wallet.HasExpiredInputs(last));
     wallet.SetLastBlockProcessed(*lifetime + 1, block_hash);
     BOOST_CHECK(wallet.HasExpiredInputs(last));
+    ExpiryQuery query;
+    for (const auto& [txid, wtx] : wallet.mapWallet) {
+        BOOST_CHECK_EQUAL(wallet.HasExpiredInputs(wtx, &query), !wtx.isConfirmed());
+    }
+    BOOST_CHECK_EQUAL(query.transactions.size(), 2000U);
     wallet.SetLastBlockProcessed(*lifetime, block_hash);
     BOOST_CHECK(!wallet.HasExpiredInputs(last));
     wallet.SetLastBlockProcessed(*lifetime + 1, block_hash);
     // A confirmed spend is not invalidated by the age of its consumed inputs.
     last.m_state = TxStateConfirmed{block_hash, *lifetime, 0};
     BOOST_CHECK(!wallet.HasExpiredInputs(last));
+}
+
+BOOST_AUTO_TEST_CASE(input_origin_serialization)
+{
+    CMutableTransaction tx;
+    tx.vin.emplace_back(COutPoint{Txid::FromUint256(GetRandHash()), 0});
+    CWalletTx original{MakeTransactionRef(tx), TxStateInactive{}};
+    original.input_origins.emplace(tx.vin[0].prevout, std::pair{123, GetRandHash()});
+    original.mapValue["comment"] = "preserved";
+    DataStream stream;
+    stream << original;
+    CWalletTx restored{nullptr, TxStateInactive{}};
+    stream >> restored;
+    BOOST_CHECK(original.input_origins == restored.input_origins);
+    BOOST_CHECK_EQUAL(restored.mapValue.at("comment"), "preserved");
+    BOOST_CHECK(!restored.mapValue.contains("recycle_input_origins"));
+    restored.DecodeInputOrigins("not hex");
+    BOOST_CHECK(restored.input_origins.empty());
+    restored.DecodeInputOrigins(original.EncodeInputOrigins() + "00");
+    BOOST_CHECK(restored.input_origins.empty());
+    original.input_origins.begin()->second.first = -1;
+    restored.DecodeInputOrigins(original.EncodeInputOrigins());
+    BOOST_CHECK(restored.input_origins.empty());
 }
 
 BOOST_AUTO_TEST_CASE(wallet_interface_expiry)
@@ -153,6 +182,45 @@ static void AddKey(CWallet& wallet, const CKey& key)
     auto& desc = descs.at(0);
     WalletDescriptor w_desc(std::move(desc), 0, 0, 1, 1);
     Assert(wallet.AddWalletDescriptor(w_desc, provider, "", false));
+}
+
+BOOST_AUTO_TEST_CASE(expiry_query_balances)
+{
+    const auto lifetime{m_node.chain->utxoExpiryBlocks()};
+    BOOST_REQUIRE(lifetime.has_value());
+    CWallet wallet{m_node.chain.get(), "", CreateMockableWalletDatabase()};
+    LOCK(wallet.cs_wallet);
+    wallet.SetWalletFlag(WALLET_FLAG_DESCRIPTORS);
+    const auto key{GenerateRandomKey()};
+    AddKey(wallet, key);
+    const auto script{GetScriptForDestination(PKHash(key.GetPubKey()))};
+    const auto hash{GetRandHash()};
+    CMutableTransaction origin, funding;
+    origin.vout.emplace_back(COIN, script);
+    constexpr int count{1000};
+    for (int i = 0; i < count; ++i) funding.vout.emplace_back(COIN, script);
+    auto previous{MakeTransactionRef(origin)};
+    const auto funds{MakeTransactionRef(funding)};
+    wallet.AddToWallet(previous, TxStateConfirmed{hash, 1, 0});
+    wallet.AddToWallet(funds, TxStateConfirmed{hash, 2, 0});
+    for (int i = 0; i < count; ++i) {
+        CMutableTransaction tx;
+        tx.vin.emplace_back(COutPoint{previous->GetHash(), 0});
+        tx.vin.emplace_back(COutPoint{funds->GetHash(), static_cast<uint32_t>(i)});
+        tx.vout.emplace_back((i + 2) * COIN, script);
+        previous = MakeTransactionRef(tx);
+        wallet.AddToWallet(previous, TxStateInactive{});
+    }
+    // The full balance and selection paths must release every healthy input
+    // of the dependent chain, and reserve them again after a rollback.
+    for (const int height : {*lifetime, *lifetime + 1, *lifetime}) {
+        wallet.SetLastBlockProcessed(height, hash);
+        const CAmount expected{height > *lifetime ? count * COIN : 0};
+        BOOST_CHECK_EQUAL(GetBalance(wallet).m_mine_trusted, expected);
+        const auto coins{AvailableCoins(wallet)};
+        BOOST_CHECK_EQUAL(coins.GetTotalAmount(), expected);
+        BOOST_CHECK_EQUAL(coins.Size(), height > *lifetime ? count : 0);
+    }
 }
 
 BOOST_FIXTURE_TEST_CASE(update_non_range_descriptor, TestingSetup)

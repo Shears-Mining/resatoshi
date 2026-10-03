@@ -634,6 +634,18 @@ public:
                int{FillBlock(block2, block2_out, lock, active, chainman().m_blockman)};
     }
     void findCoins(std::map<COutPoint, Coin>& coins) override { return FindCoins(m_node, coins); }
+    std::map<COutPoint, interfaces::BlockRef> findCoinOrigins(const std::vector<COutPoint>& outpoints) override
+    {
+        LOCK(::cs_main);
+        std::map<COutPoint, interfaces::BlockRef> result;
+        const auto& active{chainman().ActiveChain()};
+        for (const auto& outpoint : outpoints) {
+            if (auto coin{chainman().ActiveChainstate().CoinsTip().GetCoin(outpoint)}; coin && coin->nHeight > 0) {
+                if (const auto* block{active[coin->nHeight]}) result.emplace(outpoint, interfaces::BlockRef{block->GetBlockHash(), static_cast<int>(coin->nHeight)});
+            }
+        }
+        return result;
+    }
     double guessVerificationProgress(const uint256& block_hash) override
     {
         LOCK(chainman().GetMutex());

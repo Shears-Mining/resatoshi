@@ -68,6 +68,13 @@ class Wallet;
 }
 namespace wallet {
 class CWallet;
+
+//! Share only within one read operation under cs_wallet, without wallet updates.
+//! Never retain this across tip changes, imports, rescans or transaction updates.
+struct ExpiryQuery {
+    std::map<Txid, bool> transactions;
+    std::map<uint256, std::optional<int>> ancestors;
+};
 class WalletBatch;
 enum class DBErrors : int;
 } // namespace wallet
@@ -449,6 +456,9 @@ private:
     // Update last block processed in memory only
     void SetLastBlockProcessedInMem(int block_height, uint256 block_hash) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
+    bool RecordInputOrigins(CWalletTx& wtx) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+    void RecordInputOrigins(const CTransaction& tx, const TxStateConfirmed& confirmation) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+
     //! Update mempool conflicts for TRUC sibling transactions
     void UpdateTrucSiblingConflicts(const CWalletTx& parent_wtx, const Txid& child_txid, bool add_conflict) EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
@@ -554,12 +564,12 @@ public:
     int GetTxBlocksToMaturity(const CWalletTx& wtx) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
     bool IsTxImmatureCoinBase(const CWalletTx& wtx) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
 
-    bool IsSpent(const COutPoint& outpoint) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+    bool IsSpent(const COutPoint& outpoint, ExpiryQuery* query = nullptr) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
     bool IsExpired(const COutPoint& outpoint) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
-    /** Whether an unconfirmed transaction depends on an expired wallet input. */
-    bool HasExpiredInputs(const CWalletTx& wtx) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
-    bool IsUnavailable(const COutPoint& outpoint) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet)
-    { return IsSpent(outpoint) || IsExpired(outpoint); }
+    /** Whether an unconfirmed transaction depends on a provably expired input. */
+    bool HasExpiredInputs(const CWalletTx& wtx, ExpiryQuery* query = nullptr) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+    bool IsUnavailable(const COutPoint& outpoint, ExpiryQuery* query = nullptr) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet)
+    { return IsSpent(outpoint, query) || IsExpired(outpoint); }
 
     // Whether this or any known scriptPubKey with the same single key has been spent.
     bool IsSpentKey(const CScript& scriptPubKey) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);

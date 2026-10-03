@@ -121,26 +121,26 @@ void SetOutputExpiry(const CWallet& wallet, WalletTxOut& output) EXCLUSIVE_LOCKS
 WalletTxOut MakeWalletTxOut(const CWallet& wallet,
     const CWalletTx& wtx,
     int n,
-    int depth) EXCLUSIVE_LOCKS_REQUIRED(wallet.cs_wallet)
+    int depth, ExpiryQuery* query) EXCLUSIVE_LOCKS_REQUIRED(wallet.cs_wallet)
 {
     WalletTxOut result;
     result.txout = wtx.tx->vout[n];
     result.time = wtx.GetTxTime();
     result.depth_in_main_chain = depth;
-    result.is_spent = wallet.IsSpent(COutPoint(wtx.GetHash(), n));
+    result.is_spent = wallet.IsSpent(COutPoint(wtx.GetHash(), n), query);
     result.is_expired = wallet.IsExpired(COutPoint(wtx.GetHash(), n));
     SetOutputExpiry(wallet, result);
     return result;
 }
 
 WalletTxOut MakeWalletTxOut(const CWallet& wallet,
-    const COutput& output) EXCLUSIVE_LOCKS_REQUIRED(wallet.cs_wallet)
+    const COutput& output, ExpiryQuery* query) EXCLUSIVE_LOCKS_REQUIRED(wallet.cs_wallet)
 {
     WalletTxOut result;
     result.txout = output.txout;
     result.time = output.time;
     result.depth_in_main_chain = output.depth;
-    result.is_spent = wallet.IsSpent(output.outpoint);
+    result.is_spent = wallet.IsSpent(output.outpoint, query);
     result.is_expired = wallet.IsExpired(output.outpoint);
     SetOutputExpiry(wallet, result);
     return result;
@@ -453,11 +453,12 @@ public:
     {
         LOCK(m_wallet->cs_wallet);
         CoinsList result;
+        ExpiryQuery query;
         for (const auto& entry : ListCoins(*m_wallet)) {
             auto& group = result[entry.first];
             for (const auto& coin : entry.second) {
                 group.emplace_back(coin.outpoint,
-                    MakeWalletTxOut(*m_wallet, coin));
+                    MakeWalletTxOut(*m_wallet, coin, &query));
             }
         }
         return result;
@@ -466,6 +467,7 @@ public:
     {
         LOCK(m_wallet->cs_wallet);
         std::vector<WalletTxOut> result;
+        ExpiryQuery query;
         result.reserve(outputs.size());
         for (const auto& output : outputs) {
             result.emplace_back();
@@ -473,7 +475,7 @@ public:
             if (it != m_wallet->mapWallet.end()) {
                 int depth = m_wallet->GetTxDepthInMainChain(it->second);
                 if (depth >= 0) {
-                    result.back() = MakeWalletTxOut(*m_wallet, it->second, output.n, depth);
+                    result.back() = MakeWalletTxOut(*m_wallet, it->second, output.n, depth, &query);
                 }
             }
         }

@@ -713,8 +713,9 @@ bool CWallet::HasWalletSpend(const CTransactionRef& tx) const
 {
     AssertLockHeld(cs_wallet);
     const Txid& txid = tx->GetHash();
+    ExpiryQuery query;
     for (unsigned int i = 0; i < tx->vout.size(); ++i) {
-        if (IsSpent(COutPoint(txid, i))) {
+        if (IsSpent(COutPoint(txid, i), &query)) {
             return true;
         }
     }
@@ -776,33 +777,117 @@ bool CWallet::IsExpired(const COutPoint& outpoint) const
            GetTxDepthInMainChain(it->second) > *lifetime;
 }
 
-bool CWallet::HasExpiredInputs(const CWalletTx& wtx) const
+bool CWallet::RecordInputOrigins(CWalletTx& wtx)
+{
+    AssertLockHeld(cs_wallet);
+    if (!HaveChain() || !chain().utxoExpiryBlocks() || wtx.isConfirmed() || wtx.IsCoinBase()) return false;
+    std::vector<COutPoint> inputs;
+    for (const auto& input : wtx.tx->vin) {
+        if (!mapWallet.contains(input.prevout.hash)) inputs.push_back(input.prevout);
+    }
+    if (inputs.empty()) return false;
+    const auto origins{chain().findCoinOrigins(inputs)};
+    bool changed{false};
+    for (const auto& [input, block] : origins) {
+        const std::pair<int, uint256> origin{block.height, block.hash};
+        const auto old{wtx.input_origins.find(input)};
+        if (old == wtx.input_origins.end() || old->second != origin) {
+            wtx.input_origins[input] = origin;
+            changed = true;
+        }
+    }
+    return changed;
+}
+
+void CWallet::RecordInputOrigins(const CTransaction& tx, const TxStateConfirmed& confirmation)
+{
+    AssertLockHeld(cs_wallet);
+    if (!HaveChain() || !chain().utxoExpiryBlocks()) return;
+    // Observe external parents even if the transaction itself is not ours.
+    // This also recovers evidence from historical blocks during a rescan.
+    const auto txid{tx.GetHash()};
+    if (mapWallet.contains(txid)) return; // Wallet parents already carry their confirmation state.
+    std::set<Txid> changed;
+    const std::pair<int, uint256> origin{confirmation.confirmed_block_height, confirmation.confirmed_block_hash};
+    for (uint32_t n = 0; n < tx.vout.size(); ++n) {
+        const COutPoint outpoint{txid, n};
+        const auto [begin, end]{mapTxSpends.equal_range(outpoint)};
+        for (auto it{begin}; it != end; ++it) {
+            auto& wtx{mapWallet.at(it->second)};
+            const auto old{wtx.input_origins.find(outpoint)};
+            if (old == wtx.input_origins.end() || old->second != origin) {
+                wtx.input_origins[outpoint] = origin;
+                changed.insert(it->second);
+            }
+        }
+    }
+    if (changed.empty()) return;
+    WalletBatch batch{GetDatabase()};
+    for (const auto& spender : changed) {
+        if (!batch.WriteTx(mapWallet.at(spender))) throw std::runtime_error("Failed to write wallet input origins");
+    }
+}
+
+bool CWallet::HasExpiredInputs(const CWalletTx& wtx, ExpiryQuery* query) const
 {
     AssertLockHeld(cs_wallet);
     if (wtx.isConfirmed() || !HaveChain()) return false;
     const auto lifetime{chain().utxoExpiryBlocks()};
     if (!lifetime || GetLastBlockHeight() <= *lifetime) return false;
+    ExpiryQuery local;
+    auto& cache{query ? *query : local};
+    if (const auto it{cache.transactions.find(wtx.GetHash())}; it != cache.transactions.end()) return it->second;
 
-    // Derive this from the processed tip instead of persisting abandonment or
-    // a synthetic block conflict. Reorgs and wallet reloads need no extra state.
-    // Only traverse this transaction's unconfirmed ancestry, not the wallet.
-    std::vector<const CWalletTx*> todo{&wtx};
-    std::set<Txid> visited;
-    while (!todo.empty()) {
-        const auto* current{todo.back()};
-        todo.pop_back();
-        if (!visited.insert(current->GetHash()).second) continue;
-        for (const auto& input : current->tx->vin) {
-            if (IsExpired(input.prevout)) return true;
-            const auto it{mapWallet.find(input.prevout.hash)};
-            if (it != mapWallet.end() && !it->second.isConfirmed()) todo.push_back(&it->second);
+    // Iterative postorder evaluation: each transaction is evaluated once per
+    // query, including negative results and shared ancestors in a DAG.
+    struct Frame { const CWalletTx* tx; size_t input{0}; };
+    std::vector<Frame> stack{{&wtx}};
+    std::set<Txid> visiting{wtx.GetHash()};
+    while (!stack.empty()) {
+        auto& frame{stack.back()};
+        const auto& current{*frame.tx};
+        if (current.isConfirmed() || frame.input == current.tx->vin.size()) {
+            cache.transactions.emplace(current.GetHash(), false);
+            visiting.erase(current.GetHash());
+            stack.pop_back();
+            continue;
         }
+        const auto& input{current.tx->vin[frame.input]};
+        bool expired{IsExpired(input.prevout)};
+        if (const auto proof{current.input_origins.find(input.prevout)}; !expired && proof != current.input_origins.end() &&
+            int64_t{GetLastBlockHeight()} >= int64_t{proof->second.first} + *lifetime) {
+            const auto& [height, hash]{proof->second};
+            auto [anchor, inserted]{cache.ancestors.try_emplace(hash)};
+            if (inserted) {
+                int actual_height;
+                if (chain().findAncestorByHash(GetLastBlockHash(), hash, FoundBlock().height(actual_height))) anchor->second = actual_height;
+            }
+            expired = anchor->second == height;
+        }
+        if (!expired) {
+            const auto parent{mapWallet.find(input.prevout.hash)};
+            if (parent != mapWallet.end() && !parent->second.isConfirmed()) {
+                const auto known{cache.transactions.find(parent->first)};
+                if (known != cache.transactions.end()) {
+                    expired = known->second;
+                } else if (visiting.insert(parent->first).second) {
+                    stack.push_back({&parent->second});
+                    continue;
+                }
+            }
+        }
+        if (expired) {
+            // Every frame on this path depends on this expired input.
+            for (const auto& ancestor : stack) cache.transactions[ancestor.tx->GetHash()] = true;
+            return true;
+        }
+        ++frame.input;
     }
     return false;
 }
 
 /** Outpoint is spent if a non-conflicted transaction with viable inputs spends it. */
-bool CWallet::IsSpent(const COutPoint& outpoint) const
+bool CWallet::IsSpent(const COutPoint& outpoint, ExpiryQuery* query) const
 {
     std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range;
     range = mapTxSpends.equal_range(outpoint);
@@ -812,7 +897,7 @@ bool CWallet::IsSpent(const COutPoint& outpoint) const
         const auto mit = mapWallet.find(txid);
         if (mit != mapWallet.end()) {
             const auto& wtx = mit->second;
-            if (!wtx.isAbandoned() && !wtx.isBlockConflicted() && !wtx.isMempoolConflicted() && !HasExpiredInputs(wtx))
+            if (!wtx.isAbandoned() && !wtx.isBlockConflicted() && !wtx.isMempoolConflicted() && !HasExpiredInputs(wtx, query))
                 return true; // Spent
         }
     }
@@ -1143,6 +1228,8 @@ CWalletTx* CWallet::AddToWallet(CTransactionRef tx, const TxState& state, const 
     //// debug print
     WalletLogPrintf("AddToWallet %s  %s%s %s\n", hash.ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""), TxStateString(state));
 
+    fUpdated |= RecordInputOrigins(wtx);
+
     // Write to disk
     if (fInsertedNew || fUpdated)
         if (!batch.WriteTx(wtx))
@@ -1229,6 +1316,7 @@ bool CWallet::AddToWalletIfInvolvingMe(const CTransactionRef& ptx, const SyncTxS
         AssertLockHeld(cs_wallet);
 
         if (auto* conf = std::get_if<TxStateConfirmed>(&state)) {
+            RecordInputOrigins(tx, *conf);
             for (const CTxIn& txin : tx.vin) {
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(txin.prevout);
                 while (range.first != range.second) {
@@ -1901,7 +1989,19 @@ CWallet::ScanResult CWallet::ScanForWalletTransactions(const uint256& start_bloc
     ScanResult result;
 
     std::unique_ptr<FastWalletRescanFilter> fast_rescan_filter;
-    if (chain().hasBlockFilterIndex(BlockFilterType::BASIC)) fast_rescan_filter = std::make_unique<FastWalletRescanFilter>(*this);
+    bool need_external_origins{false};
+    if (chain().utxoExpiryBlocks()) {
+        LOCK(cs_wallet);
+        for (const auto& [txid, wtx] : mapWallet) {
+            if (wtx.isConfirmed() || wtx.IsCoinBase()) continue;
+            for (const auto& input : wtx.tx->vin) {
+                need_external_origins |= !mapWallet.contains(input.prevout.hash);
+            }
+        }
+    }
+    // BASIC filters do not necessarily match a jointly signed transaction's
+    // external funding outputs. A rescan must visit those parent blocks too.
+    if (!need_external_origins && chain().hasBlockFilterIndex(BlockFilterType::BASIC)) fast_rescan_filter = std::make_unique<FastWalletRescanFilter>(*this);
 
     WalletLogPrintf("Rescan started from block %s... (%s)\n", start_block.ToString(),
                     fast_rescan_filter ? "fast variant using block filters" : "slow variant inspecting all blocks");
@@ -3335,6 +3435,13 @@ const CAddressBookData* CWallet::FindAddressBookEntry(const CTxDestination& dest
 
 void CWallet::postInitProcess()
 {
+    {
+        LOCK(cs_wallet);
+        WalletBatch batch{GetDatabase()};
+        for (auto& [txid, wtx] : mapWallet) {
+            if (RecordInputOrigins(wtx) && !batch.WriteTx(wtx)) throw std::runtime_error("Failed to write wallet input origins");
+        }
+    }
     // Add wallet transactions that aren't already in a block to mempool
     // Do this here as mempool requires genesis block to be loaded
     ResubmitWalletTransactions(node::TxBroadcast::MEMPOOL_NO_BROADCAST, /*force=*/true);

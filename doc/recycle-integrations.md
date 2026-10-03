@@ -53,6 +53,32 @@ and retain the results before pruning. This procedure assumes the indexer has
 scanned the full relevant history; a partial scan cannot discover unknown
 outputs merely from their expiry heights.
 
+## Core wallet pending transactions
+
+An unconfirmed transaction whose input has expired cannot reserve its other,
+still-live wallet inputs. This also applies to its unconfirmed descendants.
+The wallet derives this from its processed chain tip; it does not permanently
+abandon the transactions. A rollback before expiry restores their reservations.
+
+For jointly funded transactions, an input's parent may belong to another wallet.
+The wallet stores its confirmed creation height and block hash as optional
+transaction metadata (`recycle_input_origins`), gathered from available UTXOs or
+observed parent blocks. Before using it, the wallet checks that the block belongs
+to its processed chain. Missing UTXOs alone are never treated as expiry evidence.
+This metadata does not change consensus, transaction encoding or chainstate.
+It is not exposed in `gettransaction` results.
+
+A wallet upgraded after such an external input has already disappeared may lack
+this evidence. It conservatively retains the pending transaction's reservations.
+A full `rescanblockchain` on a node retaining the parent blocks can recover it;
+the wallet bypasses basic-filter skipping when external parents need inspection.
+Pruned, unavailable history cannot be reconstructed by this change. Upgrading
+while the external inputs are still unspent captures their origins on wallet load.
+
+Balance and coin-selection queries share ancestry results only for that read
+operation under the wallet lock. No expiry-result cache survives a tip change,
+transaction update, rescan or wallet reload.
+
 ## UTXO snapshot conversion
 
 `contrib/utxo-tools/utxo_to_sqlite.py` recognizes Resatoshi mainnet snapshots and

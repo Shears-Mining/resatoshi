@@ -249,13 +249,14 @@ Balance GetBalance(const CWallet& wallet, const int min_depth, bool avoid_reuse)
     {
         LOCK(wallet.cs_wallet);
         std::set<Txid> trusted_parents;
+        ExpiryQuery expiry_query;
         for (const auto& [outpoint, txo] : wallet.GetTXOs()) {
             const CWalletTx& wtx = txo.GetWalletTx();
 
             const bool is_trusted{CachedTxIsTrusted(wallet, wtx, trusted_parents)};
             const int tx_depth{wallet.GetTxDepthInMainChain(wtx)};
 
-            if (!wallet.IsUnavailable(outpoint) && (allow_used_addresses || !wallet.IsSpentKey(txo.GetTxOut().scriptPubKey))) {
+            if (!wallet.IsUnavailable(outpoint, &expiry_query) && (allow_used_addresses || !wallet.IsSpentKey(txo.GetTxOut().scriptPubKey))) {
                 // Get the amounts for mine
                 CAmount credit_mine = txo.GetTxOut().nValue;
 
@@ -280,6 +281,7 @@ std::map<CTxDestination, CAmount> GetAddressBalances(const CWallet& wallet)
     {
         LOCK(wallet.cs_wallet);
         std::set<Txid> trusted_parents;
+        ExpiryQuery expiry_query;
         for (const auto& [outpoint, txo] : wallet.GetTXOs()) {
             const CWalletTx& wtx = txo.GetWalletTx();
 
@@ -293,7 +295,7 @@ std::map<CTxDestination, CAmount> GetAddressBalances(const CWallet& wallet)
             Assume(wallet.IsMine(txo.GetTxOut()));
             if(!ExtractDestination(txo.GetTxOut().scriptPubKey, addr)) continue;
 
-            CAmount n = wallet.IsUnavailable(outpoint) ? 0 : txo.GetTxOut().nValue;
+            CAmount n = wallet.IsUnavailable(outpoint, &expiry_query) ? 0 : txo.GetTxOut().nValue;
             balances[addr] += n;
         }
     }

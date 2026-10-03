@@ -341,6 +341,7 @@ CoinsResult AvailableCoins(const CWallet& wallet,
     std::vector<COutPoint> outpoints;
 
     std::set<Txid> trusted_parents;
+    ExpiryQuery expiry_query;
     // Cache for whether each tx passes the tx level checks (first bool), and whether the transaction is "safe" (second bool)
     std::unordered_map<Txid, std::pair<bool, bool>, SaltedTxidHasher> tx_safe_cache;
     for (const auto& [outpoint, txo] : wallet.GetTXOs()) {
@@ -441,7 +442,7 @@ CoinsResult AvailableCoins(const CWallet& wallet,
         if (wallet.IsLockedCoin(outpoint) && params.skip_locked)
             continue;
 
-        if (wallet.IsUnavailable(outpoint))
+        if (wallet.IsUnavailable(outpoint, &expiry_query))
             continue;
 
         if (!allow_used_addresses && wallet.IsSpentKey(output.scriptPubKey)) {

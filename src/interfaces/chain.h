@@ -7,6 +7,7 @@
 
 #include <blockfilter.h>
 #include <common/settings.h>
+#include <interfaces/types.h>
 #include <kernel/chain.h> // IWYU pragma: export
 #include <node/types.h>
 #include <primitives/transaction.h>
@@ -178,6 +179,10 @@ public:
     //! the current chain UTXO set. Iterates through all the keys in the map and
     //! populates the values.
     virtual void findCoins(std::map<COutPoint, Coin>& coins) = 0;
+
+    //! Confirmed input origins from one active-chain snapshot. Missing entries
+    //! are unknown, not proof that an input expired or was spent.
+    virtual std::map<COutPoint, BlockRef> findCoinOrigins(const std::vector<COutPoint>& outpoints) { return {}; }
 
     //! Estimate fraction of total transactions verified if blocks up to
     //! the specified block hash are verified.
