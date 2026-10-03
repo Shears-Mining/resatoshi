@@ -45,6 +45,39 @@ static_assert(WALLET_INCREMENTAL_RELAY_FEE >= DEFAULT_INCREMENTAL_RELAY_FEE, "wa
 
 BOOST_FIXTURE_TEST_SUITE(wallet_tests, WalletTestingSetup)
 
+BOOST_AUTO_TEST_CASE(expired_input_ancestry)
+{
+    const auto lifetime{m_node.chain->utxoExpiryBlocks()};
+    BOOST_REQUIRE(lifetime.has_value());
+    CWallet wallet{m_node.chain.get(), "", CreateMockableWalletDatabase()};
+    LOCK(wallet.cs_wallet);
+    const auto block_hash{GetRandHash()};
+    CMutableTransaction origin;
+    origin.vout.emplace_back(COIN, CScript() << OP_TRUE);
+    const auto origin_ref{MakeTransactionRef(origin)};
+    wallet.mapWallet.try_emplace(origin_ref->GetHash(), origin_ref, TxStateConfirmed{block_hash, 1, 0});
+    auto previous{origin_ref};
+    // Long offline transaction chains must not consume recursive stack space.
+    for (int i = 0; i < 2000; ++i) {
+        CMutableTransaction tx;
+        tx.vin.emplace_back(COutPoint{previous->GetHash(), 0});
+        tx.vout.emplace_back(COIN, CScript() << OP_TRUE);
+        previous = MakeTransactionRef(tx);
+        wallet.mapWallet.try_emplace(previous->GetHash(), previous, TxStateInactive{});
+    }
+    auto& last{wallet.mapWallet.at(previous->GetHash())};
+    wallet.SetLastBlockProcessed(*lifetime, block_hash);
+    BOOST_CHECK(!wallet.HasExpiredInputs(last));
+    wallet.SetLastBlockProcessed(*lifetime + 1, block_hash);
+    BOOST_CHECK(wallet.HasExpiredInputs(last));
+    wallet.SetLastBlockProcessed(*lifetime, block_hash);
+    BOOST_CHECK(!wallet.HasExpiredInputs(last));
+    wallet.SetLastBlockProcessed(*lifetime + 1, block_hash);
+    // A confirmed spend is not invalidated by the age of its consumed inputs.
+    last.m_state = TxStateConfirmed{block_hash, *lifetime, 0};
+    BOOST_CHECK(!wallet.HasExpiredInputs(last));
+}
+
 BOOST_AUTO_TEST_CASE(wallet_interface_expiry)
 {
     const auto lifetime{m_node.chain->utxoExpiryBlocks()};

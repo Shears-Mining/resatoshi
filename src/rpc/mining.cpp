@@ -22,6 +22,7 @@
 #include <net.h>
 #include <node/context.h>
 #include <node/miner.h>
+#include <node/recycle.h>
 #include <node/warnings.h>
 #include <policy/ephemeral_policy.h>
 #include <pow.h>
@@ -389,6 +390,16 @@ static RPCHelpMan generateblock()
 
         // Add transactions
         block.vtx.insert(block.vtx.end(), txs.begin(), txs.end());
+        const auto& consensus{chainman.GetConsensus()};
+        if (consensus.recycle_enabled) {
+            // Spending an expiring output reduces the available recycle reward.
+            // Like the original empty template, generateblock does not claim fees.
+            const int height{chainman.ActiveChain().Height() + 1};
+            CMutableTransaction coinbase{*block.vtx[0]};
+            coinbase.vout[0].nValue = GetBlockSubsidy(height, consensus) +
+                node::recycle::AvailableReward(chainman.ActiveChainstate().CoinsTip(), block, height, consensus.recycle_expiry_blocks);
+            block.vtx[0] = MakeTransactionRef(std::move(coinbase));
+        }
         RegenerateCommitments(block, chainman);
 
         if (BlockValidationState state{TestBlockValidity(chainman.ActiveChainstate(), block, /*check_pow=*/false, /*check_merkle_root=*/false)}; !state.IsValid()) {

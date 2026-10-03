@@ -11,9 +11,16 @@ addnode=resatoshi-seed.duckdns.org:19333
 Both hostnames use the mainnet P2P port `19333`. Additional Resatoshi peers
 can be supplied with `-addnode` or `addnode=` in `bitcoin.conf`.
 
-The current `main` source has no built-in mainnet DNS or fixed seed entries,
-so the settings above supply bootstrap peers explicitly. The published
-31.0.12 one-touch miner includes these two hostnames in its mainnet seed list.
+The current `main` source includes `seed.resatoshi.org` and both bootstrap
+hostnames above in its mainnet DNS seed list. The crawler at `seed.resatoshi.org`
+supports service-bit queries; the upstream address-fetch fallback handles
+bootstrap hostnames that do not. No mainnet fixed seeds are configured.
+The `addnode` settings above are an optional explicit connection method.
+Older binaries retain the seed lists compiled into their own versions.
+
+These hostnames do not by themselves establish independent operators. See the
+[bootstrap documentation](resatoshi.md#bootstrap-and-minimum-chain-work) for
+the discovery controls and the conditions under which retries occur.
 
 The inherited testnet and signet configurations have separate parameters.
 See [network rules](resatoshi.md) and

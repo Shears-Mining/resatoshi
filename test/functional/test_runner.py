@@ -268,6 +268,8 @@ BASE_SCRIPTS = [
     'feature_recycle_index.py',
     'feature_recycle_boundary.py',
     'feature_recycle_spend.py',
+    'rpc_generate_recycle.py',
+    'wallet_recycle_conflicts.py',
     'feature_recycle_interfaces.py',
     'wallet_sendall_recycle.py',
     'wallet_lockunspent_recycle.py',

@@ -556,6 +556,8 @@ public:
 
     bool IsSpent(const COutPoint& outpoint) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
     bool IsExpired(const COutPoint& outpoint) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
+    /** Whether an unconfirmed transaction depends on an expired wallet input. */
+    bool HasExpiredInputs(const CWalletTx& wtx) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet);
     bool IsUnavailable(const COutPoint& outpoint) const EXCLUSIVE_LOCKS_REQUIRED(cs_wallet)
     { return IsSpent(outpoint) || IsExpired(outpoint); }
 

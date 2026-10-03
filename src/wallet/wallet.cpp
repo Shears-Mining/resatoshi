@@ -776,10 +776,32 @@ bool CWallet::IsExpired(const COutPoint& outpoint) const
            GetTxDepthInMainChain(it->second) > *lifetime;
 }
 
-/**
- * Outpoint is spent if any non-conflicted transaction
- * spends it:
- */
+bool CWallet::HasExpiredInputs(const CWalletTx& wtx) const
+{
+    AssertLockHeld(cs_wallet);
+    if (wtx.isConfirmed() || !HaveChain()) return false;
+    const auto lifetime{chain().utxoExpiryBlocks()};
+    if (!lifetime || GetLastBlockHeight() <= *lifetime) return false;
+
+    // Derive this from the processed tip instead of persisting abandonment or
+    // a synthetic block conflict. Reorgs and wallet reloads need no extra state.
+    // Only traverse this transaction's unconfirmed ancestry, not the wallet.
+    std::vector<const CWalletTx*> todo{&wtx};
+    std::set<Txid> visited;
+    while (!todo.empty()) {
+        const auto* current{todo.back()};
+        todo.pop_back();
+        if (!visited.insert(current->GetHash()).second) continue;
+        for (const auto& input : current->tx->vin) {
+            if (IsExpired(input.prevout)) return true;
+            const auto it{mapWallet.find(input.prevout.hash)};
+            if (it != mapWallet.end() && !it->second.isConfirmed()) todo.push_back(&it->second);
+        }
+    }
+    return false;
+}
+
+/** Outpoint is spent if a non-conflicted transaction with viable inputs spends it. */
 bool CWallet::IsSpent(const COutPoint& outpoint) const
 {
     std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range;
@@ -790,7 +812,7 @@ bool CWallet::IsSpent(const COutPoint& outpoint) const
         const auto mit = mapWallet.find(txid);
         if (mit != mapWallet.end()) {
             const auto& wtx = mit->second;
-            if (!wtx.isAbandoned() && !wtx.isBlockConflicted() && !wtx.isMempoolConflicted())
+            if (!wtx.isAbandoned() && !wtx.isBlockConflicted() && !wtx.isMempoolConflicted() && !HasExpiredInputs(wtx))
                 return true; // Spent
         }
     }
