@@ -53,6 +53,7 @@ public:
 };
 
 class CDBWrapper;
+class CDBSnapshot;
 
 /** These should be considered an implementation detail of the specific database.
  */
@@ -150,22 +151,26 @@ public:
     }
 
     void Next();
+    //! Throw on storage errors rather than interpreting them as end of iteration.
+    void CheckStatus() const;
 
-    template<typename K> bool GetKey(K& key) {
+    template<typename K> bool GetKey(K& key, bool require_full = false) {
         try {
             DataStream ssKey{GetKeyImpl()};
             ssKey >> key;
+            if (require_full && !ssKey.empty()) return false;
         } catch (const std::exception&) {
             return false;
         }
         return true;
     }
 
-    template<typename V> bool GetValue(V& value) {
+    template<typename V> bool GetValue(V& value, bool require_full = false) {
         try {
             DataStream ssValue{GetValueImpl()};
             dbwrapper_private::GetObfuscation(parent)(ssValue);
             ssValue >> value;
+            if (require_full && !ssValue.empty()) return false;
         } catch (const std::exception&) {
             return false;
         }
@@ -177,6 +182,7 @@ struct LevelDBContext;
 
 class CDBWrapper
 {
+    friend class CDBSnapshot;
     friend const Obfuscation& dbwrapper_private::GetObfuscation(const CDBWrapper&);
 private:
     //! holds all leveldb-specific fields of this class
@@ -275,6 +281,51 @@ public:
         ssKey1 << key_begin;
         ssKey2 << key_end;
         return EstimateSizeImpl(ssKey1, ssKey2);
+    }
+};
+
+/** A single LevelDB read snapshot shared by point reads and iterators.
+ * The parent must outlive the snapshot and all its iterators.
+ */
+class CDBSnapshot
+{
+    const CDBWrapper& m_parent;
+    struct Impl;
+    const std::unique_ptr<Impl> m_impl;
+    std::optional<std::string> ReadImpl(std::span<const std::byte> key) const;
+public:
+    enum class ReadResult { NOT_FOUND, INVALID, OK };
+    explicit CDBSnapshot(const CDBWrapper& parent);
+    ~CDBSnapshot();
+    std::unique_ptr<CDBIterator> NewIterator() const;
+
+    template <typename K, typename V> ReadResult ReadStatus(const K& key, V& value) const
+    {
+        DataStream encoded;
+        encoded << key;
+        auto raw{ReadImpl(encoded)};
+        if (!raw) return ReadResult::NOT_FOUND;
+        try {
+            auto bytes{MakeWritableByteSpan(*raw)};
+            dbwrapper_private::GetObfuscation(m_parent)(bytes);
+            SpanReader reader{bytes};
+            reader >> value;
+            return reader.empty() ? ReadResult::OK : ReadResult::INVALID;
+        } catch (const std::exception&) {
+            return ReadResult::INVALID;
+        }
+    }
+
+    template <typename K, typename V> bool Read(const K& key, V& value) const
+    {
+        return ReadStatus(key, value) == ReadResult::OK;
+    }
+
+    template <typename K> bool Exists(const K& key) const
+    {
+        DataStream encoded;
+        encoded << key;
+        return ReadImpl(encoded).has_value();
     }
 };
 

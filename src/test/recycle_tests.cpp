@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <chrono>
 #include <future>
+#include <thread>
 
 #include <boost/test/unit_test.hpp>
 
@@ -39,6 +40,20 @@ struct TestHeightEntry {
     COutPoint outpoint;
     SERIALIZE_METHODS(TestHeightEntry, obj) { READWRITE(obj.prefix, obj.height, obj.outpoint); }
 };
+
+struct TestCoinEntry {
+    uint8_t prefix{'C'};
+    COutPoint outpoint;
+    SERIALIZE_METHODS(TestCoinEntry, obj) { READWRITE(obj.prefix, obj.outpoint.hash, VARINT(obj.outpoint.n)); }
+};
+
+std::unique_ptr<RecycleIndexSnapshot> CheckSnapshot(CCoinsViewDB& db)
+{
+    LOCK(cs_main);
+    return db.GetRecycleIndexSnapshot();
+}
+
+bool ContinueCheck(const std::string&, const RecycleIndexCheckResult&) { return true; }
 
 } // namespace
 
@@ -555,6 +570,15 @@ BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
             BOOST_REQUIRE(coin);
             BOOST_CHECK_EQUAL(coin->nHeight, 1U);
             BOOST_CHECK_EQUAL(coin->out.nValue, COIN);
+            auto snapshot{CheckSnapshot(db)};
+            BOOST_REQUIRE(snapshot);
+            const auto checked{snapshot->Check(ContinueCheck)};
+            BOOST_CHECK(checked.completed);
+            BOOST_CHECK(!checked.Valid());
+            BOOST_CHECK_EQUAL(checked.missing, damage == 1 ? 0U : 1U);
+            BOOST_CHECK_EQUAL(checked.orphaned, damage == 1 ? 1U : 0U);
+            BOOST_CHECK_EQUAL(checked.height_mismatches, damage == 2 ? 1U : 0U);
+            snapshot.reset();
             CCoinsViewCache view{&db};
             const CBlock expiry{CoinbaseBlock(0, 201)};
             BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, 200), damage == 1 ? COIN : 0);
@@ -574,7 +598,101 @@ BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
             CCoinsViewCache view{&db};
             const CBlock expiry{CoinbaseBlock(0, 201)};
             BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, 200), COIN);
+            auto snapshot{CheckSnapshot(db)};
+            BOOST_REQUIRE(snapshot);
+            BOOST_CHECK(snapshot->Check(ContinueCheck).Valid());
         }
+    }
+}
+
+BOOST_FIXTURE_TEST_CASE(index_check_snapshot_and_cancellation, BasicTestingSetup)
+{
+    CCoinsViewDB db{{.path = m_path_root / "check-snapshot", .cache_bytes = 1 << 20}, {.recycle_index = true}};
+    BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+    CCoinsViewCache view{&db};
+    const auto block{CoinbaseBlock(COIN, 1)};
+    AddCoins(view, *block.vtx[0], 1);
+    view.SetBestBlock(uint256{1});
+    view.Flush();
+    auto snapshot{CheckSnapshot(db)};
+    BOOST_REQUIRE(snapshot);
+    BOOST_CHECK(!CheckSnapshot(db));
+    // Advance the live DB while the immutable diagnostic snapshot is leased.
+    BOOST_REQUIRE(view.SpendCoin(COutPoint{block.vtx[0]->GetHash(), 0}));
+    view.SetBestBlock(uint256{2});
+    view.Flush();
+    auto checked{snapshot->Check(ContinueCheck)};
+    BOOST_CHECK(checked.Valid());
+    BOOST_CHECK_EQUAL(checked.indexed_coins, 1U);
+    BOOST_CHECK(snapshot->GetBestBlock() == uint256{1});
+    BOOST_CHECK(!snapshot->Check([](const auto&, const auto&) { return false; }).completed);
+    snapshot.reset();
+    snapshot = CheckSnapshot(db);
+    BOOST_CHECK(snapshot->Check(ContinueCheck).Valid());
+    BOOST_CHECK_EQUAL(snapshot->Check(ContinueCheck).indexed_coins, 0U);
+    // Resize must cancel a leased scan, and reopen only after its reads finish.
+    std::promise<void> resizing;
+    auto resized{std::async(std::launch::async, [&] {
+        LOCK(cs_main);
+        resizing.set_value();
+        db.ResizeCache(2 << 20);
+    })};
+    resizing.get_future().wait();
+    bool cancelled{false};
+    for (int tries{0}; tries < 100 && !cancelled; ++tries) {
+        cancelled = !snapshot->Check(ContinueCheck).completed;
+        if (!cancelled) std::this_thread::sleep_for(std::chrono::milliseconds{1});
+    }
+    snapshot.reset(); // Always release before waiting, including on assertion failure.
+    resized.get();
+    BOOST_CHECK(cancelled);
+    BOOST_CHECK(db.GetBestBlock() == uint256{2});
+    snapshot = CheckSnapshot(db);
+    BOOST_CHECK(snapshot->Check(ContinueCheck).Valid());
+}
+
+BOOST_FIXTURE_TEST_CASE(index_check_malformed_records_and_bounded_examples, BasicTestingSetup)
+{
+    const auto path{m_path_root / "malformed-check"};
+    const auto block{CoinbaseBlock(COIN, 1)};
+    const COutPoint output{block.vtx[0]->GetHash(), 0};
+    const COutPoint pool{Txid{}, std::numeric_limits<uint32_t>::max()};
+    {
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+        BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+        CCoinsViewCache view{&db};
+        AddCoins(view, *block.vtx[0], 1);
+        view.AddCoin(pool, Coin{CTxOut{7 * COIN, CScript{OP_RETURN}}, 201, false}, false, true);
+        view.SetBestBlock(uint256{1});
+        view.Flush();
+        auto snapshot{CheckSnapshot(db)};
+        auto checked{snapshot->Check(ContinueCheck)};
+        BOOST_CHECK(checked.Valid());
+        BOOST_CHECK_EQUAL(checked.coins_scanned, 2U);
+        BOOST_CHECK_EQUAL(checked.indexed_coins, 1U);
+    }
+    {
+        CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
+        raw.Write(TestHeightEntry{'E', 1, output}, uint8_t{1}); // Invalid placeholder.
+        raw.Write(std::pair{TestHeightEntry{'E', 1, output}, uint8_t{0}}, uint8_t{0}); // Trailing key bytes.
+        raw.Write(TestHeightEntry{'E', 201, pool}, uint8_t{0}); // Internal state must not be indexed.
+        raw.Write(TestCoinEntry{'C', COutPoint{Txid::FromUint256(uint256{99}), 0}}, uint8_t{0});
+        for (uint32_t i{100}; i < 130; ++i) {
+            raw.Write(TestHeightEntry{'E', 1, COutPoint{Txid::FromUint256(uint256{static_cast<uint8_t>(i)}), 0}}, uint8_t{0});
+        }
+    }
+    {
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+        auto snapshot{CheckSnapshot(db)};
+        const auto checked{snapshot->Check(ContinueCheck)};
+        BOOST_CHECK(checked.completed);
+        BOOST_CHECK(!checked.Valid());
+        BOOST_CHECK_EQUAL(checked.missing, 0U);
+        BOOST_CHECK_EQUAL(checked.orphaned, 30U);
+        BOOST_CHECK_EQUAL(checked.unexpected, 1U);
+        BOOST_CHECK_EQUAL(checked.malformed_coins, 1U);
+        BOOST_CHECK_EQUAL(checked.malformed_index_entries, 2U);
+        BOOST_CHECK_EQUAL(checked.issues.size(), 20U);
     }
 }
 

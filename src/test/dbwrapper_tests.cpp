@@ -18,6 +18,39 @@ using util::ToString;
 
 BOOST_FIXTURE_TEST_SUITE(dbwrapper_tests, BasicTestingSetup)
 
+BOOST_AUTO_TEST_CASE(snapshot_reads_and_iterators_share_one_state)
+{
+    for (bool obfuscate : {false, true}) {
+        CDBWrapper db{{.path = m_path_root / "snapshot", .cache_bytes = 1 << 20,
+            .memory_only = true, .obfuscate = obfuscate}};
+        db.Write(uint8_t{'a'}, uint32_t{1});
+        CDBSnapshot snapshot{db};
+        db.Write(uint8_t{'a'}, uint32_t{2});
+        db.Write(uint8_t{'b'}, uint32_t{3});
+        uint32_t value{0};
+        BOOST_REQUIRE(snapshot.Read(uint8_t{'a'}, value));
+        BOOST_CHECK_EQUAL(value, 1U);
+        BOOST_CHECK(!snapshot.Exists(uint8_t{'b'}));
+        // An iterator constructed AFTER mutations must still see the old state.
+        auto cursor{snapshot.NewIterator()};
+        cursor->Seek(uint8_t{'a'});
+        BOOST_REQUIRE(cursor->Valid());
+        BOOST_REQUIRE(cursor->GetValue(value, true));
+        BOOST_CHECK_EQUAL(value, 1U);
+        cursor->Next();
+        BOOST_CHECK(!cursor->Valid());
+        cursor->CheckStatus();
+        BOOST_REQUIRE(db.Read(uint8_t{'a'}, value));
+        BOOST_CHECK_EQUAL(value, 2U);
+        db.Write(uint8_t{'c'}, uint8_t{0});
+        CDBSnapshot malformed{db};
+        BOOST_CHECK(malformed.ReadStatus(uint8_t{'c'}, value) == CDBSnapshot::ReadResult::INVALID);
+        BOOST_CHECK(malformed.ReadStatus(uint8_t{'z'}, value) == CDBSnapshot::ReadResult::NOT_FOUND);
+        uint8_t short_value;
+        BOOST_CHECK(malformed.ReadStatus(uint8_t{'a'}, short_value) == CDBSnapshot::ReadResult::INVALID);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(dbwrapper)
 {
     // Perform tests both obfuscated and non-obfuscated.

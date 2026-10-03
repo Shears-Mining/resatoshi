@@ -2333,6 +2333,159 @@ static const auto scan_result_status_some = RPCResult{
 };
 
 
+namespace {
+struct RecycleCheckState {
+    Mutex mutex;
+    bool running GUARDED_BY(mutex){false};
+    bool abort GUARDED_BY(mutex){false};
+    std::string phase GUARDED_BY(mutex){"preparing"};
+    uint64_t coins GUARDED_BY(mutex){0};
+    uint64_t entries GUARDED_BY(mutex){0};
+} g_recycle_check;
+
+class RecycleCheckReservation {
+    bool m_reserved{false};
+public:
+    bool Reserve()
+    {
+        LOCK(g_recycle_check.mutex);
+        if (g_recycle_check.running) return false;
+        g_recycle_check.running = m_reserved = true;
+        g_recycle_check.abort = false;
+        g_recycle_check.phase = "preparing";
+        g_recycle_check.coins = g_recycle_check.entries = 0;
+        return true;
+    }
+    ~RecycleCheckReservation()
+    {
+        if (m_reserved) {
+            LOCK(g_recycle_check.mutex);
+            g_recycle_check.running = false;
+        }
+    }
+};
+} // namespace
+
+static RPCHelpMan checkrecycleindex()
+{
+    return RPCHelpMan{
+        "checkrecycleindex",
+        "Check the full persisted UTXO/recycle height-index correspondence at one flushed block.\n"
+        "Read-only after flushing the coin cache; does not repair data or verify historical expiry.\n"
+        "The scan uses a consistent database snapshot, bounded memory and does not hold the chain lock.\n"
+        "Database cache resizing cancels the check. Snapshot retention can temporarily increase disk use.\n"
+        "Only available on networks with recycling enabled. Start returns when the scan completes.\n",
+        {scan_action_arg_desc},
+        {
+            RPCResult{"when action=='start'", RPCResult::Type::OBJ, "", "", {
+                {RPCResult::Type::BOOL, "success", "Whether both passes completed without interruption"},
+                {RPCResult::Type::BOOL, "valid", /*optional=*/true, "Present only on completion; whether the snapshot has no detected inconsistencies"},
+                {RPCResult::Type::NUM, "height", "Snapshot block height"},
+                {RPCResult::Type::STR_HEX, "bestblock", "Snapshot block hash, even if the chain changes during the scan"},
+                {RPCResult::Type::NUM, "coins_scanned", "Coin records examined, including internal state"},
+                {RPCResult::Type::NUM, "indexed_coins", "Spendable ordinary coins requiring a height entry"},
+                {RPCResult::Type::NUM, "index_entries", "Height-index records examined"},
+                {RPCResult::Type::NUM, "missing", "Coins lacking their expected height entry"},
+                {RPCResult::Type::NUM, "orphaned", "Index entries without a corresponding coin"},
+                {RPCResult::Type::NUM, "height_mismatches", "Index entries at a different height from their coin; the expected entry may also be missing"},
+                {RPCResult::Type::NUM, "unexpected", "Index entries for internal or unspendable coins"},
+                {RPCResult::Type::NUM, "malformed_coins", "Undecodable or noncanonical coin records"},
+                {RPCResult::Type::NUM, "malformed_index_entries", "Undecodable keys or invalid placeholder values"},
+                {RPCResult::Type::ARR, "issues", "At most 20 examples; counters are not truncated", {
+                    {RPCResult::Type::OBJ, "", "", {
+                        {RPCResult::Type::STR, "type", "Issue classification"},
+                        {RPCResult::Type::STR_HEX, "txid", /*optional=*/true, "Output transaction ID"},
+                        {RPCResult::Type::NUM, "vout", /*optional=*/true, "Output index"},
+                        {RPCResult::Type::NUM, "index_height", /*optional=*/true, "Height encoded in the index"},
+                        {RPCResult::Type::NUM, "coin_height", /*optional=*/true, "Height encoded in the coin"},
+                    }},
+                }},
+            }},
+            scan_result_abort,
+            scan_result_status_none,
+            RPCResult{"when action=='status' and a check is in progress", RPCResult::Type::OBJ, "", "", {
+                {RPCResult::Type::STR, "phase", "preparing, coins, index or complete"},
+                {RPCResult::Type::NUM, "coins_scanned", "Coin records examined"},
+                {RPCResult::Type::NUM, "index_entries", "Index records examined"},
+            }},
+        },
+        RPCExamples{HelpExampleCli("checkrecycleindex", "start") +
+            HelpExampleCli("checkrecycleindex", "status") + HelpExampleCli("checkrecycleindex", "abort")},
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue {
+            const auto action{self.Arg<std::string_view>("action")};
+            if (action == "status" || action == "abort") {
+                LOCK(g_recycle_check.mutex);
+                if (action == "abort") {
+                    if (!g_recycle_check.running) return false;
+                    g_recycle_check.abort = true;
+                    return true;
+                }
+                if (!g_recycle_check.running) return UniValue::VNULL;
+                UniValue status{UniValue::VOBJ};
+                status.pushKV("phase", g_recycle_check.phase);
+                status.pushKV("coins_scanned", g_recycle_check.coins);
+                status.pushKV("index_entries", g_recycle_check.entries);
+                return status;
+            }
+            if (action != "start") throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid action; use start, status or abort");
+            RecycleCheckReservation reservation;
+            if (!reservation.Reserve()) throw JSONRPCError(RPC_INVALID_PARAMETER, "Recycle index check already in progress");
+            auto& node{EnsureAnyNodeContext(request.context)};
+            auto& chainman{EnsureChainman(node)};
+            std::unique_ptr<RecycleIndexSnapshot> snapshot;
+            int height;
+            {
+                LOCK(cs_main);
+                if (!chainman.GetConsensus().recycle_enabled) throw JSONRPCError(RPC_MISC_ERROR, "Recycling is disabled on this network");
+                node.rpc_interruption_point();
+                auto& chainstate{chainman.ActiveChainstate()};
+                chainstate.ForceFlushStateToDisk(/*wipe_cache=*/false);
+                snapshot = chainstate.CoinsDB().GetRecycleIndexSnapshot();
+                if (!snapshot) throw JSONRPCError(RPC_MISC_ERROR, "Recycle index database is already being checked");
+                const auto* tip{CHECK_NONFATAL(chainstate.m_chain.Tip())};
+                if (snapshot->GetBestBlock() != tip->GetBlockHash()) throw JSONRPCError(RPC_INTERNAL_ERROR, "Flushed chainstate does not match the active tip");
+                height = tip->nHeight;
+            }
+            const auto checked{snapshot->Check([&](const std::string& phase, const RecycleIndexCheckResult& counts) {
+                node.rpc_interruption_point();
+                LOCK(g_recycle_check.mutex);
+                g_recycle_check.phase = phase;
+                g_recycle_check.coins = counts.coins_scanned;
+                g_recycle_check.entries = counts.index_entries;
+                return !g_recycle_check.abort;
+            })};
+            UniValue result{UniValue::VOBJ};
+            result.pushKV("success", checked.completed);
+            if (checked.completed) result.pushKV("valid", checked.Valid());
+            result.pushKV("height", height);
+            result.pushKV("bestblock", snapshot->GetBestBlock().GetHex());
+            result.pushKV("coins_scanned", checked.coins_scanned);
+            result.pushKV("indexed_coins", checked.indexed_coins);
+            result.pushKV("index_entries", checked.index_entries);
+            result.pushKV("missing", checked.missing);
+            result.pushKV("orphaned", checked.orphaned);
+            result.pushKV("height_mismatches", checked.height_mismatches);
+            result.pushKV("unexpected", checked.unexpected);
+            result.pushKV("malformed_coins", checked.malformed_coins);
+            result.pushKV("malformed_index_entries", checked.malformed_index_entries);
+            UniValue issues{UniValue::VARR};
+            for (const auto& issue : checked.issues) {
+                UniValue item{UniValue::VOBJ};
+                item.pushKV("type", issue.type);
+                if (issue.outpoint) {
+                    item.pushKV("txid", issue.outpoint->hash.GetHex());
+                    item.pushKV("vout", issue.outpoint->n);
+                }
+                if (issue.index_height) item.pushKV("index_height", *issue.index_height);
+                if (issue.coin_height) item.pushKV("coin_height", *issue.coin_height);
+                issues.push_back(std::move(item));
+            }
+            result.pushKV("issues", std::move(issues));
+            return result;
+        },
+    };
+}
+
 static RPCHelpMan scantxoutset()
 {
     // raw() descriptor corresponding to mainnet address 12cbQLTFMXRnSzktFkuoG3eHoMeFtpTu3S
@@ -3596,6 +3749,7 @@ void RegisterBlockchainRPCCommands(CRPCTable& t)
         {"blockchain", &getdeploymentinfo},
         {"blockchain", &gettxout},
         {"blockchain", &gettxoutsetinfo},
+        {"blockchain", &checkrecycleindex},
         {"blockchain", &pruneblockchain},
         {"blockchain", &verifychain},
         {"blockchain", &preciousblock},

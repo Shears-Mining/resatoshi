@@ -389,6 +389,37 @@ CDBIterator::~CDBIterator() = default;
 bool CDBIterator::Valid() const { return m_impl_iter->iter->Valid(); }
 void CDBIterator::SeekToFirst() { m_impl_iter->iter->SeekToFirst(); }
 void CDBIterator::Next() { m_impl_iter->iter->Next(); }
+void CDBIterator::CheckStatus() const { HandleError(m_impl_iter->iter->status()); }
+
+struct CDBSnapshot::Impl {
+    leveldb::DB& db;
+    const leveldb::Snapshot* snapshot;
+    explicit Impl(leveldb::DB& parent) : db{parent}, snapshot{db.GetSnapshot()} {}
+    ~Impl() { db.ReleaseSnapshot(snapshot); }
+};
+
+CDBSnapshot::CDBSnapshot(const CDBWrapper& parent)
+    : m_parent{parent}, m_impl{std::make_unique<Impl>(*parent.DBContext().pdb)} {}
+CDBSnapshot::~CDBSnapshot() = default;
+
+std::optional<std::string> CDBSnapshot::ReadImpl(std::span<const std::byte> key) const
+{
+    auto options{m_parent.DBContext().iteroptions};
+    options.snapshot = m_impl->snapshot;
+    std::string value;
+    const auto status{m_impl->db.Get(options, leveldb::Slice{CharCast(key.data()), key.size()}, &value)};
+    if (status.IsNotFound()) return std::nullopt;
+    HandleError(status);
+    return value;
+}
+
+std::unique_ptr<CDBIterator> CDBSnapshot::NewIterator() const
+{
+    auto options{m_parent.DBContext().iteroptions};
+    options.snapshot = m_impl->snapshot;
+    return std::make_unique<CDBIterator>(m_parent,
+        std::make_unique<CDBIterator::IteratorImpl>(m_impl->db.NewIterator(options)));
+}
 
 namespace dbwrapper_private {
 

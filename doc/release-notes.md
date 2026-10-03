@@ -8,6 +8,10 @@ Consult the package's accompanying notes for its version and source information.
 
 ## Unreleased maintenance changes
 
+- Add `checkrecycleindex start|status|abort` for a full, read-only UTXO/height-index
+  correspondence check at one coherent database snapshot. Report missing,
+  orphaned, wrong-height and malformed records with bounded examples, without
+  repairing data or claiming historical consensus verification.
 - Identify display release `31.0.0-rsat.1` as ReSatoshi, with the Bitcoin Core
   base and source revision, while preserving numeric client/protocol versions.
 - Add opt-in `getblockchaininfo include_recycling=true` rules and pool status;

@@ -18,12 +18,15 @@
 #include <util/vector.h>
 
 #include <cassert>
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <cstdlib>
 #include <exception>
 #include <future>
 #include <iterator>
 #include <limits>
+#include <mutex>
 #include <utility>
 
 static constexpr uint8_t DB_COIN{'C'};
@@ -77,6 +80,149 @@ struct HeightEntry {
 };
 
 } // namespace
+
+struct RecycleIndexScanControl {
+    std::atomic<bool> cancel{false};
+    std::mutex mutex;
+    std::condition_variable released_cv;
+    bool released{false};
+};
+
+struct RecycleIndexSnapshot::Impl {
+    std::shared_ptr<CDBWrapper> db;
+    std::shared_ptr<RecycleIndexScanControl> control;
+    std::unique_ptr<CDBSnapshot> snapshot;
+    Impl(std::shared_ptr<CDBWrapper> parent, std::shared_ptr<RecycleIndexScanControl> state)
+        : db{std::move(parent)}, control{std::move(state)}, snapshot{std::make_unique<CDBSnapshot>(*db)} {}
+    ~Impl()
+    {
+        snapshot.reset();
+        db.reset();
+        {
+            std::lock_guard lock{control->mutex};
+            control->released = true;
+        }
+        control->released_cv.notify_all();
+    }
+};
+
+bool RecycleIndexCheckResult::Valid() const
+{
+    return completed && missing == 0 && orphaned == 0 && height_mismatches == 0 &&
+        unexpected == 0 && malformed_coins == 0 && malformed_index_entries == 0;
+}
+
+RecycleIndexSnapshot::RecycleIndexSnapshot(std::shared_ptr<CDBWrapper> db, std::shared_ptr<RecycleIndexScanControl> control)
+    : m_impl{std::make_unique<Impl>(std::move(db), std::move(control))}
+{
+    int version{0};
+    if (!m_impl->snapshot->Read(DB_RECYCLE_CODEC, version) || version != RECYCLE_INDEX_VERSION ||
+        m_impl->snapshot->Exists(DB_HEAD_BLOCKS) || GetBestBlock().IsNull()) {
+        throw std::runtime_error("Recycle index check requires a ready, fully flushed chainstate");
+    }
+}
+
+RecycleIndexSnapshot::~RecycleIndexSnapshot() = default;
+
+uint256 RecycleIndexSnapshot::GetBestBlock() const
+{
+    uint256 block;
+    if (!m_impl->snapshot->Read(DB_BEST_BLOCK, block)) throw std::runtime_error("Unreadable chainstate best block");
+    return block;
+}
+
+RecycleIndexCheckResult RecycleIndexSnapshot::Check(
+    const std::function<bool(const std::string&, const RecycleIndexCheckResult&)>& progress) const
+{
+    RecycleIndexCheckResult result;
+    const auto& snapshot{*m_impl->snapshot};
+    auto issue = [&](std::string type, std::optional<COutPoint> outpoint = {},
+                     std::optional<uint32_t> index_height = {}, std::optional<uint32_t> coin_height = {}) {
+        if (result.issues.size() < 20) result.issues.push_back({std::move(type), outpoint, index_height, coin_height});
+    };
+    auto proceed = [&](const std::string& phase, uint64_t count) {
+        return !m_impl->control->cancel.load() && (count % 256 != 0 || progress(phase, result));
+    };
+    auto cursor{snapshot.NewIterator()};
+    for (cursor->Seek(DB_COIN); cursor->Valid(); cursor->Next()) {
+        uint8_t prefix{0};
+        if (!cursor->GetKey(prefix) || prefix != DB_COIN) break;
+        if (!proceed("coins", result.coins_scanned)) return result;
+        ++result.coins_scanned;
+        COutPoint outpoint;
+        CoinEntry key{&outpoint};
+        Coin coin;
+        // The metadata formatter preserves oversized internal scripts and also
+        // rejects oversized non-metadata scripts rather than silently truncating.
+        auto formatted{Using<node::recycle::StateCoinFormatter>(coin)};
+        if (!cursor->GetKey(key, true) || !cursor->GetValue(formatted, true) || coin.IsSpent()) {
+            ++result.malformed_coins;
+            issue("malformed_coin");
+            continue;
+        }
+        if (node::recycle::IsStateOutpoint(outpoint) || coin.out.scriptPubKey.IsUnspendable()) continue;
+        ++result.indexed_coins;
+        if (!snapshot.Exists(HeightEntry{DB_RECYCLE_HEIGHT, coin.nHeight, outpoint})) {
+            ++result.missing;
+            issue("missing", outpoint, {}, uint32_t{coin.nHeight});
+        }
+    }
+    cursor->CheckStatus();
+    for (cursor->Seek(DB_RECYCLE_HEIGHT); cursor->Valid(); cursor->Next()) {
+        uint8_t prefix{0};
+        if (!cursor->GetKey(prefix) || prefix != DB_RECYCLE_HEIGHT) break;
+        if (!proceed("index", result.index_entries)) return result;
+        ++result.index_entries;
+        HeightEntry entry;
+        uint8_t placeholder{1};
+        if (!cursor->GetKey(entry, true) || !cursor->GetValue(placeholder, true) || placeholder != 0) {
+            ++result.malformed_index_entries;
+            issue("malformed_index_entry");
+            continue;
+        }
+        const CoinEntry key{&entry.outpoint};
+        Coin coin;
+        auto formatted{Using<node::recycle::StateCoinFormatter>(coin)};
+        const auto read{snapshot.ReadStatus(key, formatted)};
+        if (read == CDBSnapshot::ReadResult::NOT_FOUND) {
+            ++result.orphaned;
+            issue("orphaned", entry.outpoint, entry.height);
+            continue;
+        }
+        if (read != CDBSnapshot::ReadResult::OK || coin.IsSpent()) continue; // Counted by the coin pass.
+        if (node::recycle::IsStateOutpoint(entry.outpoint) || coin.out.scriptPubKey.IsUnspendable()) {
+            ++result.unexpected;
+            issue("unexpected", entry.outpoint, entry.height, uint32_t{coin.nHeight});
+        } else if (coin.nHeight != entry.height) {
+            ++result.height_mismatches;
+            issue("height_mismatch", entry.outpoint, entry.height, uint32_t{coin.nHeight});
+        }
+    }
+    cursor->CheckStatus();
+    if (m_impl->control->cancel.load() || !progress("complete", result)) return result;
+    result.completed = true;
+    return result;
+}
+
+std::unique_ptr<RecycleIndexSnapshot> CCoinsViewDB::GetRecycleIndexSnapshot()
+{
+    AssertLockHeld(cs_main);
+    if (!m_options.recycle_index) throw std::runtime_error("Recycle height index is disabled");
+    if (!m_recycle_check.expired()) return {};
+    auto control{std::make_shared<RecycleIndexScanControl>()};
+    auto snapshot{std::unique_ptr<RecycleIndexSnapshot>(new RecycleIndexSnapshot{m_db, control})};
+    m_recycle_check = control;
+    return snapshot;
+}
+
+void CCoinsViewDB::CancelRecycleIndexCheck()
+{
+    if (auto control{m_recycle_check.lock()}) {
+        control->cancel = true;
+        std::unique_lock lock{control->mutex};
+        control->released_cv.wait(lock, [&] { return control->released; });
+    }
+}
 
 bool CCoinsViewDB::UpgradeRecycleIndex(const std::function<bool()>& interrupted)
 {
@@ -154,10 +300,11 @@ std::set<COutPoint> CCoinsViewDB::GetCoinsByHeight(uint32_t height) const
 CCoinsViewDB::CCoinsViewDB(DBParams db_params, CoinsViewOptions options) :
     m_db_params{std::move(db_params)},
     m_options{std::move(options)},
-    m_db{std::make_unique<CDBWrapper>(m_db_params)} { }
+    m_db{std::make_shared<CDBWrapper>(m_db_params)} { }
 
 CCoinsViewDB::~CCoinsViewDB()
 {
+    CancelRecycleIndexCheck();
     if (m_compaction.valid()) {
         if (m_compaction.wait_for(std::chrono::seconds{0}) != std::future_status::ready) {
             LogInfo("Waiting for background chainstate compaction of %s", fs::PathToString(m_db_params.path));
@@ -171,13 +318,14 @@ void CCoinsViewDB::ResizeCache(size_t new_cache_size)
     // We can't do this operation with an in-memory DB since we'll lose all the coins upon
     // reset.
     if (!m_db_params.memory_only) {
+        CancelRecycleIndexCheck();
         LOCK(m_db_mutex);
         // Have to do a reset first to get the original `m_db` state to release its
         // filesystem lock.
         m_db.reset();
         m_db_params.cache_bytes = new_cache_size;
         m_db_params.wipe_data = false;
-        m_db = std::make_unique<CDBWrapper>(m_db_params);
+        m_db = std::make_shared<CDBWrapper>(m_db_params);
     }
 }
 

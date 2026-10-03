@@ -183,6 +183,12 @@ For the discovery retry and external integration paths, also run:
 python3 build/test/functional/test_runner.py -j 4 p2p_resatoshi_bootstrap feature_recycle_interfaces feature_recycle_spend tool_utxo_to_sqlite rpc_getdescriptoractivity rpc_scanblocks
 ```
 
+For recycle-index diagnostics, run `dbwrapper_tests,recycle_tests` and
+`rpc_checkrecycleindex feature_recycle_index feature_recycle_boundary`.
+Preserve shared-snapshot point reads and iterators, cancellation during database
+resizing, bounded examples and the distinction between completion and validity.
+These checks do not replace historical block replay or independent node comparison.
+
 The bootstrap test routes every peer through local SOCKS proxies, deliberately
 fails the first attempts, and checks automatic address discovery and block
 synchronization after recovery. It also checks `-dnsseed=0` and `-connect=0`.

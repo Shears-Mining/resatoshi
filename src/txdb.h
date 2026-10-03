@@ -23,6 +23,45 @@
 
 class COutPoint;
 class uint256;
+struct RecycleIndexScanControl;
+
+struct RecycleIndexIssue {
+    std::string type;
+    std::optional<COutPoint> outpoint;
+    std::optional<uint32_t> index_height;
+    std::optional<uint32_t> coin_height;
+};
+
+struct RecycleIndexCheckResult {
+    bool completed{false};
+    uint64_t coins_scanned{0};
+    uint64_t indexed_coins{0};
+    uint64_t index_entries{0};
+    uint64_t missing{0};
+    uint64_t orphaned{0};
+    uint64_t height_mismatches{0};
+    uint64_t unexpected{0};
+    uint64_t malformed_coins{0};
+    uint64_t malformed_index_entries{0};
+    //! Bounded examples; counters always cover the entire completed scan.
+    std::vector<RecycleIndexIssue> issues;
+    bool Valid() const;
+};
+
+/** Pins the database and one coherent read snapshot without holding cs_main.
+ * Cache resizing/shutdown cancel the check and wait for this lease to release.
+ */
+class RecycleIndexSnapshot {
+    friend class CCoinsViewDB;
+    struct Impl;
+    std::unique_ptr<Impl> m_impl;
+    RecycleIndexSnapshot(std::shared_ptr<CDBWrapper> db, std::shared_ptr<RecycleIndexScanControl> control);
+public:
+    ~RecycleIndexSnapshot();
+    uint256 GetBestBlock() const;
+    //! The progress callback must not acquire cs_main: resizing may wait under that lock.
+    RecycleIndexCheckResult Check(const std::function<bool(const std::string&, const RecycleIndexCheckResult&)>& progress) const EXCLUSIVE_LOCKS_REQUIRED(!cs_main);
+};
 
 //! User-controlled performance and debug options.
 struct CoinsViewOptions {
@@ -42,7 +81,9 @@ protected:
     CoinsViewOptions m_options;
     //! Prevents CompactFull() from using m_db while ResizeCache() replaces it.
     Mutex m_db_mutex;
-    std::unique_ptr<CDBWrapper> m_db;
+    std::shared_ptr<CDBWrapper> m_db;
+    std::weak_ptr<RecycleIndexScanControl> m_recycle_check;
+    void CancelRecycleIndexCheck();
     std::shared_future<void> m_compaction;
 public:
     explicit CCoinsViewDB(DBParams db_params, CoinsViewOptions options);
@@ -61,6 +102,8 @@ public:
     bool RecycleStateReady() const;
     /** Rebuild from UTXOs, discard legacy schedules, and resume safely after interruption. */
     bool UpgradeRecycleIndex(const std::function<bool()>& interrupted);
+    //! Capture only after a complete flush. Returns null if a check is already leased.
+    std::unique_ptr<RecycleIndexSnapshot> GetRecycleIndexSnapshot() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     size_t EstimateSize() const override;
 
     //! Dynamically alter the underlying leveldb cache size.

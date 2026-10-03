@@ -53,8 +53,49 @@ replays blocks to reconstruct chainstate and its index together. Pruned nodes
 require `-reindex` and retrieval of missing history; `-reindex-chainstate` is
 incompatible with prune mode. Compare the resulting tip, UTXO statistics and
 recycle pool against an independently validated node at the same block hash.
-There is currently no dedicated full index-integrity RPC. Successful startup or
-`verifychain` alone must not be advertised as an exhaustive index audit.
+Successful startup or `verifychain` alone must not be advertised as an exhaustive
+index audit. Use the read-only correspondence check below for this purpose.
+
+### Full index correspondence check
+
+```sh
+bitcoin-cli checkrecycleindex start
+bitcoin-cli checkrecycleindex status
+bitcoin-cli checkrecycleindex abort
+```
+
+`start` first flushes the active coin cache through its normal persistence path,
+then captures a single LevelDB snapshot with its block hash and height. The
+two passes and all point lookups use that same snapshot, even if new blocks or
+reorganizations occur concurrently. After capture the scan does not hold
+`cs_main`. It streams coins and index entries instead of keeping the whole UTXO
+set in memory, bypasses LevelDB's read cache, checks iterator storage errors,
+and retains at most 20 example issues. Storage I/O and snapshot retention can
+temporarily increase disk use and affect throughput.
+
+The coin pass checks that every spendable ordinary coin has its expected height
+key. The index pass checks that each entry has an existing, spendable ordinary
+coin at the same height and a valid one-byte zero placeholder. Internal pool
+state is excluded from indexed coins. Malformed keys and values are reported.
+`missing`, `orphaned`, `height_mismatches`, `unexpected`, `malformed_coins` and
+`malformed_index_entries` are full counters, not limited by the example cap.
+A wrong-height entry can count as both a mismatch and a missing correct key;
+the categories are not a count of distinct affected outpoints.
+
+`success` means the scan completed, not that the index is correct. Only a
+completed scan returns `valid`; it is true only when every inconsistency counter
+is zero. An aborted check returns partial counters without `valid`. `status`
+reports the phase and examined record counts, or null when no check is running.
+There is no percentage estimate for uneven key distributions. One
+check runs at a time. Cancellation is cooperative; `abort` acknowledges the
+request rather than waiting for resource release. A database cache resize also
+cancels the check and waits for its snapshot to release before reopening the DB.
+
+This verifies current persisted UTXO/index correspondence only. It cannot prove
+that earlier expiry was processed correctly, validate the whole chain or
+authenticate pool accounting. It never rewrites index entries, changes a codec
+marker or repairs data. Investigate failures using the recovery procedure above;
+for historical correctness, replay blocks and compare independent node state.
 
 The serialized key plus placeholder value occupies 42 bytes per live indexed
 UTXO: about 4.2 GB for 100 million entries before compression and database
