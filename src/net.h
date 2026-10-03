@@ -1484,6 +1484,10 @@ private:
 
     void ThreadSocketHandler() EXCLUSIVE_LOCKS_REQUIRED(!m_total_bytes_sent_mutex, !mutexMsgProc, !m_nodes_mutex, !m_reconnections_mutex);
     void ThreadDNSAddressSeed() EXCLUSIVE_LOCKS_REQUIRED(!m_addr_fetches_mutex, !m_nodes_mutex);
+    void SeedAddresses() EXCLUSIVE_LOCKS_REQUIRED(!m_addr_fetches_mutex, !m_nodes_mutex);
+    int LoadDNSSeed(const std::string& seed, FastRandomContext& rng) EXCLUSIVE_LOCKS_REQUIRED(!m_addr_fetches_mutex);
+    bool ShouldRetryDNSSeeds() const;
+    bool HasAutomaticOutbound() const EXCLUSIVE_LOCKS_REQUIRED(!m_nodes_mutex);
 
     uint64_t CalculateKeyedNetGroup(const CNetAddr& ad) const;
 
@@ -1719,6 +1723,8 @@ private:
      */
     std::unique_ptr<i2p::sam::Session> m_i2p_sam_session;
 
+    //! A single coalesced request, consumed by the existing DNS worker.
+    std::atomic<bool> m_dns_seed_retry{false};
     std::thread threadDNSAddressSeed;
     std::thread threadSocketHandler;
     std::thread threadOpenAddedConnections;

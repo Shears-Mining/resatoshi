@@ -24,6 +24,31 @@ SHA-256d proof of work targets one block every 600 seconds. ASERT adjusts
 mainnet difficulty with a half-life of 172,800 seconds. The initial subsidy is
 50 coins and halves every 210,000 blocks.
 
+ASERT uses the previous block's height and timestamp to set the next target.
+While waiting for that next block, wall-clock time alone does not lower its
+difficulty. A two-day half-life is not a two-day outage recovery guarantee.
+If hashrate falls to a fraction `f` of the amount that produced a ten-minute
+mean at the current target, the next block's mean wait is `600 / f` seconds.
+Under constant independent Poisson hashing, its p95 wait is
+`-ln(0.05) * 600 / f` seconds:
+
+| Remaining hashrate | Mean wait | p95 wait |
+| --- | ---: | ---: |
+| 100% | 10 minutes | 30 minutes |
+| 10% | 100 minutes | 5.0 hours |
+| 1% | 16.7 hours | 2.1 days |
+| 0.1% | 6.9 days | 20.8 days |
+| 0.01% | 69.4 days | 208.0 days |
+
+These are conditional estimates for the **next block**, not measurements of
+this network, guaranteed deadlines, or a simulation of subsequent ASERT targets.
+Record tip age, target, observed block intervals and participating miners when
+evaluating an outage. An online full node supplies validation and connectivity;
+it does not replace departed hashing capacity. Prioritize independent sustained
+mining and operational monitoring. Emergency difficulty changes would require
+separate consensus design, simulation and coordinated activation; do not change
+local difficulty parameters as an operational repair.
+
 BIP34, BIP65, BIP66 and CSV activate at height 1. SegWit and Taproot are active
 from genesis. Mainnet uses the documented bootstrap hostnames through Bitcoin
 Core's existing DNS-seed / address-fetch path. No fixed seeds, assume-valid
@@ -51,13 +76,18 @@ Multiple hostnames do not establish operator independence; independently
 operated seeds remain desirable as the network grows.
 
 If a mainnet node has no established automatic outbound full-relay or block-relay
-peer for 60 seconds, it retries seed address fetches, doubling the interval up to
+peer for 60 seconds, it retries seed discovery, doubling the interval up to
 15 minutes after each retry. Stale known addresses, inbound peers, and temporary
 address-fetch or feeler connections do not suppress recovery. An established
 automatic outbound peer resets the backoff and postpones further retries.
 Network deactivation also resets the timer, so reactivation allows a fresh
-60-second recovery window. Retries use the existing proxy-aware address-fetch
-path and require network activity and automatic DNS seeding; explicit `-connect`
+60-second recovery window. Initial discovery and retries share the same policy:
+without a name proxy they query service-bit DNS (up to 32 addresses per seed),
+falling back to a base-host address-fetch connection if DNS returns no addresses.
+With a name proxy they request the base host through the proxy without a local
+DNS lookup. The existing DNS worker handles one pending retry batch at a time;
+slow DNS does not block the automatic connection worker. Retries require
+network activity and automatic DNS seeding; explicit `-connect`
 disables them. Manual `-addnode` connections alone do not suppress automatic
 discovery; use `-dnsseed=0` to disable seed queries.
 Inherited Bitcoin test networks retain their upstream seed retry behavior.

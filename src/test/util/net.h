@@ -52,6 +52,9 @@ struct ConnmanTestMsg : public CConnman {
     /// Reset the internal state.
     void Reset();
 
+    //! Run real discovery workers without connection slots or public sockets.
+    void StartSeedTestThreads();
+
     std::vector<CNode*> TestNodes()
     {
         LOCK(m_nodes_mutex);

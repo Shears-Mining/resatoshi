@@ -32,6 +32,14 @@ CBlock CoinbaseBlock(CAmount value, int unique)
     return block;
 }
 
+// Deliberately bypass the normal atomic coin/index writes to model disk damage.
+struct TestHeightEntry {
+    uint8_t prefix{'E'};
+    uint32_t height{1};
+    COutPoint outpoint;
+    SERIALIZE_METHODS(TestHeightEntry, obj) { READWRITE(obj.prefix, obj.height, obj.outpoint); }
+};
+
 } // namespace
 
 BOOST_AUTO_TEST_SUITE(recycle_tests)
@@ -506,6 +514,67 @@ BOOST_FIXTURE_TEST_CASE(index_migration_and_interruption, BasicTestingSetup)
         BOOST_CHECK(db.GetCoinsByHeight(1).empty());
         BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
         BOOST_CHECK(db.GetCoinsByHeight(1).empty());
+    }
+}
+
+BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
+{
+    for (int damage : {0, 1, 2}) {
+        const auto path{m_path_root / fs::PathFromString(strprintf("damaged-index-%d", damage))};
+        const CBlock origin{CoinbaseBlock(COIN, 1)};
+        const COutPoint output{origin.vtx[0]->GetHash(), 0};
+        const COutPoint phantom{Txid::FromUint256(uint256{42}), 0};
+        const std::set<COutPoint> expected{output};
+        {
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+            CCoinsViewCache view{&db};
+            AddCoins(view, *origin.vtx[0], 1);
+            view.SetBestBlock(uint256{1});
+            view.Flush();
+        }
+        {
+            CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
+            const TestHeightEntry correct{'E', 1, output};
+            BOOST_REQUIRE_EQUAL(GetSerializeSize(correct) + GetSerializeSize(uint8_t{0}), 42U);
+            BOOST_REQUIRE(raw.Exists(correct));
+            if (damage == 1) {
+                raw.Write(TestHeightEntry{'E', 1, phantom}, uint8_t{0}, true);
+            } else {
+                raw.Erase(correct, true);
+                if (damage == 2) raw.Write(TestHeightEntry{'E', 2, output}, uint8_t{0}, true);
+            }
+        }
+        {
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+            // The ready marker certifies migration completion, not completeness.
+            BOOST_REQUIRE(db.RecycleStateReady());
+            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+            BOOST_CHECK(db.GetCoinsByHeight(1) != expected);
+            const auto coin{db.GetCoin(output)};
+            BOOST_REQUIRE(coin);
+            BOOST_CHECK_EQUAL(coin->nHeight, 1U);
+            BOOST_CHECK_EQUAL(coin->out.nValue, COIN);
+            CCoinsViewCache view{&db};
+            const CBlock expiry{CoinbaseBlock(0, 201)};
+            BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, 200), damage == 1 ? COIN : 0);
+        }
+        {
+            // Test-only injection of an interrupted migration. This is not a
+            // supported repair procedure for an already corrupted chainstate.
+            CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
+            raw.Write(uint8_t{'r'}, 3, true);
+        }
+        {
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true, .batch_write_bytes = 1}};
+            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+            BOOST_CHECK(db.GetCoinsByHeight(1) == expected);
+            BOOST_CHECK(db.GetCoinsByHeight(2).empty());
+            BOOST_CHECK(db.GetBestBlock() == uint256{1});
+            CCoinsViewCache view{&db};
+            const CBlock expiry{CoinbaseBlock(0, 201)};
+            BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, 200), COIN);
+        }
     }
 }
 

@@ -25,6 +25,9 @@ incorporated fixes, remaining differences, and local validation commands.
   failed discovery with bounded backoff when there are no established automatic
   outbound full-relay or block-relay peers, including with stale known addresses
   or inbound-only connections. Recovery or network deactivation resets the timer.
+  Direct retries now repeat service-bit DNS queries through the same discovery
+  function as startup; proxy retries still avoid local DNS resolution. A single
+  pending batch runs on the DNS worker without blocking automatic connections.
 - Set a conservative minimum chain work from verified block 8,000 for initial
   synchronization protection; keep assume-valid disabled. See the verification
   and future update policy in [network rules](resatoshi.md#bootstrap-and-minimum-chain-work).

@@ -2264,7 +2264,85 @@ void CConnman::WakeMessageHandler()
     condMsgProc.notify_one();
 }
 
+bool CConnman::ShouldRetryDNSSeeds() const
+{
+    return m_params.GetChainType() == ChainType::MAIN &&
+           gArgs.GetBoolArg("-dnsseed", DEFAULT_DNSSEED) &&
+           !gArgs.IsArgSet("-connect") && !m_params.DNSSeeds().empty();
+}
+
+bool CConnman::HasAutomaticOutbound() const
+{
+    bool connected{false};
+    // Ignore incomplete handshakes, disconnecting peers and temporary fetches.
+    ForEachNode([&](const CNode* node) {
+        connected |= node->IsFullOutboundConn() || node->IsBlockOnlyConn();
+    });
+    return connected;
+}
+
+int CConnman::LoadDNSSeed(const std::string& seed, FastRandomContext& rng)
+{
+    int found{0};
+    LogInfo("Loading addresses from DNS seed %s\n", seed);
+    // If -proxy is in use, we make an ADDR_FETCH connection to the DNS resolved peer address
+    // for the base dns seed domain in chainparams
+    if (HaveNameProxy()) {
+        AddAddrFetch(seed);
+    } else {
+        std::vector<CAddress> vAdd;
+        constexpr ServiceFlags requiredServiceBits{SeedsServiceFlags()};
+        std::string host = strprintf("x%x.%s", requiredServiceBits, seed);
+        CNetAddr resolveSource;
+        if (!resolveSource.SetInternal(host)) {
+            return 0;
+        }
+        // Limit number of IPs learned from a single DNS seed. This limit exists to prevent the results from
+        // one DNS seed from dominating AddrMan. Note that the number of results from a UDP DNS query is
+        // bounded to 33 already, but it is possible for it to use TCP where a larger number of results can be
+        // returned.
+        unsigned int nMaxIPs = 32;
+        const auto addresses{LookupHost(host, nMaxIPs, true)};
+        if (!addresses.empty()) {
+            for (const CNetAddr& ip : addresses) {
+                CAddress addr = CAddress(CService(ip, m_params.GetDefaultPort()), requiredServiceBits);
+                addr.nTime = rng.rand_uniform_delay(Now<NodeSeconds>() - 3 * 24h, -4 * 24h); // use a random age between 3 and 7 days old
+                vAdd.push_back(addr);
+                found++;
+            }
+            addrman.get().Add(vAdd, resolveSource);
+        } else {
+            // If the seed does not support a subdomain with our desired service bits,
+            // we make an ADDR_FETCH connection to the DNS resolved peer address for the
+            // base dns seed domain in chainparams
+            AddAddrFetch(seed);
+        }
+    }
+    return found;
+}
+
 void CConnman::ThreadDNSAddressSeed()
+{
+    SeedAddresses();
+    if (!ShouldRetryDNSSeeds()) return;
+
+    FastRandomContext rng;
+    while (m_interrupt_net->sleep_for(500ms)) {
+        if (!m_dns_seed_retry.load()) continue;
+        auto seeds{m_params.DNSSeeds()};
+        std::shuffle(seeds.begin(), seeds.end(), rng);
+        for (const auto& seed : seeds) {
+            if (m_interrupt_net->interrupted()) return;
+            if (!fNetworkActive || HasAutomaticOutbound()) break;
+            LoadDNSSeed(seed, rng);
+        }
+        // Keep the request set throughout the lookup: slow DNS cannot queue
+        // unbounded work or block the automatic connection thread.
+        m_dns_seed_retry = false;
+    }
+}
+
+void CConnman::SeedAddresses()
 {
     int outbound_connection_count = 0;
 
@@ -2330,14 +2408,15 @@ void CConnman::ThreadDNSAddressSeed()
 
                 if (addrman.get().Size() > 0) {
                     LogInfo("Waiting %d seconds before querying DNS seeds.\n", seeds_wait_time.count());
-                    std::chrono::seconds to_wait = seeds_wait_time;
+                    auto to_wait{std::chrono::duration_cast<std::chrono::milliseconds>(seeds_wait_time)};
+                    const auto check_interval{ShouldRetryDNSSeeds() ? 500ms : DNSSEEDS_DELAY_FEW_PEERS};
                     while (to_wait.count() > 0) {
-                        // if sleeping for the MANY_PEERS interval, wake up
-                        // early to see if we have enough peers and can stop
-                        // this thread entirely freeing up its resources
-                        std::chrono::seconds w = std::min(DNSSEEDS_DELAY_FEW_PEERS, to_wait);
+                        // End initial discovery when peers arrive, or hand a
+                        // recovery request back to the DNS worker promptly.
+                        const auto w{std::min(check_interval, to_wait)};
                         if (!m_interrupt_net->sleep_for(w)) return;
                         to_wait -= w;
+                        if (m_dns_seed_retry.load()) return;
 
                         if (GetFullOutboundConnCount() >= SEED_OUTBOUND_CONNECTION_THRESHOLD) {
                             if (found > 0) {
@@ -2362,40 +2441,7 @@ void CConnman::ThreadDNSAddressSeed()
                 } while (!fNetworkActive);
             }
 
-            LogInfo("Loading addresses from DNS seed %s\n", seed);
-            // If -proxy is in use, we make an ADDR_FETCH connection to the DNS resolved peer address
-            // for the base dns seed domain in chainparams
-            if (HaveNameProxy()) {
-                AddAddrFetch(seed);
-            } else {
-                std::vector<CAddress> vAdd;
-                constexpr ServiceFlags requiredServiceBits{SeedsServiceFlags()};
-                std::string host = strprintf("x%x.%s", requiredServiceBits, seed);
-                CNetAddr resolveSource;
-                if (!resolveSource.SetInternal(host)) {
-                    continue;
-                }
-                // Limit number of IPs learned from a single DNS seed. This limit exists to prevent the results from
-                // one DNS seed from dominating AddrMan. Note that the number of results from a UDP DNS query is
-                // bounded to 33 already, but it is possible for it to use TCP where a larger number of results can be
-                // returned.
-                unsigned int nMaxIPs = 32;
-                const auto addresses{LookupHost(host, nMaxIPs, true)};
-                if (!addresses.empty()) {
-                    for (const CNetAddr& ip : addresses) {
-                        CAddress addr = CAddress(CService(ip, m_params.GetDefaultPort()), requiredServiceBits);
-                        addr.nTime = rng.rand_uniform_delay(Now<NodeSeconds>() - 3 * 24h, -4 * 24h); // use a random age between 3 and 7 days old
-                        vAdd.push_back(addr);
-                        found++;
-                    }
-                    addrman.get().Add(vAdd, resolveSource);
-                } else {
-                    // If the seed does not support a subdomain with our desired service bits,
-                    // we make an ADDR_FETCH connection to the DNS resolved peer address for the
-                    // base dns seed domain in chainparams
-                    AddAddrFetch(seed);
-                }
-            }
+            found += LoadDNSSeed(seed, rng);
             --seeds_right_now;
         }
         LogInfo("%d addresses found from DNS seeds\n", found);
@@ -2592,8 +2638,7 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
     constexpr std::chrono::seconds ADD_NEXT_SEEDNODE = 10s;
     // Known addresses and inbound peers need not provide outbound connectivity.
     // Retry through the same proxy-aware path, with bounded exponential backoff.
-    const bool retry_seed_fetches{m_params.GetChainType() == ChainType::MAIN && dnsseed &&
-                                 !gArgs.IsArgSet("-connect") && !m_params.DNSSeeds().empty()};
+    const bool retry_seed_fetches{ShouldRetryDNSSeeds()};
     auto seed_retry_delay = 60s;
     auto next_seed_retry = SteadyClock::now() + seed_retry_delay;
     bool had_outbound{false};
@@ -2618,21 +2663,15 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
         ProcessAddrFetch();
 
         if (retry_seed_fetches) {
-            bool have_outbound{false};
-            // ForEachNode excludes incomplete handshakes and disconnecting peers.
-            // Temporary address-fetch/feeler connections do not establish recovery.
-            ForEachNode([&](const CNode* node) {
-                have_outbound |= node->IsFullOutboundConn() || node->IsBlockOnlyConn();
-            });
+            const bool have_outbound{HasAutomaticOutbound()};
             const auto now{SteadyClock::now()};
             if (!fNetworkActive || have_outbound || had_outbound) {
                 seed_retry_delay = 60s;
                 next_seed_retry = now + seed_retry_delay;
             } else if (now >= next_seed_retry) {
                 LOCK(m_addr_fetches_mutex);
-                if (m_addr_fetches.empty()) {
+                if (m_addr_fetches.empty() && !m_dns_seed_retry.exchange(true)) {
                     LogInfo("Retrying DNS seed address fetches: no established automatic outbound peers\n");
-                    for (const auto& seed : m_params.DNSSeeds()) m_addr_fetches.push_back(seed);
                     seed_retry_delay = std::min(seed_retry_delay * 2, 900s);
                 }
                 next_seed_retry = now + seed_retry_delay;
@@ -3578,6 +3617,7 @@ bool CConnman::Start(CScheduler& scheduler, const Options& connOptions)
     //
     assert(m_msgproc);
     m_interrupt_net->reset();
+    m_dns_seed_retry = false;
     flagInterruptMsgProc = false;
 
     {

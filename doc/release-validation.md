@@ -5,6 +5,22 @@ build on one operating system does not establish support on another. Keep the
 test logs, toolchain versions, configuration and artifact SHA-256 hashes with
 the release record. This procedure does not enable hosted CI.
 
+## Local validation records
+
+Maintenance checks run locally; this procedure does not configure or start
+GitLab CI. Store a reviewable JSON record under `doc/validation/` in a follow-up
+commit referencing the exact tested source commit. Record whether the build was
+fresh or incremental, the test commands, pass/fail/skip counts, compiler and OS,
+artifact SHA-256 hashes, and checks not performed. A result record must never
+claim to test its own future commit hash.
+
+Retain the matching logs and source archive separately. List their checksums
+and whether the artifacts are actually published; a checksum without the file
+is not public access to evidence. Maintainer-reported local results are not an
+independent audit, hosted pipeline attestation, reproducible-build proof or
+verification of a separately distributed binary. Incremental maintenance
+checks do not replace the fresh release build procedure below.
+
 ## Freeze the source
 
 Include new source and test files in the reviewed commit. Check that

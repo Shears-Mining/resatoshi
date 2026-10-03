@@ -30,6 +30,39 @@ pool balance. The legacy schedule field is a constant-size placeholder in new
 undo records; old undo is still decoded so pre-upgrade blocks can disconnect.
 Disconnecting restores UTXOs and thereby restores their index entries.
 
+## Integrity limits and recovery
+
+The index is derived but participates in consensus calculations: a missing key
+can hide a real UTXO from expiry processing. Actual coin lookups reject phantom
+or mismatched-height entries, but cannot discover omitted entries. The ready
+marker certifies migration completion; it is not a checksum or a full audit on
+every startup. Atomic writes and interrupted-flush replay protect the supported
+write path, not arbitrary disk corruption or external database edits.
+
+`index_corruption_and_rebuild` injects missing, phantom and wrong-height keys
+into closed test databases. It checks the resulting lookup/reward discrepancy,
+and verifies that an interrupted-migration rebuild recreates the index from
+unchanged coins. Its marker editing is deliberately test-only, **not a repair
+procedure**. Rebuilding only the index after incorrect expiry has already been
+processed cannot reconstruct the correct UTXOs or pool balance.
+
+For suspected chainstate corruption, stop the node, preserve diagnostic logs
+and a copy of the affected database, and protect wallet backups. With complete
+block files and pruning disabled, the supported `-reindex-chainstate` option
+replays blocks to reconstruct chainstate and its index together. Pruned nodes
+require `-reindex` and retrieval of missing history; `-reindex-chainstate` is
+incompatible with prune mode. Compare the resulting tip, UTXO statistics and
+recycle pool against an independently validated node at the same block hash.
+There is currently no dedicated full index-integrity RPC. Successful startup or
+`verifychain` alone must not be advertised as an exhaustive index audit.
+
+The serialized key plus placeholder value occupies 42 bytes per live indexed
+UTXO: about 4.2 GB for 100 million entries before compression and database
+overhead. This is not a disk-space forecast. Expiry work scales with the number
+of entries at the expiring height, and undo retains their coin data. Performance
+claims need hardware, cache size, workload, wall time, peak memory and disk-write
+measurements; a successful stress test alone does not qualify a low-end VPS.
+
 ## Upgrade and downgrade
 
 Before block replay, startup rebuilds the index from persisted UTXOs and deletes

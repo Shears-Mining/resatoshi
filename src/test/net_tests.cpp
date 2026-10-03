@@ -28,17 +28,91 @@
 #include <boost/test/unit_test.hpp>
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <ios>
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
 
 using namespace std::literals;
 using namespace util::hex_literals;
 using util::ToString;
 
+namespace {
+struct SeedThreadsCleanup {
+    CConnman& connman;
+    DNSLookupFn previous{g_dns_lookup};
+    ~SeedThreadsCleanup()
+    {
+        connman.Interrupt();
+        connman.StopThreads();
+        g_dns_lookup = std::move(previous);
+    }
+};
+
+template <typename Predicate>
+bool WaitForSeed(const Predicate& predicate, std::chrono::seconds timeout)
+{
+    const auto deadline{std::chrono::steady_clock::now() + timeout};
+    while (!predicate() && std::chrono::steady_clock::now() < deadline) std::this_thread::sleep_for(50ms);
+    return predicate();
+}
+} // namespace
+
 BOOST_FIXTURE_TEST_SUITE(net_tests, RegTestingSetup)
+
+BOOST_FIXTURE_TEST_CASE(dns_service_bits_recovery, TestingSetup)
+{
+    auto& connman{static_cast<ConnmanTestMsg&>(*m_node.connman)};
+    BOOST_REQUIRE(!HaveNameProxy());
+    std::atomic<bool> recovered{false};
+    std::atomic<size_t> queries{0};
+    const auto seed_count{Params().DNSSeeds().size()};
+    BOOST_REQUIRE_GT(seed_count, 0U);
+    std::vector<CNetAddr> answers;
+    for (int i{1}; i <= 64; ++i) answers.push_back(LookupNumeric("45.1.1." + ToString(i)));
+    SeedThreadsCleanup cleanup{connman};
+    g_dns_lookup = [&](const std::string& host, bool allow_lookup) {
+        // Base domains never resolve. Only service-bit DNS recovers.
+        if (allow_lookup && host.starts_with("x9.")) {
+            const bool available{recovered.load()};
+            ++queries;
+            if (available) return answers;
+        }
+        return std::vector<CNetAddr>{};
+    };
+    connman.StartSeedTestThreads();
+    BOOST_REQUIRE(WaitForSeed([&] { return queries.load() >= seed_count; }, 5s));
+    BOOST_CHECK_EQUAL(m_node.addrman->Size(), 0U);
+    recovered = true;
+    BOOST_CHECK(WaitForSeed([&] { return m_node.addrman->Size() > 0; }, 65s));
+    BOOST_CHECK_GT(queries.load(), seed_count);
+    BOOST_CHECK_LE(m_node.addrman->Size(), 32U);
+}
+
+BOOST_FIXTURE_TEST_CASE(dns_recovery_interrupts_initial_delay, TestingSetup)
+{
+    auto& connman{static_cast<ConnmanTestMsg&>(*m_node.connman)};
+    BOOST_REQUIRE(!HaveNameProxy());
+    std::vector<CAddress> stale;
+    for (int i{0}; i < 10'000; ++i) {
+        stale.emplace_back(LookupNumeric("45." + ToString(i / 64) + "." + ToString(i % 64) + ".1:19333"), NODE_NETWORK);
+    }
+    m_node.addrman->Add(stale, LookupNumeric("8.8.8.8"));
+    // Trigger the five-minute initial DNS delay, with all outbound slots full.
+    BOOST_REQUIRE_GE(m_node.addrman->Size(), 1000U);
+    std::atomic<bool> queried{false};
+    SeedThreadsCleanup cleanup{connman};
+    g_dns_lookup = [&](const std::string& host, bool allow_lookup) {
+        if (allow_lookup && host.starts_with("x9.")) queried = true;
+        return std::vector<CNetAddr>{};
+    };
+    connman.StartSeedTestThreads();
+    BOOST_CHECK(WaitForSeed([&] { return queried.load(); }, 65s));
+}
 
 BOOST_AUTO_TEST_CASE(cnode_listen_port)
 {

@@ -88,6 +88,13 @@ void ConnmanTestMsg::Reset()
     m_private_broadcast.m_num_to_open.store(0);
 }
 
+void ConnmanTestMsg::StartSeedTestThreads()
+{
+    semOutbound = std::make_unique<std::counting_semaphore<>>(0);
+    threadDNSAddressSeed = std::thread([this] { ThreadDNSAddressSeed(); });
+    threadOpenConnections = std::thread([this] { ThreadOpenConnections({}, {}); });
+}
+
 void ConnmanTestMsg::NodeReceiveMsgBytes(CNode& node, std::span<const uint8_t> msg_bytes, bool& complete) const
 {
     assert(node.ReceiveMsgBytes(msg_bytes, complete));
