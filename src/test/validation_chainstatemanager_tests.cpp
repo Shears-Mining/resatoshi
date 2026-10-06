@@ -38,9 +38,19 @@ BOOST_FIXTURE_TEST_SUITE(validation_chainstatemanager_tests, TestingSetup)
 
 BOOST_AUTO_TEST_CASE(verification_progress_without_transaction_estimate)
 {
-    auto& manager = *m_node.chainman;
+    // Keep the zero-rate scenario independent of live network estimates.
+    struct ProgressParams : CChainParams {
+        ProgressParams() : CChainParams{::Params()} { chainTxData = {}; }
+    } params;
+    fs::create_directories(m_path_root / "progress-blocks");
+    ChainstateManager manager{
+        *Assert(m_node.shutdown_signal),
+        {.chainparams = params, .datadir = m_path_root, .notifications = *m_node.notifications},
+        {.chainparams = params,
+         .blocks_dir = m_path_root / "progress-blocks",
+         .notifications = *m_node.notifications,
+         .block_tree_db_params = {.path = m_path_root / "progress-index", .cache_bytes = 1 << 20, .memory_only = true}}};
     LOCK(manager.GetMutex());
-    BOOST_REQUIRE_EQUAL(manager.GetParams().TxData().dTxRate, 0);
     const auto now = TicksSinceEpoch<std::chrono::seconds>(NodeClock::now());
     CBlockIndex tip;
     tip.nHeight = 100;
@@ -48,7 +58,6 @@ BOOST_AUTO_TEST_CASE(verification_progress_without_transaction_estimate)
     tip.m_chain_tx_count = 101;
     CBlockIndex header;
     header.nHeight = 110;
-    auto* original_header = manager.m_best_header;
     manager.m_best_header = &header;
     const double incomplete = manager.GuessVerificationProgress(&tip);
     BOOST_CHECK_GT(incomplete, 0);
@@ -58,7 +67,7 @@ BOOST_AUTO_TEST_CASE(verification_progress_without_transaction_estimate)
     tip.nTime = now - 24 * 60 * 60;
     BOOST_CHECK_LT(manager.GuessVerificationProgress(&tip), 1);
     BOOST_CHECK_EQUAL(manager.GuessVerificationProgress(nullptr), 0);
-    manager.m_best_header = original_header;
+    manager.m_best_header = nullptr;
 }
 
 //! Basic tests for ChainstateManager.

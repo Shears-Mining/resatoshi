@@ -532,6 +532,75 @@ BOOST_FIXTURE_TEST_CASE(index_migration_and_interruption, BasicTestingSetup)
     }
 }
 
+BOOST_FIXTURE_TEST_CASE(index_iterator_io_error_and_restart, BasicTestingSetup)
+{
+    // Exercise deletion, coin rebuilding and height lookup independently. Put
+    // only the affected prefix in an SST, keeping metadata in the write log.
+    // Replacing that SST with a directory after opening produces an I/O error
+    // at iterator access without adding fault-injection hooks to production.
+    for (int phase : {0, 1, 2}) {
+        const auto path{m_path_root / fs::PathFromString(strprintf("iterator-io-%d", phase))};
+        const CBlock origin{CoinbaseBlock(COIN, 1)};
+        const COutPoint output{origin.vtx[0]->GetHash(), 0};
+        const Coin coin{origin.vtx[0]->vout[0], 1, true};
+        fs::path table;
+        {
+            CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
+            if (phase == 1) {
+                raw.Write(TestCoinEntry{'C', output}, coin, true);
+            } else {
+                raw.Write(TestHeightEntry{'E', 1, output}, uint8_t{0}, true);
+            }
+            raw.CompactFull();
+            for (const auto& file : fs::directory_iterator(path)) {
+                if (file.path().extension() == ".ldb" || file.path().extension() == ".sst") {
+                    BOOST_REQUIRE(table.empty());
+                    table = file.path();
+                }
+            }
+            BOOST_REQUIRE(!table.empty());
+            if (phase != 1) raw.Write(TestCoinEntry{'C', output}, coin, true);
+            raw.Write(uint8_t{'B'}, uint256{42}, true);
+            raw.Write(uint8_t{'r'}, phase == 2 ? 2 : 1, true);
+        }
+        {
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true, .batch_write_bytes = 1}};
+            const auto hidden{fs::PathFromString(fs::PathToString(table) + ".unavailable")};
+            fs::rename(table, hidden);
+            fs::create_directory(table);
+            const auto io_error = [](const dbwrapper_error& e) {
+                return std::string{e.what()}.find("IO error") != std::string::npos;
+            };
+            if (phase == 2) {
+                BOOST_CHECK_EXCEPTION(db.GetCoinsByHeight(1), dbwrapper_error, io_error);
+            } else {
+                BOOST_CHECK_EXCEPTION(db.UpgradeRecycleIndex([] { return false; }), dbwrapper_error, io_error);
+                BOOST_CHECK(!db.RecycleStateReady());
+            }
+            fs::remove(table);
+            fs::rename(hidden, table);
+        }
+        // Restore the file, reopen and require a complete, correct rebuild.
+        {
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true, .batch_write_bytes = 1}};
+            if (phase != 2) BOOST_CHECK(!db.RecycleStateReady());
+            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+            BOOST_CHECK(db.RecycleStateReady());
+            const std::set<COutPoint> expected{output};
+            BOOST_CHECK(db.GetCoinsByHeight(1) == expected);
+            BOOST_CHECK(db.GetBestBlock() == uint256{42});
+            const auto restored{db.GetCoin(output)};
+            BOOST_REQUIRE(restored);
+            BOOST_CHECK(restored->out == coin.out);
+            BOOST_CHECK_EQUAL(restored->nHeight, coin.nHeight);
+            BOOST_CHECK_EQUAL(restored->fCoinBase, coin.fCoinBase);
+            auto snapshot{CheckSnapshot(db)};
+            BOOST_REQUIRE(snapshot);
+            BOOST_CHECK(snapshot->Check(ContinueCheck).Valid());
+        }
+    }
+}
+
 BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
 {
     for (int damage : {0, 1, 2}) {
