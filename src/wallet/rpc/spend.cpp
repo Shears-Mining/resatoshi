@@ -1452,8 +1452,9 @@ RPCHelpMan sendall()
             } else if (options.exists("inputs") && (options.exists("minconf") || options.exists("maxconf"))) {
                 throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot combine minconf or maxconf with specific inputs.");
             } else if (options.exists("inputs")) {
+                ExpiryQuery expiry_query;
                 for (const CTxIn& input : rawTx.vin) {
-                    if (pwallet->IsSpent(input.prevout)) {
+                    if (pwallet->IsSpent(input.prevout, &expiry_query)) {
                         throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Input not available. UTXO (%s:%d) was already spent.", input.prevout.hash.ToString(), input.prevout.n));
                     }
                     const CWalletTx* tx{pwallet->GetWalletTx(input.prevout.hash)};
@@ -1462,6 +1463,9 @@ RPCHelpMan sendall()
                     }
                     if (pwallet->IsExpired(input.prevout)) {
                         throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Input not available. UTXO (%s:%d) has expired.", input.prevout.hash.ToString(), input.prevout.n));
+                    }
+                    if (pwallet->HasExpiredInputs(*tx, &expiry_query)) {
+                        throw JSONRPCError(RPC_INVALID_PARAMETER, strprintf("Input not available. UTXO (%s:%d) depends on an expired input.", input.prevout.hash.ToString(), input.prevout.n));
                     }
                     if (pwallet->GetTxDepthInMainChain(*tx) == 0) {
                         if (tx->tx->version == TRUC_VERSION && coin_control.m_version != TRUC_VERSION) {

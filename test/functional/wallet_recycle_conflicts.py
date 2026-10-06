@@ -7,7 +7,7 @@
 from decimal import Decimal
 
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal
+from test_framework.util import assert_equal, assert_raises_rpc_error
 
 
 class RecycleConflictsTest(BitcoinTestFramework):
@@ -45,6 +45,10 @@ class RecycleConflictsTest(BitcoinTestFramework):
         parent = spend([expiring, independent[0]], Decimal("99.999"))
         child = spend([{"txid": parent, "vout": 0}, independent[1]], Decimal("149.998"))
         assert_equal(wallet.getbalance(), Decimal("149.998"))
+        child_output = {"txid": child, "vout": 0}
+        # A lock created before expiry must remain removable after the parent
+        # graph becomes unusable, including when the lock is persistent.
+        assert wallet.lockunspent(False, [child_output], True)
 
         def available():
             return {(out["txid"], out["vout"]) for out in wallet.listunspent()}
@@ -64,13 +68,50 @@ class RecycleConflictsTest(BitcoinTestFramework):
             raw = wallet.createrawtransaction([], {wallet.getnewaddress(): Decimal("1")})
             funded = wallet.decoderawtransaction(wallet.fundrawtransaction(raw)["hex"])
             assert all((vin["txid"], vin["vout"]) in available() for vin in funded["vin"])
+            transactions = wallet.listtransactions(count=100)
+            if wallet.listlockunspent():
+                assert_equal(wallet.listlockunspent(), [child_output])
+                assert wallet.lockunspent(True, [child_output])
+            for txid in [parent, child]:
+                stale = {"txid": txid, "vout": 0}
+                raw = wallet.createrawtransaction([stale], {address: Decimal("1")})
+                assert_raises_rpc_error(
+                    -4, "depends on an expired input", wallet.fundrawtransaction,
+                    raw, {"add_inputs": False, "lockUnspents": True},
+                )
+                assert_raises_rpc_error(
+                    -4, "depends on an expired input", wallet.walletcreatefundedpsbt,
+                    [stale], [{address: Decimal("1")}], 0,
+                    {"add_inputs": False, "lockUnspents": True},
+                )
+                for options in ({}, {"add_to_wallet": False}, {"psbt": True}, {"lock_unspents": True}):
+                    assert_raises_rpc_error(
+                        -8, "depends on an expired input", wallet.sendall,
+                        [address], inputs=[stale], fee_rate=1, **options,
+                    )
+                for persistent in [False, True]:
+                    # Validate the entire request before locking any output.
+                    assert_raises_rpc_error(
+                        -8, "expected unspent output", wallet.lockunspent,
+                        False, [independent[0], stale], persistent,
+                    )
+            assert_equal(wallet.listlockunspent(), [])
+            assert_equal(wallet.listtransactions(count=100), transactions)
 
         def check_restored():
             assert node.gettxout(expiring["txid"], expiring["vout"], False) is not None
             # The live pending graph reserves B and C again, even before resubmission.
             assert all((out["txid"], out["vout"]) not in available() for out in independent)
+            raw = wallet.createrawtransaction([child_output], {address: Decimal("1")})
+            wallet.fundrawtransaction(raw, {"add_inputs": False})
+            assert_equal(wallet.sendall([address], inputs=[child_output], fee_rate=1, add_to_wallet=False)["complete"], True)
+            assert wallet.lockunspent(False, [child_output], True)
+            assert wallet.lockunspent(True, [child_output])
 
         expiry = self.generateblock(node, "raw(6a)", [])["hash"]
+        wallet.unloadwallet()
+        node.loadwallet("conflicts")
+        wallet = node.get_wallet_rpc("conflicts")
         check_expired()
         wallet.unloadwallet()
         node.loadwallet("conflicts")

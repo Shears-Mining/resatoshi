@@ -272,6 +272,7 @@ util::Result<CoinsResult> FetchSelectedInputs(const CWallet& wallet, const CCoin
     CoinsResult result;
     const bool can_grind_r = wallet.CanGrindR();
     std::map<COutPoint, CAmount> map_of_bump_fees = wallet.chain().calculateIndividualBumpFees(coin_control.ListSelected(), coin_selection_params.m_effective_feerate);
+    ExpiryQuery expiry_query;
     for (const COutPoint& outpoint : coin_control.ListSelected()) {
         int64_t input_bytes = coin_control.GetInputWeight(outpoint).value_or(-1);
         if (input_bytes != -1) {
@@ -282,11 +283,14 @@ util::Result<CoinsResult> FetchSelectedInputs(const CWallet& wallet, const CCoin
             if (wallet.IsExpired(outpoint)) {
                 return util::Error{strprintf(_("Pre-selected input %s has expired"), outpoint.ToString())};
             }
+            const CWalletTx& parent_tx = txo->GetWalletTx();
+            if (wallet.HasExpiredInputs(parent_tx, &expiry_query)) {
+                return util::Error{strprintf(_("Pre-selected input %s depends on an expired input"), outpoint.ToString())};
+            }
             txout = txo->GetTxOut();
             if (input_bytes == -1) {
                 input_bytes = CalculateMaximumSignedInputSize(txout, &wallet, &coin_control);
             }
-            const CWalletTx& parent_tx = txo->GetWalletTx();
             if (wallet.GetTxDepthInMainChain(parent_tx) == 0) {
                 if (parent_tx.tx->version == TRUC_VERSION && coin_control.m_version != TRUC_VERSION) {
                     return util::Error{strprintf(_("Can't spend unconfirmed version 3 pre-selected input with a version %d tx"), coin_control.m_version)};

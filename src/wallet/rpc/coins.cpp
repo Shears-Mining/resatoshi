@@ -285,6 +285,7 @@ RPCHelpMan lockunspent()
     std::vector<COutPoint> outputs;
     outputs.reserve(output_params.size());
 
+    ExpiryQuery expiry_query;
     for (unsigned int idx = 0; idx < output_params.size(); idx++) {
         const UniValue& o = output_params[idx].get_obj();
 
@@ -315,7 +316,8 @@ RPCHelpMan lockunspent()
 
         // Expiry must prevent new locks, but must not prevent clearing an
         // existing lock (including a persistent lock saved before expiry).
-        if (pwallet->IsSpent(outpt) || (!fUnlock && pwallet->IsExpired(outpt))) {
+        if (pwallet->IsSpent(outpt, &expiry_query) ||
+            (!fUnlock && (pwallet->IsExpired(outpt) || pwallet->HasExpiredInputs(trans, &expiry_query)))) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, expected unspent output");
         }
 
