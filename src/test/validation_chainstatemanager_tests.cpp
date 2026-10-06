@@ -19,6 +19,7 @@
 #include <test/util/validation.h>
 #include <uint256.h>
 #include <util/result.h>
+#include <util/time.h>
 #include <util/vector.h>
 #include <validation.h>
 #include <validationinterface.h>
@@ -34,6 +35,31 @@ using node::KernelNotifications;
 using node::SnapshotMetadata;
 
 BOOST_FIXTURE_TEST_SUITE(validation_chainstatemanager_tests, TestingSetup)
+
+BOOST_AUTO_TEST_CASE(verification_progress_without_transaction_estimate)
+{
+    auto& manager = *m_node.chainman;
+    LOCK(manager.GetMutex());
+    BOOST_REQUIRE_EQUAL(manager.GetParams().TxData().dTxRate, 0);
+    const auto now = TicksSinceEpoch<std::chrono::seconds>(NodeClock::now());
+    CBlockIndex tip;
+    tip.nHeight = 100;
+    tip.nTime = now;
+    tip.m_chain_tx_count = 101;
+    CBlockIndex header;
+    header.nHeight = 110;
+    auto* original_header = manager.m_best_header;
+    manager.m_best_header = &header;
+    const double incomplete = manager.GuessVerificationProgress(&tip);
+    BOOST_CHECK_GT(incomplete, 0);
+    BOOST_CHECK_LT(incomplete, 1);
+    header.nHeight = tip.nHeight;
+    BOOST_CHECK_EQUAL(manager.GuessVerificationProgress(&tip), 1);
+    tip.nTime = now - 24 * 60 * 60;
+    BOOST_CHECK_LT(manager.GuessVerificationProgress(&tip), 1);
+    BOOST_CHECK_EQUAL(manager.GuessVerificationProgress(nullptr), 0);
+    manager.m_best_header = original_header;
+}
 
 //! Basic tests for ChainstateManager.
 //!

@@ -249,6 +249,7 @@ bool CCoinsViewDB::UpgradeRecycleIndex(const std::function<bool()>& interrupted)
         batch.Erase(entry);
         flush();
     }
+    cursor->CheckStatus();
     m_db->WriteBatch(batch);
     batch.Clear();
     cursor.reset(m_db->NewIterator());
@@ -272,6 +273,7 @@ bool CCoinsViewDB::UpgradeRecycleIndex(const std::function<bool()>& interrupted)
         }
         flush();
     }
+    cursor->CheckStatus();
     batch.Write(DB_RECYCLE_CODEC, RECYCLE_INDEX_VERSION);
     m_db->WriteBatch(batch, /*fSync=*/true);
     LogInfo("Rebuilt recycle height index from current UTXOs; removed legacy schedules");
@@ -294,6 +296,7 @@ std::set<COutPoint> CCoinsViewDB::GetCoinsByHeight(uint32_t height) const
         if (entry.height != height) break;
         outputs.insert(entry.outpoint);
     }
+    cursor->CheckStatus();
     return outputs;
 }
 

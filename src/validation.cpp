@@ -5630,12 +5630,16 @@ double ChainstateManager::GuessVerificationProgress(const CBlockIndex* pindex) c
             pindex->GetBlockTime(),
     };
 
+    // Without a measured transaction rate, estimate at least one transaction
+    // (the coinbase) per target block interval. A zero rate would report 100%
+    // even when blocks corresponding to known headers have not been processed.
+    const double tx_rate{data.dTxRate > 0 ? data.dTxRate : 1.0 / GetConsensus().nPowTargetSpacing};
     double fTxTotal;
 
     if (pindex->m_chain_tx_count <= data.tx_count) {
-        fTxTotal = data.tx_count + (nNow - data.nTime) * data.dTxRate;
+        fTxTotal = data.tx_count + (nNow - data.nTime) * tx_rate;
     } else {
-        fTxTotal = pindex->m_chain_tx_count + (nNow - block_time) * data.dTxRate;
+        fTxTotal = pindex->m_chain_tx_count + (nNow - block_time) * tx_rate;
     }
 
     return std::min<double>(pindex->m_chain_tx_count / fTxTotal, 1.0);
