@@ -6,6 +6,12 @@ wallet, explorer, and other bundled features, visit the `download-only` channel
 in the [official Resatoshi Discord](https://discord.gg/QyM3eHZZS).
 Consult the package's accompanying notes for its version and source information.
 
+## Pruned-node recovery with a separate blocks folder
+
+Automatic recycle recovery now checks the block-index database in the data
+directory even when `-blocksdir` places raw blocks elsewhere. Pruned history
+is refused before rebuilding can delete retained block or chainstate data.
+
 ## First GUI startup in a new data folder
 
 The GUI defaults to English regardless of the operating system language. A saved

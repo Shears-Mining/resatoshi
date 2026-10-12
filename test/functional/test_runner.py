@@ -266,6 +266,7 @@ BASE_SCRIPTS = [
     'feature_utxo_set_hash.py',
     'feature_recycle.py',
     'feature_recycle_modes.py',
+    'feature_recycle_recovery.py',
     'feature_recycle_index.py',
     'rpc_checkrecycleindex.py',
     'feature_recycle_boundary.py',

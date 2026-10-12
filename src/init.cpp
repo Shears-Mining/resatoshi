@@ -1411,8 +1411,11 @@ static ChainstateLoadResult InitAndLoadChainstate(
     // The coinsdb is opened at a later point on LoadChainstate.
     Assert(!node.chainman); // Was reset above
     try {
-        if (chainman_opts.recycle_recovery && fs::exists(args.GetBlocksDirPath() / "index" / "CURRENT")) {
-            node::BlockTreeDB previous{{.path = args.GetBlocksDirPath() / "index", .cache_bytes = 1 << 20}};
+        // -blocksdir relocates raw block files, not the block-index database.
+        // Inspect the actual database before reindex can erase its pruning flag.
+        const auto& block_index_path{blockman_opts.block_tree_db_params.path};
+        if (chainman_opts.recycle_recovery && fs::exists(block_index_path / "CURRENT")) {
+            node::BlockTreeDB previous{{.path = block_index_path, .cache_bytes = 1 << 20}};
             bool pruned{false};
             previous.ReadFlag("prunedblockfiles", pruned);
             if (pruned) {
