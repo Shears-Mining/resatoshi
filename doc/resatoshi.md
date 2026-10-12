@@ -203,6 +203,14 @@ They require no chain reset, reindex, wallet migration or activation height.
 
 ## GUI settings and upgrades
 
+For an ordinary expiry-mode upgrade, stop the old node cleanly, back up the
+wallets, and continue with the same data directory. It remains in `index` mode;
+the first upgrade checks the index and resumes from the existing tip if healthy.
+Choosing `block` mode or recovering inconsistent index data after pruning
+requires a fresh directory and blockchain synchronization. Preserve the original
+directory and restore/load wallet backups into the new one: synchronization
+does not restore wallet keys. See [upgrade guidance](release-notes.md#upgrade-guidance-for-expiry-modes).
+
 In coin control, hover over an output's amount or confirmation count to see
 its expiry height and remaining blocks at the displayed synced height. This
 is a snapshot when the list is populated; reopening the dialog refreshes it.

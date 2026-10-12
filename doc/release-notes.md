@@ -6,7 +6,34 @@ wallet, explorer, and other bundled features, visit the `download-only` channel
 in the [official Resatoshi Discord](https://discord.gg/QyM3eHZZS).
 Consult the package's accompanying notes for its version and source information.
 
+## Upgrade guidance for expiry modes
+
+- **Normal upgrade:** stop the old node cleanly, back up your wallets, and start
+  the new version with the same data directory. Existing directories remain in
+  `index` mode automatically. The first upgrade checks the full expiry index;
+  healthy data resumes from the existing chain tip without a fresh sync.
+- **Switching to `block` mode:** start with `-recyclemode=block` and a fresh data
+  directory, then synchronize from blocks. The existing directory cannot change
+  mode, even with reindex options. Back up each wallet and restore/load it into
+  the new directory; downloading the blockchain does not restore wallet keys.
+  Keep the original directory until synchronization and wallet verification are
+  complete.
+- **Index inconsistency:** validation and mining stop. On the next launch,
+  complete block history allows automatic rebuilding of the block index and
+  chainstate. If history was pruned, automatic recovery is refused before
+  wiping chainstate: use a fresh directory and synchronize again, preserving
+  and restoring your wallet backups as above.
+
+The expiry rules are unchanged; healthy old and new nodes can use the same
+chain. See [expiry modes and recovery](recycle-state-integrity.md#upgrade-and-downgrade)
+for details. The periodic checks can still miss an omission until a later scan.
+
 ## Unreleased maintenance changes
+
+- Add fixed per-directory `index` and `block` expiry modes, automatic index
+  checks after unclean shutdown and during operation, and full block replay
+  recovery after detected inconsistency. Block mode supports full retention or
+  pruning that preserves the expiry and reorganization windows.
 
 - Add `checkrecycleindex start|status|abort` for a full, read-only UTXO/height-index
   correspondence check at one coherent database snapshot. Report missing,

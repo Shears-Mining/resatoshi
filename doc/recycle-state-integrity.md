@@ -173,8 +173,33 @@ measurements; a successful stress test alone does not qualify a low-end VPS.
 
 ## Upgrade and downgrade
 
-Before block replay, startup rebuilds the index from persisted UTXOs and deletes
-legacy schedule records without decoding them. This does not require historical
+### Upgrading an existing node
+
+Stop the old node cleanly and back up each wallet before upgrading. Start the
+new version with the same data directory and existing settings. The directory
+is automatically registered as `index` mode and checked on its first upgrade.
+If the check succeeds, synchronization and mining continue from the existing
+chain tip; no fresh synchronization or wallet migration is required. Subsequent
+checks run after unclean shutdown and periodically during operation.
+
+To choose `block` mode, use a fresh data directory with `-recyclemode=block`
+and synchronize from blocks. An existing index-mode directory is refused,
+even with `-reindex` or `-reindex-chainstate`. Back up and restore/load each
+wallet into the new directory. A blockchain download cannot recover wallet
+keys. Preserve the original directory until synchronization is complete and
+the restored wallets have been verified.
+
+If an index inconsistency is detected, validation and mining stop. With complete
+history, restarting automatically replays blocks to rebuild both the block
+index and chainstate, including clearing potentially incorrect invalid-block
+flags. A previously pruned directory cannot perform this automatic recovery;
+it is refused before chainstate is wiped. Preserve the old directory and wallet
+backups, synchronize a fresh directory, and restore/load the wallets there.
+
+### Legacy index migration and downgrade
+
+In index mode, before block replay, startup rebuilds a legacy index when needed
+from persisted UTXOs and deletes legacy schedule records without decoding them. This does not require historical
 blocks or a wallet and also handles truncated legacy schedules. The pool balance
 and chain tip are preserved. Migration requires a linear scan of chainstate and
 additional temporary disk space for LevelDB writes. It runs before validation,
