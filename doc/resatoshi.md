@@ -203,6 +203,15 @@ They require no chain reset, reindex, wallet migration or activation height.
 
 ## GUI settings and upgrades
 
+The GUI defaults to English. Select another language in the settings or use
+`-lang=ko` for Korean; an existing language preference is preserved.
+
+On a fresh data directory, the GUI asks both node and wallet users to choose
+Index or Original blocks before synchronization starts. Original blocks also
+lets users choose complete history or pruning after expiry processing. Existing
+data directories continue with their recorded method. Startup options and
+configuration take precedence. The server-only node uses command-line options.
+
 For an ordinary expiry-mode upgrade, stop the old node cleanly, back up the
 wallets, and continue with the same data directory. It remains in `index` mode;
 the first upgrade checks the index and resumes from the existing tip if healthy.

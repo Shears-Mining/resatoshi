@@ -90,6 +90,7 @@ add_library(bitcoinqt STATIC EXCLUDE_FROM_ALL
   initexecutor.cpp
   initexecutor.h
   intro.cpp
+  recyclesetup.cpp
   intro.h
   $<$<PLATFORM_ID:Darwin>:macdockiconhandler.h>
   $<$<PLATFORM_ID:Darwin>:macdockiconhandler.mm>

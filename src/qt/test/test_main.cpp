@@ -10,6 +10,7 @@
 #include <qt/guiconstants.h>
 #include <qt/test/apptests.h>
 #include <qt/test/optiontests.h>
+#include <qt/test/recyclesetuptests.h>
 #include <qt/test/rpcnestedtests.h>
 #include <qt/test/uritests.h>
 #include <test/util/setup_common.h>
@@ -77,6 +78,9 @@ int main(int argc, char* argv[])
     {
         BitcoinApplication app;
         app.createNode(*init);
+
+        RecycleSetupTests recycle_setup_tests;
+        num_test_failures += QTest::qExec(&recycle_setup_tests);
 
         AppTests app_tests(app);
         num_test_failures += QTest::qExec(&app_tests);

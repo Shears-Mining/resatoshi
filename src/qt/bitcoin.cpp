@@ -10,6 +10,7 @@
 #include <common/args.h>
 #include <common/init.h>
 #include <common/system.h>
+#include <consensus/params.h>
 #include <init.h>
 #include <interfaces/handler.h>
 #include <interfaces/init.h>
@@ -26,6 +27,7 @@
 #include <qt/intro.h>
 #include <qt/networkstyle.h>
 #include <qt/optionsmodel.h>
+#include <qt/recyclesetup.h>
 #include <qt/platformstyle.h>
 #include <qt/splashscreen.h>
 #include <qt/utilitydialog.h>
@@ -52,7 +54,6 @@
 #include <QDebug>
 #include <QLatin1String>
 #include <QLibraryInfo>
-#include <QLocale>
 #include <QMessageBox>
 #include <QSettings>
 #include <QThread>
@@ -97,15 +98,15 @@ static QString GetLangTerritory()
 {
     QSettings settings;
     // Get desired locale (e.g. "de_DE")
-    // 1) System default language
-    QString lang_territory = QLocale::system().name();
+    // 1) English unless the user selects another language
+    QString lang_territory = QStringLiteral("en");
     // 2) Language from QSettings
     QString lang_territory_qsettings = settings.value("language", "").toString();
     if(!lang_territory_qsettings.isEmpty())
         lang_territory = lang_territory_qsettings;
     // 3) -lang command line argument
     lang_territory = QString::fromStdString(gArgs.GetArg("-lang", lang_territory.toStdString()));
-    return lang_territory;
+    return lang_territory.isEmpty() ? QStringLiteral("en") : lang_territory;
 }
 
 /** Set up translations */
@@ -118,7 +119,6 @@ static void initTranslations(QTranslator &qtTranslatorBase, QTranslator &qtTrans
     QApplication::removeTranslator(&translator);
 
     // Get desired locale (e.g. "de_DE")
-    // 1) System default language
     QString lang_territory = GetLangTerritory();
 
     // Convert to "de" only by truncating "_DE"
@@ -470,7 +470,7 @@ bool BitcoinApplication::event(QEvent* e)
 static void SetupUIArgs(ArgsManager& argsman)
 {
     argsman.AddArg("-choosedatadir", strprintf("Choose data directory on startup (default: %u)", DEFAULT_CHOOSE_DATADIR), ArgsManager::ALLOW_ANY, OptionsCategory::GUI);
-    argsman.AddArg("-lang=<lang>", "Set language, for example \"de_DE\" (default: system locale)", ArgsManager::ALLOW_ANY, OptionsCategory::GUI);
+    argsman.AddArg("-lang=<lang>", "Set language, for example \"de_DE\" (default: English)", ArgsManager::ALLOW_ANY, OptionsCategory::GUI);
     argsman.AddArg("-min", "Start minimized", ArgsManager::ALLOW_ANY, OptionsCategory::GUI);
     argsman.AddArg("-resetguisettings", "Reset all settings changed in the GUI", ArgsManager::ALLOW_ANY, OptionsCategory::GUI);
     argsman.AddArg("-splash", strprintf("Show splash screen on startup (default: %u)", DEFAULT_SPLASHSCREEN), ArgsManager::ALLOW_ANY, OptionsCategory::GUI);
@@ -627,6 +627,16 @@ int GuiMain(int argc, char* argv[])
     }
 #endif // ENABLE_WALLET
 
+    // Configuration and network selection are complete. A fresh recycling
+    // directory needs an explicit GUI choice, including when -datadir bypassed Intro.
+    std::optional<RecycleSetupChoices> recycle_setup;
+    try {
+        if (!ShowRecycleSetupIfNeeded(gArgs, Params().GetConsensus().recycle_enabled, recycle_setup)) return EXIT_SUCCESS;
+    } catch (const fs::filesystem_error& e) {
+        QMessageBox::critical(nullptr, CLIENT_NAME, QObject::tr("Cannot inspect the data folder: %1").arg(QString::fromStdString(e.what())));
+        return EXIT_FAILURE;
+    }
+
     /// 9. Main GUI initialization
     // Install global event filter that makes sure that out-of-focus labels do not contain text cursor.
     app.installEventFilter(new GUIUtil::LabelOutOfFocusEventFilter(&app));
@@ -653,7 +663,10 @@ int GuiMain(int argc, char* argv[])
         return EXIT_FAILURE;
     }
 
-    if (did_show_intro) {
+    const bool fresh_recycle_directory{!Params().GetConsensus().recycle_enabled ||
+        GetRecycleDirectoryState(gArgs.GetDataDirNet(), gArgs.GetBlocksDirPath()) == RecycleDirectoryState::NEW};
+    if (did_show_intro && fresh_recycle_directory && (!recycle_setup || !recycle_setup->set_prune) &&
+        !HasRecycleStartupSetting(gArgs, "prune") && gArgs.GetSettingsPath()) {
         // Store intro dialog settings other than datadir (network specific)
         app.InitPruneSetting(prune_MiB);
     }
@@ -665,6 +678,15 @@ int GuiMain(int argc, char* argv[])
         // This is acceptable because this function only contains steps that are quick to execute,
         // so the GUI thread won't be held up.
         if (app.baseInitialize()) {
+            if (recycle_setup) {
+                std::vector<std::string> errors;
+                if (!SaveRecycleSetup(gArgs, *recycle_setup, errors)) {
+                    QStringList messages;
+                    for (const auto& error : errors) messages << QString::fromStdString(error);
+                    QMessageBox::critical(nullptr, CLIENT_NAME, QObject::tr("Cannot save node preferences: %1").arg(messages.join("\n")));
+                    return EXIT_FAILURE;
+                }
+            }
             app.requestInitialize();
 #if defined(Q_OS_WIN)
             WinShutdownMonitor::registerShutdownBlockReason(QObject::tr("%1 didn't yet exit safely…").arg(CLIENT_NAME), (HWND)app.getMainWinId());

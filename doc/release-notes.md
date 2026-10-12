@@ -6,14 +6,28 @@ wallet, explorer, and other bundled features, visit the `download-only` channel
 in the [official Resatoshi Discord](https://discord.gg/QyM3eHZZS).
 Consult the package's accompanying notes for its version and source information.
 
+## First GUI startup in a new data folder
+
+The GUI defaults to English regardless of the operating system language. A saved
+language preference or explicit `-lang` option takes precedence.
+
+The GUI asks new node and wallet users to select **Index** or **Original blocks**
+before starting synchronization. Selecting Original blocks also offers complete
+history retention or pruning after expiry processing. Pruning retains the expiry
+and reorganization windows, so actual disk use can exceed the storage target.
+The method is fixed for the folder; accepted preferences are saved for later
+launches. Existing folders skip this selection and continue with their recorded
+method. Explicit startup options/configuration are respected. Server-only
+`bitcoind` continues to use `-recyclemode` and `-prune` options.
+
 ## Upgrade guidance for expiry modes
 
 - **Normal upgrade:** stop the old node cleanly, back up your wallets, and start
   the new version with the same data directory. Existing directories remain in
   `index` mode automatically. The first upgrade checks the full expiry index;
   healthy data resumes from the existing chain tip without a fresh sync.
-- **Switching to `block` mode:** start with `-recyclemode=block` and a fresh data
-  directory, then synchronize from blocks. The existing directory cannot change
+- **Switching to `block` mode:** select Original blocks in the GUI for a fresh
+  data directory, or start with `-recyclemode=block`, then synchronize from blocks. The existing directory cannot change
   mode, even with reindex options. Back up each wallet and restore/load it into
   the new directory; downloading the blockchain does not restore wallet keys.
   Keep the original directory until synchronization and wallet verification are

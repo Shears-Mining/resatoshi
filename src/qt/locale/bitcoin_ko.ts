@@ -445,6 +445,14 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <source>default wallet</source>
         <translation type="unfinished">기본 지갑</translation>
     </message>
+    <message>
+        <source>Cannot inspect the data folder: %1</source>
+        <translation>데이터 폴더를 확인할 수 없습니다: %1</translation>
+    </message>
+    <message>
+        <source>Cannot save node preferences: %1</source>
+        <translation>노드 설정을 저장할 수 없습니다: %1</translation>
+    </message>
 </context>
 <context>
     <name>BitcoinGUI</name>
@@ -5085,6 +5093,73 @@ Please try running the latest software version.
     <message>
         <source>Settings file could not be written</source>
         <translation type="unfinished">설정파일이 쓰여지지 않았습니다.</translation>
+    </message>
+</context>
+<context>
+    <name>RecycleSetupDialog</name>
+    <message>
+        <source>Set up your ReSatoshi node</source>
+        <translation>ReSatoshi 노드 설정</translation>
+    </message>
+    <message>
+        <source>Choose how this node finds coins that have reached their expiry height. Both methods follow the same network rules and work with the wallet.</source>
+        <translation>만료 높이에 도달한 동전을 찾는 방식을 선택하세요. 두 방식 모두 같은 네트워크 규칙을 따르며 지갑과 함께 사용할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>Expiry processing</source>
+        <translation>동전 만료 처리 방식</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>인덱스</translation>
+    </message>
+    <message>
+        <source>Uses a list of unspent coins. Automatic checks look for inconsistencies.</source>
+        <translation>아직 사용하지 않은 동전 목록을 이용합니다. 자동 검사로 목록의 불일치를 확인합니다.</translation>
+    </message>
+    <message>
+        <source>Original blocks</source>
+        <translation>원본 블록</translation>
+    </message>
+    <message>
+        <source>Reads the block that created the expiring coins and checks which coins remain unspent. Does not maintain an expiry index.</source>
+        <translation>만료 대상 동전이 생성된 블록을 읽고, 아직 사용하지 않은 동전을 확인합니다. 만료 인덱스를 만들지 않습니다.</translation>
+    </message>
+    <message>
+        <source>The expiry method is supplied by your startup configuration.</source>
+        <translation>시작 설정에 지정된 만료 처리 방식을 사용합니다.</translation>
+    </message>
+    <message>
+        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
+        <translation>선택한 방식은 이 데이터 폴더에 고정됩니다. 나중에 바꾸려면 새 폴더에서 다시 동기화해야 합니다. 폴더를 바꾸기 전에 지갑을 백업하세요.</translation>
+    </message>
+    <message>
+        <source>Block history</source>
+        <translation>블록 기록 보관</translation>
+    </message>
+    <message>
+        <source>Keep the complete history</source>
+        <translation>전체 블록 기록 보관</translation>
+    </message>
+    <message>
+        <source>Prune old blocks after expiry processing</source>
+        <translation>만료 처리 후 오래된 블록 순차 삭제</translation>
+    </message>
+    <message>
+        <source>Storage target (GB):</source>
+        <translation>저장 공간 목표(GB):</translation>
+    </message>
+    <message>
+        <source>Pruning keeps all blocks still needed for expiry and a buffer for chain reorganizations. Actual disk use can exceed the target. Keeping the complete history supports rebuilding locally if data needs repair.</source>
+        <translation>순차 삭제를 선택해도 만료 계산에 필요한 블록과 체인 재조직에 대비한 구간은 보존합니다. 실제 디스크 사용량은 목표를 넘을 수 있습니다. 전체 기록을 보관하면 데이터 복구 시 로컬 재구축에 사용할 수 있습니다.</translation>
+    </message>
+    <message>
+        <source>Storage is fixed by your startup configuration. To save a different storage preference here, enable settings and leave pruning unspecified.</source>
+        <translation>시작 설정에 지정된 보관 방식을 사용합니다. 여기서 다른 보관 방식을 저장하려면 설정 저장을 켜고 시작 옵션에서 프루닝을 지정하지 마세요.</translation>
+    </message>
+    <message>
+        <source>Start node</source>
+        <translation>노드 시작</translation>
     </message>
 </context>
 </TS>

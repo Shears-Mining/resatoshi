@@ -8,6 +8,20 @@ remaining value in the pool. See [network rules](resatoshi.md).
 
 ## Expiry source and block retention
 
+On a fresh data directory, the GUI asks node and wallet users to choose Index
+or Original blocks after configuration and network selection, before node
+initialization. This also applies with an explicit `-datadir`. Original blocks
+reveals complete-history and pruning choices. Accepting saves editable
+preferences in the folder's `settings.json`; cancelling does not start the node
+or create a wallet. Existing and legacy folders skip the method selection.
+Their recorded mode is honored even when GUI settings are reset. Explicit
+command-line or read-only configuration mismatches remain errors in the core.
+
+Explicit startup choices take precedence over the GUI. With settings disabled,
+GUI storage changes are unavailable; supply pruning through startup options.
+The recorded folder mode still lets an existing block-mode GUI launch without
+repeating the mode option. Server-only `bitcoind` uses options/configuration.
+
 Choose `-recyclemode=index` (default) or `-recyclemode=block` when starting a
 fresh network data directory. The `recycle-mode` file records the choice.
 Existing directories without this file are registered as index mode. Changing
@@ -182,8 +196,8 @@ If the check succeeds, synchronization and mining continue from the existing
 chain tip; no fresh synchronization or wallet migration is required. Subsequent
 checks run after unclean shutdown and periodically during operation.
 
-To choose `block` mode, use a fresh data directory with `-recyclemode=block`
-and synchronize from blocks. An existing index-mode directory is refused,
+To choose `block` mode, select Original blocks in the first-run GUI for a
+fresh directory, or use `-recyclemode=block`, and synchronize from blocks. An existing index-mode directory is refused,
 even with `-reindex` or `-reindex-chainstate`. Back up and restore/load each
 wallet into the new directory. A blockchain download cannot recover wallet
 keys. Preserve the original directory until synchronization is complete and
