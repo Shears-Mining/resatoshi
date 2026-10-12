@@ -57,6 +57,53 @@ the recycle pool, and an empty pool pays no recycle reward. Recycling
 redistributes existing value. See [network rules](doc/resatoshi.md) for the
 precise expiry behavior, genesis hash, address encodings, and source references.
 
+## Choose how your node processes expiry
+
+Resatoshi offers two ways to find outputs due to expire. Both perform full
+validation under the same consensus rules. The choice lets users match their
+storage needs and operating preferences while keeping expiry discovery from
+depending on a single method across all nodes.
+
+| Method | How it works | Main advantage |
+| --- | --- | --- |
+| **Index** (default) | Finds candidates through an index of current unspent outputs by their creation height. | Efficient lookup without retaining old blocks for expiry processing; suited to nodes that prune block history to reduce storage. |
+| **Original blocks** | Reads the block at the expiry origin height and checks which of its outputs remain in the current UTXO set. | A direct path using original blocks, without building or maintaining a separate expiry index. |
+
+Original blocks uses the same basic data structures as Bitcoin Core: raw
+blocks, the block index, and the current UTXO set. Bitcoin itself has no UTXO
+expiry rule; Resatoshi uses these familiar structures to implement its own
+rule, with additional recycle-pool state and undo information. Avoiding a
+separate expiry index removes dependence on that index's completeness and
+updates, making the expiry discovery path simpler. Both methods still depend
+on correct UTXO state, software, and storage.
+
+Index mode can discard old block history after validation because future
+expiry lookups use current UTXOs and their height index. This provides a
+long-term storage advantage for smaller full-validation nodes. Such nodes
+still synchronize and validate the chain, and retain the UTXO set and index;
+they are not light clients that trust recent blocks alone. Automatic index
+checks run after an unclean shutdown and periodically during operation.
+
+Original blocks users can keep the complete history or prune old blocks after
+they are no longer needed for expiry processing and the reorganization buffer.
+With the mainnet expiry window of 5,256,000 blocks, this method retains a long
+block history even when pruning is enabled; a small storage target does not
+override that requirement.
+
+The two methods complement each other: one favors efficient lookup and lower
+block storage, while the other favors direct use of original block data.
+Operating both keeps distinct expiry discovery paths available on the network.
+Each node validates independently; other nodes do not automatically detect or
+repair a local omission, and shared dependencies remain.
+
+The GUI offers this choice on first startup with a new data directory, for both
+node and wallet users. For command-line operation, use `-recyclemode=index` or
+`-recyclemode=block`, with `-prune=0` for complete history or the usual pruning
+options. The expiry method is fixed for that directory. Existing directories
+keep their method; changing it requires a fresh directory and synchronization.
+Back up your wallets before changing directories. See
+[expiry modes and recovery](doc/recycle-state-integrity.md) for details.
+
 ## Peer discovery
 
 Builds from the current `main` source use these mainnet seed entries:
