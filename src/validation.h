@@ -1005,6 +1005,10 @@ public:
     //! dependency on `base/index.cpp`.
     std::function<void()> snapshot_download_completed = std::function<void()>();
 
+    std::atomic<bool> m_recycle_failed{false};
+    bool CheckRecycleIndexAutomatically();
+    bool ReadRecycleOrigin(CBlock& block, const CBlockIndex* previous) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
+
     const CChainParams& GetParams() const { return m_options.chainparams; }
     const Consensus::Params& GetConsensus() const { return m_options.chainparams.GetConsensus(); }
     bool ShouldCheckBlockIndex() const;

@@ -135,6 +135,15 @@ to the smaller of one coin and the available pool, in addition to the ordinary
 subsidy and transaction fees. Unclaimed value stays in the pool. The pool
 redistributes existing coins rather than creating an additional subsidy.
 
+Nodes may select `-recyclemode=index` (default) or `-recyclemode=block` on a
+fresh data directory. The choice is fixed for that directory. Block mode reads
+only the expiry origin block and checks current UTXOs, without maintaining the
+height index. Use `-prune=0` for full retention or the usual prune settings for
+file pruning; block mode preserves the expiry window plus the reorg buffer.
+Index mode checks correspondence after unclean shutdown and periodically,
+stopping on inconsistency and rebuilding chainstate on the next start when
+complete block history is available. See [mode and recovery details](recycle-state-integrity.md).
+
 Wallet balances and coin selection exclude expired outputs. `listunspent`
 reports expiry information. Disconnecting blocks restores the corresponding
 UTXOs and recycle state. See [recycle state](recycle-state-integrity.md) and

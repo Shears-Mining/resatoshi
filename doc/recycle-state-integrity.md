@@ -6,9 +6,46 @@ value enters the recycle pool. Each block can claim up to one coin from the
 available pool, in addition to its subsidy and fees. Partial claims leave the
 remaining value in the pool. See [network rules](resatoshi.md).
 
-## State and recovery
+## Expiry source and block retention
 
-The chainstate database maintains a derived index with one key per spendable
+Choose `-recyclemode=index` (default) or `-recyclemode=block` when starting a
+fresh network data directory. The `recycle-mode` file records the choice.
+Existing directories without this file are registered as index mode. Changing
+mode is rejected, including with reindex options: use a fresh data directory
+and synchronize again. Both modes implement the same network rules, pool coin
+and undo format, and can exchange blocks with each other.
+
+Block mode reads the ancestor block at `candidate_height - expiry_blocks` and
+checks its spendable output outpoints against the current UTXO set. Only live
+coins with the matching creation height expire. Template rewards also exclude
+outputs spent by candidate transactions. The source block is chosen from the
+candidate's own ancestry, including during a reorganization. Missing or
+unreadable source data is a local error, never an empty expiry list. Transaction
+contents are checked against the source header's Merkle root before use,
+including the duplicate-transaction mutation check.
+
+Block mode does not create or update the derived height index, including its
+lazy in-memory index. Its chainstate uses codec marker 4, which older index-only
+binaries refuse to open. UTXO snapshot activation is unavailable in block mode;
+synchronize from blocks instead. Transaction and other optional indexes remain
+separate settings.
+
+Use `-prune=0` to retain all blocks. Existing automatic (`-prune=<MiB>`, above
+the supported minimum) and manual (`-prune=1`) pruning are also available.
+In block mode both preserve the expiry lifetime plus `MIN_BLOCKS_TO_KEEP`
+(currently 288) blocks, respecting other prune locks and snapshot boundaries.
+Level-4 verification stops when its expiry origin has been pruned; an all-history
+`verifychain(4, 0)` then reports incomplete verification rather than a successful
+full audit. The retained reorg window remains verifiable.
+Files are deleted only when their whole height range is eligible. Consequently
+the disk target is not a guarantee: retaining mainnet's 5,256,000-block expiry
+window may require substantially more space. Reorganizations deeper than the
+retained window can require retrieving old blocks. Returning to full retention
+after pruning requires downloading the deleted history again.
+
+## Index state and recovery
+
+In index mode, the chainstate database maintains a derived index with one key per spendable
 UTXO: `(E, creation_height, outpoint)`, with a one-byte placeholder value.
 Creation height is equivalent to expiry height minus the network's fixed
 lifetime. Only exact-height prefix lookups are used, so the fixed-width height
@@ -45,6 +82,36 @@ and verifies that an interrupted-migration rebuild recreates the index from
 unchanged coins. Its marker editing is deliberately test-only, **not a repair
 procedure**. Rebuilding only the index after incorrect expiry has already been
 processed cannot reconstruct the correct UTXOs or pool balance.
+
+Index mode automatically runs the same snapshot-based full correspondence
+check used by `checkrecycleindex` after an unclean shutdown, before loaded-block
+verification. Legacy directories are checked once when their mode is first
+registered. A durable `recycle-unclean` session marker is removed only after
+shutdown flushes have reached the persisted chain tips. Block mode does not
+run these scans.
+
+During operation a dedicated worker checks periodically, outside `cs_main`
+except for flushing and acquiring the snapshot. The default minimum interval is
+one hour (`-recyclecheckinterval=3600`). A measured full RPC check with 8,867
+UTXOs took 0.04 seconds on the development node. The worker measures flush plus
+scan time and increases subsequent intervals to at least 1,000 times that
+cost, limiting scan duty cycle to 0.1%. Each completed check logs duration and
+record counts. An overlapping manual scan or a cache-resize cancellation is
+retried on a later tick; shutdown cancels the scan and joins the worker.
+
+A failed check latches validation/mining off and requests shutdown. A durable
+`recycle-corrupt` marker forces automatic block-index and chainstate replay on the next start
+when complete history is available. The marker is cleared only after block
+import and activation complete without interruption. A directory that has
+actually pruned history is refused before its chainstate is wiped; synchronize
+a fresh directory instead. Full block reindexing also clears locally recorded invalid-block flags, which
+may have been produced by incorrect reward calculations. Repairing only index
+entries is insufficient because
+incorrect expiry may already have changed the UTXOs and pool.
+
+These checks do not prevent a silent omission between scans or prove historical
+expiry correctness. Both expiry modes still rely on correct UTXO state and
+storage. Periodic checking is a detection and recovery measure.
 
 For suspected chainstate corruption, stop the node, preserve diagnostic logs
 and a copy of the affected database, and protect wallet backups. With complete

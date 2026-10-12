@@ -1932,7 +1932,8 @@ void Chainstate::InitCoinsDB(
     bool should_wipe)
 {
     auto coins_options{m_chainman.m_options.coins_view};
-    coins_options.recycle_index = m_chainman.GetConsensus().recycle_enabled;
+    coins_options.recycle_index = m_chainman.GetConsensus().recycle_enabled && !m_chainman.m_options.recycle_from_block;
+    coins_options.recycle_from_block = m_chainman.GetConsensus().recycle_enabled && m_chainman.m_options.recycle_from_block;
     m_coins_views = std::make_unique<CoinsViews>(
         DBParams{
             .path = StoragePath(),
@@ -2322,6 +2323,7 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                                CCoinsViewCache& view, bool fJustCheck, std::vector<COutPoint>* expired)
 {
     AssertLockHeld(cs_main);
+    if (m_chainman.m_recycle_failed) return state.Error("Recycle index corruption; validation stopped until recovery");
     assert(pindex);
 
     uint256 block_hash{block.GetHash()};
@@ -2635,10 +2637,15 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
     const CAmount blockReward = nFees + GetBlockSubsidy(pindex->nHeight, params.GetConsensus());
     if (state.IsValid()) {
         if (params.GetConsensus().recycle_enabled) {
+            CBlock origin_block;
+            if (!m_chainman.ReadRecycleOrigin(origin_block, pindex->pprev)) {
+                return FatalError(m_chainman.GetNotifications(), state, Untranslated("Cannot read recycle expiry origin block; restore block data before continuing"));
+            }
             CTxUndo recycle_undo;
             std::string recycle_error;
             if (!node::recycle::ConnectBlock(view, block, pindex->nHeight, blockReward,
-                                             recycle_undo, recycle_error, expired, params.GetConsensus().recycle_expiry_blocks)) {
+                                             recycle_undo, recycle_error, expired, params.GetConsensus().recycle_expiry_blocks,
+                                             m_chainman.m_options.recycle_from_block ? &origin_block : nullptr)) {
                 const bool excessive_coinbase{recycle_error.starts_with("coinbase claims")};
                 if (excessive_coinbase) {
                     state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount", recycle_error);
@@ -4751,6 +4758,16 @@ VerifyDBResult CVerifyDB::VerifyDB(
             skipped_no_block_data = true;
             break;
         }
+        if (nCheckLevel >= 4 && chainstate.m_chainman.m_options.recycle_from_block &&
+            consensus_params.recycle_enabled && chainstate.m_blockman.m_have_pruned) {
+            const int origin{pindex->nHeight - consensus_params.recycle_expiry_blocks};
+            const auto* source{origin >= 1 ? pindex->GetAncestor(origin) : nullptr};
+            if (source && !(source->nStatus & BLOCK_HAVE_DATA)) {
+                LogInfo("Block verification stopping at height %d (expiry origin %d was pruned)", pindex->nHeight, origin);
+                skipped_no_block_data = true;
+                break;
+            }
+        }
         CBlock block;
         // check level 0: read from disk
         if (!chainstate.m_blockman.ReadBlock(block, *pindex)) {
@@ -5698,6 +5715,9 @@ util::Result<CBlockIndex*> ChainstateManager::ActivateSnapshot(
         const SnapshotMetadata& metadata,
         bool in_memory)
 {
+    if (GetConsensus().recycle_enabled && m_options.recycle_from_block) {
+        return util::Error{Untranslated("Block recycle mode requires synchronization from blocks; UTXO snapshot activation is unavailable")};
+    }
     uint256 base_blockhash = metadata.m_base_blockhash;
 
     CBlockIndex* snapshot_start_block{};
@@ -5801,7 +5821,7 @@ util::Result<CBlockIndex*> ChainstateManager::ActivateSnapshot(
         return util::Error{std::move(reason)};
     };
 
-    if (GetConsensus().recycle_enabled &&
+    if (GetConsensus().recycle_enabled && !m_options.recycle_from_block &&
         !snapshot_chainstate->CoinsDB().UpgradeRecycleIndex([&] { return bool{m_interrupt}; })) {
         LOCK(::cs_main);
         return cleanup_bad_snapshot(Untranslated("Interrupted while initializing snapshot recycle index"));
@@ -5874,6 +5894,9 @@ util::Result<void> ChainstateManager::PopulateAndValidateSnapshot(
     // that nothing else will be referencing the newly created snapshot_chainstate yet.
     CCoinsViewCache& coins_cache = *WITH_LOCK(::cs_main, return &snapshot_chainstate.CoinsTip());
 
+    if (GetConsensus().recycle_enabled && m_options.recycle_from_block) {
+        return util::Error{Untranslated("Block recycle mode requires synchronization from blocks; UTXO snapshot activation is unavailable")};
+    }
     uint256 base_blockhash = metadata.m_base_blockhash;
 
     CBlockIndex* snapshot_start_block = WITH_LOCK(::cs_main, return m_blockman.LookupBlockIndex(base_blockhash));
@@ -6473,7 +6496,9 @@ std::pair<int, int> Chainstate::GetPruneRange(int last_height_can_prune) const
     }
 
     int max_prune = std::max<int>(
-        0, m_chain.Height() - static_cast<int>(MIN_BLOCKS_TO_KEEP));
+        0, m_chain.Height() - static_cast<int>(MIN_BLOCKS_TO_KEEP) -
+            (m_chainman.m_options.recycle_from_block && m_chainman.GetConsensus().recycle_enabled
+                 ? m_chainman.GetConsensus().recycle_expiry_blocks : 0));
 
     // last block to prune is the lesser of (caller-specified height, MIN_BLOCKS_TO_KEEP from the tip)
     //
@@ -6517,4 +6542,63 @@ util::Result<void> ChainstateManager::ActivateBestChains()
         }
     }
     return {};
+}
+
+
+bool ChainstateManager::ReadRecycleOrigin(CBlock& block, const CBlockIndex* previous) const
+{
+    AssertLockHeld(cs_main);
+    if (!GetConsensus().recycle_enabled || !m_options.recycle_from_block) return true;
+    const int origin{(previous ? previous->nHeight + 1 : 0) - GetConsensus().recycle_expiry_blocks};
+    if (origin < 1) return true;
+    const auto* index{previous ? previous->GetAncestor(origin) : nullptr};
+    if (!index || !m_blockman.ReadBlock(block, *index)) return false;
+    // ReadBlock authenticates the header, but expiry also trusts transaction
+    // contents. Authenticate those against the header before using the list.
+    bool mutated{false};
+    return BlockMerkleRoot(block, &mutated) == block.hashMerkleRoot && !mutated;
+}
+
+bool ChainstateManager::CheckRecycleIndexAutomatically()
+{
+    if (!GetConsensus().recycle_enabled || m_options.recycle_from_block) return true;
+    const auto started{std::chrono::steady_clock::now()};
+    try {
+        std::unique_ptr<RecycleIndexSnapshot> snapshot;
+        {
+            LOCK(cs_main);
+            auto& chainstate{ActiveChainstate()};
+            if (!chainstate.m_chain.Tip()) return true;
+            chainstate.ForceFlushStateToDisk(/*wipe_cache=*/false);
+            snapshot = chainstate.CoinsDB().GetRecycleIndexSnapshot();
+            if (snapshot && snapshot->GetBestBlock() != chainstate.m_chain.Tip()->GetBlockHash()) {
+                throw std::runtime_error("Flushed recycle check snapshot does not match the active tip");
+            }
+        }
+        // A manual check already owns the snapshot; retry on the next scheduled tick.
+        if (!snapshot) return false;
+        const auto result{snapshot->Check([&](const std::string&, const RecycleIndexCheckResult&) { return !m_interrupt; })};
+        LogInfo("Automatic recycle index check: %.3f seconds, %u coins, %u entries",
+                std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count(),
+                result.coins_scanned, result.index_entries);
+        if (!result.completed) return false;
+        if (result.Valid()) return true;
+    } catch (const std::exception& e) {
+        LogError("Automatic recycle index check failed: %s\n", e.what());
+    }
+    {
+        LOCK(cs_main);
+        m_recycle_failed = true;
+        if (!m_options.datadir.empty()) {
+            if (FILE* file{fsbridge::fopen(m_options.datadir / "recycle-corrupt", "wb")}) {
+                if (!FileCommit(file)) LogError("Cannot commit recycle corruption marker\n");
+                std::fclose(file);
+                DirectoryCommit(m_options.datadir);
+            } else {
+                LogError("Cannot create recycle corruption marker\n");
+            }
+        }
+        GetNotifications().fatalError(Untranslated("Recycle index inconsistency detected. Validation and mining stopped. Restart to rebuild the block index and chainstate automatically from blocks; a pruned node requires a fresh synchronization."));
+    }
+    return false;
 }

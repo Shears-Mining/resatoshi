@@ -52,6 +52,10 @@ static ChainstateLoadResult CompleteChainstateInitialization(
         return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, _("Incorrect or no genesis block found. Wrong datadir for network?")};
     }
 
+    if (chainman.m_options.recycle_recovery && chainman.m_blockman.m_have_pruned) {
+        return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Automatic recycle recovery needs all historical blocks, but this directory has pruned data. Synchronize a fresh data directory.")};
+    }
+
     // Check for changed -prune state.  What we are concerned about is a user who has pruned blocks
     // in the past, but is now trying to run unpruned.
     if (chainman.m_blockman.m_have_pruned && !options.prune) {
@@ -110,7 +114,7 @@ static ChainstateLoadResult CompleteChainstateInitialization(
 
         // Build the derived index before replay/verification. This also works
         // on partially flushed legacy databases: replay updates both keys.
-        if (chainman.GetConsensus().recycle_enabled &&
+        if (chainman.GetConsensus().recycle_enabled && !chainman.m_options.recycle_from_block &&
             !chainstate->CoinsDB().UpgradeRecycleIndex([&] { return bool{chainman.m_interrupt}; })) {
             return {ChainstateLoadStatus::FAILURE, _("Interrupted while rebuilding recycle index")};
         }

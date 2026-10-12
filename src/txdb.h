@@ -67,6 +67,8 @@ public:
 struct CoinsViewOptions {
     //! Maintain the derived creation-height index on recycling networks.
     bool recycle_index{false};
+    //! Use block-source codec without maintaining the height index.
+    bool recycle_from_block{false};
     //! Maximum database write batch size in bytes.
     size_t batch_write_bytes{DEFAULT_DB_CACHE_BATCH};
     //! If non-zero, randomly exit when the database is flushed with (1/ratio) probability.

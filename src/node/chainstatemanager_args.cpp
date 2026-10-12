@@ -24,6 +24,15 @@
 namespace node {
 util::Result<void> ApplyArgsManOptions(const ArgsManager& args, ChainstateManager::Options& opts)
 {
+    const auto recycle_mode{args.GetArg("-recyclemode", "index")};
+    if (recycle_mode != "index" && recycle_mode != "block") {
+        return util::Error{Untranslated("Invalid -recyclemode; use index or block")};
+    }
+    opts.recycle_from_block = recycle_mode == "block";
+    const auto interval{args.GetIntArg("-recyclecheckinterval", 3600)};
+    if (interval < 1 || interval > 86400 * 365) return util::Error{Untranslated("Invalid -recyclecheckinterval; use 1..31536000 seconds")};
+    opts.recycle_check_interval = std::chrono::seconds{interval};
+
     if (auto value{args.GetIntArg("-checkblockindex")}) {
         // Interpret bare -checkblockindex argument as 1 instead of 0.
         opts.check_block_index = args.GetArg("-checkblockindex")->empty() ? 1 : *value;

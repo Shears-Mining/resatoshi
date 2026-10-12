@@ -321,6 +321,12 @@ void Shutdown(NodeContext& node)
 
     StopTorControl();
 
+    {
+        std::lock_guard lock{node.recycle_check_mutex};
+        node.recycle_check_stop = true;
+    }
+    node.recycle_check_cv.notify_all();
+    if (node.recycle_check_thread.joinable()) node.recycle_check_thread.join();
     if (node.background_init_thread.joinable()) node.background_init_thread.join();
     // After everything has been shut down, but before things get flushed, stop the
     // the scheduler. After this point, SyncWithValidationInterfaceQueue() should not be called anymore
@@ -356,6 +362,19 @@ void Shutdown(NodeContext& node)
                 chainstate->ForceFlushStateToDisk();
             }
         }
+    }
+
+    if (node.recycle_session_started && node.chainman && !node.chainman->m_recycle_failed) {
+        LOCK(cs_main);
+        bool clean{true};
+        for (const auto& chainstate : node.chainman->m_chainstates) {
+            if (!chainstate->CanFlushToDisk()) { clean = false; break; }
+            if (!chainstate->CoinsDB().GetHeadBlocks().empty() ||
+                (chainstate->m_chain.Tip() && chainstate->CoinsDB().GetBestBlock() != chainstate->m_chain.Tip()->GetBlockHash())) {
+                clean = false;
+            }
+        }
+        if (clean) fs::remove(node.args->GetDataDirNet() / "recycle-unclean");
     }
 
     // After there are no more peers/RPC left to give us new data which may generate
@@ -519,6 +538,8 @@ void SetupServerArgs(ArgsManager& argsman, bool can_listen_ipc)
                              DEFAULT_PERSIST_V1_DAT),
                    ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-pid=<file>", strprintf("Specify pid file. Relative paths will be prefixed by a net-specific datadir location. (default: %s)", BITCOIN_PID_FILENAME), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
+    argsman.AddArg("-recyclecheckinterval=<seconds>", "Minimum interval between automatic recycle index checks (default: 3600). Slow scans increase the interval to limit scan duty cycle to 0.1%.", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
+    argsman.AddArg("-recyclemode=<mode>", "Expiry source: index (default) or block. Fixed for each data directory; changing requires a fresh data directory. Block mode retains the expiry window even when pruning.", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-prune=<n>", strprintf("Reduce storage requirements by enabling pruning (deleting) of old blocks. This allows the pruneblockchain RPC to be called to delete specific blocks and enables automatic pruning of old blocks if a target size in MiB is provided. This mode is incompatible with -txindex. "
             "Warning: Reverting this setting requires re-downloading the entire blockchain. "
             "(default: 0 = disable pruning blocks, 1 = allow manual pruning via RPC, >=%u = automatically prune block files to stay under the specified target size in MiB)", MIN_DISK_SPACE_FOR_BLOCK_FILES / 1024 / 1024), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
@@ -1333,6 +1354,45 @@ static ChainstateLoadResult InitAndLoadChainstate(
         .signals = node.validation_signals.get(),
     };
     Assert(ApplyArgsManOptions(args, chainman_opts)); // no error can happen, already checked in AppInitParameterInteraction
+    if (chainparams.GetConsensus().recycle_enabled) {
+        chainman_opts.recycle_recovery = fs::exists(args.GetDataDirNet() / "recycle-corrupt");
+        if (chainman_opts.recycle_recovery) LogWarning("Recycle corruption detected: rebuilding block index and chainstate from blocks before resuming\n");
+        const auto mode_path{args.GetDataDirNet() / "recycle-mode"};
+        const std::string requested{chainman_opts.recycle_from_block ? "block" : "index"};
+        if (fs::exists(mode_path)) {
+            std::ifstream stream{mode_path.std_path()};
+            std::string stored;
+            std::getline(stream, stored);
+            if (!stream || stored != requested) {
+                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Recycle mode differs from the data directory. Use its recorded mode, or synchronize a fresh data directory.")};
+            }
+        } else {
+            // Legacy directories are index mode, even when -reindex was requested.
+            const bool legacy{fs::exists(args.GetDataDirNet() / "chainstate" / "CURRENT") ||
+                              fs::exists(args.GetBlocksDirPath() / "index" / "CURRENT")};
+            chainman_opts.recycle_check_startup = legacy;
+            if (legacy && chainman_opts.recycle_from_block) {
+                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Existing data directory uses index mode. Block mode requires a fresh data directory.")};
+            }
+            const auto temporary{args.GetDataDirNet() / "recycle-mode.tmp"};
+            FILE* file{fsbridge::fopen(temporary, "wb")};
+            if (!file) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot record recycle mode")};
+            const std::string contents{requested + "\n"};
+            const bool written{std::fwrite(contents.data(), 1, contents.size(), file) == contents.size() && FileCommit(file)};
+            const bool closed{std::fclose(file) == 0};
+            if (!written || !closed || !RenameOver(temporary, mode_path)) {
+                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot persist recycle mode")};
+            }
+        }
+        DirectoryCommit(args.GetDataDirNet());
+        chainman_opts.recycle_check_startup |= fs::exists(args.GetDataDirNet() / "recycle-unclean");
+        FILE* file{fsbridge::fopen(args.GetDataDirNet() / "recycle-unclean", "wb")};
+        if (!file) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot record recycle session")};
+        const bool committed{FileCommit(file)};
+        const bool closed{std::fclose(file) == 0};
+        if (!committed || !closed) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot persist recycle session")};
+        DirectoryCommit(args.GetDataDirNet());
+    }
 
     BlockManager::Options blockman_opts{
         .chainparams = chainman_opts.chainparams,
@@ -1351,6 +1411,14 @@ static ChainstateLoadResult InitAndLoadChainstate(
     // The coinsdb is opened at a later point on LoadChainstate.
     Assert(!node.chainman); // Was reset above
     try {
+        if (chainman_opts.recycle_recovery && fs::exists(args.GetBlocksDirPath() / "index" / "CURRENT")) {
+            node::BlockTreeDB previous{{.path = args.GetBlocksDirPath() / "index", .cache_bytes = 1 << 20}};
+            bool pruned{false};
+            previous.ReadFlag("prunedblockfiles", pruned);
+            if (pruned) {
+                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Automatic recycle recovery needs all historical blocks, but this directory has pruned data. Synchronize a fresh data directory.")};
+            }
+        }
         node.chainman = std::make_unique<ChainstateManager>(*Assert(node.shutdown_signal), chainman_opts, blockman_opts);
     } catch (dbwrapper_error& e) {
         LogError("%s", e.what());
@@ -1404,6 +1472,9 @@ static ChainstateLoadResult InitAndLoadChainstate(
     };
     auto [status, error] = catch_exceptions([&] { return LoadChainstate(chainman, cache_sizes, options); });
     if (status == node::ChainstateLoadStatus::SUCCESS) {
+        if (chainman.m_options.recycle_check_startup && !chainman.CheckRecycleIndexAutomatically()) {
+            return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Recycle index check failed after an unclean shutdown. Restart to rebuild automatically from blocks, or synchronize a fresh data directory.")};
+        }
         uiInterface.InitMessage(_("Verifying blocks…"));
         if (chainman.m_blockman.m_have_pruned && options.check_blocks > MIN_BLOCKS_TO_KEEP) {
             LogWarning("pruned datadir may not have more than %d blocks; only checking available blocks\n",
@@ -1847,7 +1918,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     assert(!node.mempool);
     assert(!node.chainman);
 
-    bool do_reindex{args.GetBoolArg("-reindex", false)};
+    bool do_reindex{args.GetBoolArg("-reindex", false) ||
+        (chainparams.GetConsensus().recycle_enabled && fs::exists(args.GetDataDirNet() / "recycle-corrupt"))};
     const bool do_reindex_chainstate{args.GetBoolArg("-reindex-chainstate", false)};
 
     // Chainstate initialization and loading may be retried once with reindexing by GUI users
@@ -1890,6 +1962,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
     }
 
     ChainstateManager& chainman = *Assert(node.chainman);
+    node.recycle_session_started = true;
     auto& kernel_notifications{*Assert(node.notifications)};
 
     assert(!node.peerman);
@@ -2027,6 +2100,10 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
         ScheduleBatchPriority();
         // Import blocks and ActivateBestChain()
         ImportBlocks(chainman, vImportFiles);
+        if (!chainman.m_interrupt && chainman.m_blockman.m_blockfiles_indexed &&
+            (do_reindex || do_reindex_chainstate)) {
+            fs::remove(args.GetDataDirNet() / "recycle-corrupt");
+        }
         WITH_LOCK(::cs_main, chainman.UpdateIBDStatus());
         if (args.GetBoolArg("-stopafterblockimport", DEFAULT_STOPAFTERBLOCKIMPORT)) {
             LogInfo("Stopping after block import");
@@ -2282,6 +2359,28 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 
     if (!node.connman->Start(scheduler, connOptions)) {
         return false;
+    }
+
+    if (chainman.GetConsensus().recycle_enabled && !chainman.m_options.recycle_from_block) {
+        node.recycle_check_thread = std::thread(util::TraceThread, "recyclecheck", [&node, &chainman] {
+            // Measured 0.04 s for 8,867 UTXOs. A one-hour floor limits scanning
+            // frequency; larger databases adapt to at most 0.1% scan duty cycle.
+            auto interval{std::chrono::duration_cast<std::chrono::milliseconds>(chainman.m_options.recycle_check_interval)};
+            std::unique_lock lock{node.recycle_check_mutex};
+            while (!node.recycle_check_cv.wait_for(lock, interval, [&] { return node.recycle_check_stop; })) {
+                lock.unlock();
+                const auto started{std::chrono::steady_clock::now()};
+                chainman.CheckRecycleIndexAutomatically();
+                interval = std::max(std::chrono::duration_cast<std::chrono::milliseconds>(chainman.m_options.recycle_check_interval),
+                    std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started) * 1000);
+                lock.lock();
+                if (chainman.m_recycle_failed) {
+                    (Assert(node.shutdown_request))();
+                    break;
+                }
+                if (chainman.m_interrupt) break;
+            }
+        });
     }
 
     // ********************************************************* Step 13: finished

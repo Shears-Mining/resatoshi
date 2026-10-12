@@ -6,6 +6,8 @@
 #define BITCOIN_NODE_CONTEXT_H
 
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 #include <cstdlib>
 #include <functional>
 #include <memory>
@@ -70,6 +72,11 @@ struct NodeContext {
     std::unique_ptr<CBlockPolicyEstimator> fee_estimator;
     std::unique_ptr<PeerManager> peerman;
     std::unique_ptr<ChainstateManager> chainman;
+    std::thread recycle_check_thread;
+    std::mutex recycle_check_mutex;
+    std::condition_variable recycle_check_cv;
+    bool recycle_check_stop{false};
+    bool recycle_session_started{false};
     std::unique_ptr<BanMan> banman;
     ArgsManager* args{nullptr}; // Currently a raw pointer because the memory is not managed by this struct
     std::vector<BaseIndex*> indexes; // raw pointers because memory is not managed by this struct

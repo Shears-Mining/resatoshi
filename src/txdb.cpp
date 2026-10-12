@@ -39,6 +39,8 @@ static constexpr uint8_t DB_RECYCLE_CODEC{'r'};
 static constexpr uint8_t DB_RECYCLE_HEIGHT{'E'};
 static constexpr int RECYCLE_INDEX_VERSION{2};
 static constexpr int RECYCLE_INDEX_BUILDING{3};
+// Older binaries must not silently enable indexing on a block-mode chainstate.
+static constexpr int RECYCLE_BLOCK_VERSION{4};
 
 // Threshold for warning when writing this many dirty cache entries to disk.
 static constexpr size_t WARN_FLUSH_COINS_COUNT{10'000'000};
@@ -52,7 +54,9 @@ bool CCoinsViewDB::NeedsUpgrade()
     uint8_t key{0};
     if (cursor->Valid() && cursor->GetKey(key) && key == DB_COINS) return true;
     int version{0};
-    return m_db->Exists(DB_RECYCLE_CODEC) && (!m_db->Read(DB_RECYCLE_CODEC, version) || (version != 1 && version != RECYCLE_INDEX_VERSION && version != RECYCLE_INDEX_BUILDING));
+    return m_db->Exists(DB_RECYCLE_CODEC) && (!m_db->Read(DB_RECYCLE_CODEC, version) ||
+        (m_options.recycle_from_block ? version != RECYCLE_BLOCK_VERSION :
+         (version != 1 && version != RECYCLE_INDEX_VERSION && version != RECYCLE_INDEX_BUILDING)));
 }
 
 bool CCoinsViewDB::RecycleStateReady() const
@@ -303,7 +307,12 @@ std::set<COutPoint> CCoinsViewDB::GetCoinsByHeight(uint32_t height) const
 CCoinsViewDB::CCoinsViewDB(DBParams db_params, CoinsViewOptions options) :
     m_db_params{std::move(db_params)},
     m_options{std::move(options)},
-    m_db{std::make_shared<CDBWrapper>(m_db_params)} { }
+    m_db{std::make_shared<CDBWrapper>(m_db_params)}
+{
+    if (m_options.recycle_from_block && !m_db->Exists(DB_RECYCLE_CODEC)) {
+        m_db->Write(DB_RECYCLE_CODEC, RECYCLE_BLOCK_VERSION, /*fSync=*/true);
+    }
+}
 
 CCoinsViewDB::~CCoinsViewDB()
 {

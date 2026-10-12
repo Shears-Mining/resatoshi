@@ -20,6 +20,7 @@ class RecycleTest(BitcoinTestFramework):
         self.num_nodes = 2
         self.setup_clean_chain = True
         self.extra_args = [["-test=recycle", "-coinstatsindex", "-checklevel=4"] for _ in range(2)]
+        self.extra_args[1].append("-recyclemode=block")
 
     def skip_test_if_missing_module(self):
         self.skip_if_no_wallet()

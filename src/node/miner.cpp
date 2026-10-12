@@ -134,6 +134,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock()
     pblock->vtx.emplace_back();
 
     LOCK(::cs_main);
+    if (m_chainstate.m_chainman.m_recycle_failed) throw std::runtime_error("Recycle index corruption; mining stopped");
     CBlockIndex* pindexPrev = m_chainstate.m_chain.Tip();
     assert(pindexPrev != nullptr);
     nHeight = pindexPrev->nHeight + 1;
@@ -176,8 +177,10 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock()
     coinbaseTx.vout.resize(1);
     coinbaseTx.vout[0].scriptPubKey = m_options.coinbase_output_script;
     // Block subsidy + fees
+    CBlock origin_block;
+    if (!m_chainstate.m_chainman.ReadRecycleOrigin(origin_block, pindexPrev)) throw std::runtime_error("Cannot read recycle expiry origin block");
     const CAmount recycle_reward{chainparams.GetConsensus().recycle_enabled
-                                     ? recycle::AvailableReward(m_chainstate.CoinsTip(), *pblock, nHeight, chainparams.GetConsensus().recycle_expiry_blocks)
+                                     ? recycle::AvailableReward(m_chainstate.CoinsTip(), *pblock, nHeight, chainparams.GetConsensus().recycle_expiry_blocks, m_chainstate.m_chainman.m_options.recycle_from_block ? &origin_block : nullptr)
                                      : 0};
     const CAmount block_reward{nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus()) + recycle_reward};
     coinbaseTx.vout[0].nValue = block_reward;

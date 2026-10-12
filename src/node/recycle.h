@@ -31,11 +31,11 @@ inline constexpr CAmount MAX_REWARD{COIN};
 CAmount PoolBalance(const CCoinsViewCache& view);
 
 /** Return the maximum recycle reward a candidate block may claim. */
-CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int height, int expiry_blocks = EXPIRY_BLOCKS);
+CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int height, int expiry_blocks = EXPIRY_BLOCKS, const CBlock* origin_block = nullptr);
 
-/** Apply indexed UTXO expiry and pool accounting. */
+/** Apply UTXO expiry and pool accounting. A supplied origin block replaces height-index lookup. */
 bool ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
-                  CTxUndo& undo, std::string& error, std::vector<COutPoint>* expired = nullptr, int expiry_blocks = EXPIRY_BLOCKS);
+                  CTxUndo& undo, std::string& error, std::vector<COutPoint>* expired = nullptr, int expiry_blocks = EXPIRY_BLOCKS, const CBlock* origin_block = nullptr);
 
 /** Undo ConnectBlock. */
 bool DisconnectBlock(CCoinsViewCache& view, int height, CTxUndo* undo, int expiry_blocks = EXPIRY_BLOCKS);

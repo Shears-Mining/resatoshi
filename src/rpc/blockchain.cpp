@@ -1389,6 +1389,7 @@ RPCHelpMan getblockchaininfo()
                 {RPCResult::Type::NUM, "prune_target_size", /*optional=*/true, "the target size used by pruning (only present if automatic pruning is enabled)"},
                 {RPCResult::Type::OBJ, "recycling", /*optional=*/true, "Only when include_recycling is true; state at bestblockhash", {
                     {RPCResult::Type::BOOL, "enabled", "Whether recycling is enabled on this network"},
+                    {RPCResult::Type::STR, "mode", /*optional=*/true, "Local expiry source: index or block"},
                     {RPCResult::Type::NUM, "expiry_blocks", /*optional=*/true, "Output lifetime in blocks (enabled networks only)"},
                     {RPCResult::Type::STR_AMOUNT, "max_reward_per_block", /*optional=*/true, "Maximum recycle reward, excluding subsidy and fees (enabled networks only)"},
                     {RPCResult::Type::STR_AMOUNT, "pool_balance", /*optional=*/true, "Unclaimed pool after bestblockhash; excludes future expiry (enabled networks only)"},
@@ -1434,6 +1435,7 @@ RPCHelpMan getblockchaininfo()
         UniValue recycling{UniValue::VOBJ};
         recycling.pushKV("enabled", consensus.recycle_enabled);
         if (consensus.recycle_enabled) {
+            recycling.pushKV("mode", chainman.m_options.recycle_from_block ? "block" : "index");
             recycling.pushKV("expiry_blocks", consensus.recycle_expiry_blocks);
             recycling.pushKV("max_reward_per_block", ValueFromAmount(node::recycle::MAX_REWARD));
             recycling.pushKV("pool_balance", ValueFromAmount(node::recycle::PoolBalance(active_chainstate.CoinsTip())));
@@ -2436,6 +2438,7 @@ static RPCHelpMan checkrecycleindex()
             int height;
             {
                 LOCK(cs_main);
+                if (chainman.m_options.recycle_from_block) throw JSONRPCError(RPC_MISC_ERROR, "Recycle height index is disabled in block mode");
                 if (!chainman.GetConsensus().recycle_enabled) throw JSONRPCError(RPC_MISC_ERROR, "Recycling is disabled on this network");
                 node.rpc_interruption_point();
                 auto& chainstate{chainman.ActiveChainstate()};
