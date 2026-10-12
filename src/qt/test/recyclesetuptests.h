@@ -14,6 +14,8 @@ class RecycleSetupTests : public QObject
 private Q_SLOTS:
     void directoryStates();
     void koreanLabels();
+    void translatedLabels_data();
+    void translatedLabels();
     void firstRunChoices();
     void cancelDoesNotSave();
     void existingFolders();

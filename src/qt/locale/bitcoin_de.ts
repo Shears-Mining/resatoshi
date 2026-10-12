@@ -448,6 +448,14 @@ Das Signieren ist nur mit Adressen vom Typ 'Legacy' möglich.</translation>
         <source>default wallet</source>
         <translation type="unfinished">Standard-Wallet</translation>
     </message>
+    <message>
+        <source>Cannot inspect the data folder: %1</source>
+        <translation>Datenordner kann nicht geprüft werden: %1</translation>
+    </message>
+    <message>
+        <source>Cannot save node preferences: %1</source>
+        <translation>Knoteneinstellungen können nicht gespeichert werden: %1</translation>
+    </message>
 </context>
 <context>
     <name>BitcoinGUI</name>
@@ -5047,6 +5055,73 @@ Bitte mit der neuesten Softwareversion ausführen.
     <message>
         <source>Settings file could not be written</source>
         <translation type="unfinished">Einstellungsdatei kann nicht geschrieben werden</translation>
+    </message>
+</context>
+<context>
+    <name>RecycleSetupDialog</name>
+    <message>
+        <source>Set up your ReSatoshi node</source>
+        <translation>ReSatoshi-Knoten einrichten</translation>
+    </message>
+    <message>
+        <source>Choose how this node finds coins that have reached their expiry height. Both methods follow the same network rules and work with the wallet.</source>
+        <translation>Wählen Sie, wie dieser Knoten Coins findet, die ihre Ablaufhöhe erreicht haben. Beide Methoden folgen denselben Netzwerkregeln und funktionieren mit der Wallet.</translation>
+    </message>
+    <message>
+        <source>Expiry processing</source>
+        <translation>Ablaufverarbeitung</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>Index</translation>
+    </message>
+    <message>
+        <source>Uses a list of unspent coins. Automatic checks look for inconsistencies.</source>
+        <translation>Verwendet eine Liste nicht ausgegebener Coins. Automatische Prüfungen suchen nach Unstimmigkeiten.</translation>
+    </message>
+    <message>
+        <source>Original blocks</source>
+        <translation>Originalblöcke</translation>
+    </message>
+    <message>
+        <source>Reads the block that created the expiring coins and checks which coins remain unspent. Does not maintain an expiry index.</source>
+        <translation>Liest den Block, in dem die ablaufenden Coins erzeugt wurden, und prüft, welche noch nicht ausgegeben wurden. Führt keinen Ablaufindex.</translation>
+    </message>
+    <message>
+        <source>The expiry method is supplied by your startup configuration.</source>
+        <translation>Die Methode zur Ablaufverarbeitung wird durch Ihre Startkonfiguration vorgegeben.</translation>
+    </message>
+    <message>
+        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
+        <translation>Diese Auswahl ist für diesen Datenordner festgelegt. Ein späterer Methodenwechsel erfordert einen neuen Ordner und eine Synchronisierung. Sichern Sie Ihre Wallets, bevor Sie den Ordner wechseln.</translation>
+    </message>
+    <message>
+        <source>Block history</source>
+        <translation>Blockhistorie</translation>
+    </message>
+    <message>
+        <source>Keep the complete history</source>
+        <translation>Vollständige Historie behalten</translation>
+    </message>
+    <message>
+        <source>Prune old blocks after expiry processing</source>
+        <translation>Alte Blöcke nach der Ablaufverarbeitung löschen</translation>
+    </message>
+    <message>
+        <source>Storage target (GB):</source>
+        <translation>Speicherziel (GB):</translation>
+    </message>
+    <message>
+        <source>Pruning keeps all blocks still needed for expiry and a buffer for chain reorganizations. Actual disk use can exceed the target. Keeping the complete history supports rebuilding locally if data needs repair.</source>
+        <translation>Beim Löschen alter Blöcke bleiben alle für die Ablaufverarbeitung benötigten Blöcke sowie ein Puffer für Neuorganisationen der Blockchain erhalten. Die tatsächliche Festplattenbelegung kann das Ziel überschreiten. Mit der vollständigen Historie ist ein lokaler Neuaufbau möglich, falls Daten repariert werden müssen.</translation>
+    </message>
+    <message>
+        <source>Storage is fixed by your startup configuration. To save a different storage preference here, enable settings and leave pruning unspecified.</source>
+        <translation>Die Speicherung wird durch Ihre Startkonfiguration festgelegt. Um hier eine andere Speicheroption zu speichern, aktivieren Sie das Speichern der Einstellungen und geben Sie keine Option zum Löschen alter Blöcke vor.</translation>
+    </message>
+    <message>
+        <source>Start node</source>
+        <translation>Knoten starten</translation>
     </message>
 </context>
 </TS>

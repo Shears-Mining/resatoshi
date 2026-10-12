@@ -85,6 +85,44 @@ void RecycleSetupTests::koreanLabels()
     QApplication::removeTranslator(&translator);
 }
 
+void RecycleSetupTests::translatedLabels_data()
+{
+    QTest::addColumn<QString>("locale");
+    QTest::addColumn<QString>("title");
+    QTest::addColumn<QString>("block_label");
+    for (const auto* locale : {"zh", "zh_CN", "zh-Hans"}) {
+        QTest::newRow(locale) << QString{locale} << QString::fromUtf8("设置您的 ReSatoshi 节点") << QString::fromUtf8("原始区块");
+    }
+    for (const auto* locale : {"zh_TW", "zh-Hant", "zh_HK"}) {
+        QTest::newRow(locale) << QString{locale} << QString::fromUtf8("設定您的 ReSatoshi 節點") << QString::fromUtf8("原始區塊");
+    }
+    QTest::newRow("ja") << QString{"ja"} << QString::fromUtf8("ReSatoshi ノードの設定") << QString::fromUtf8("元のブロック");
+    QTest::newRow("th") << QString{"th"} << QString::fromUtf8("ตั้งค่าโหนด ReSatoshi ของคุณ") << QString::fromUtf8("บล็อกต้นฉบับ");
+    QTest::newRow("fr") << QString{"fr"} << QString::fromUtf8("Configurer votre nœud ReSatoshi") << QString::fromUtf8("Blocs d’origine");
+    QTest::newRow("de") << QString{"de"} << QString::fromUtf8("ReSatoshi-Knoten einrichten") << QString::fromUtf8("Originalblöcke");
+    QTest::newRow("es") << QString{"es"} << QString::fromUtf8("Configurar su nodo ReSatoshi") << QString::fromUtf8("Bloques originales");
+}
+
+void RecycleSetupTests::translatedLabels()
+{
+    QFETCH(QString, locale);
+    QFETCH(QString, title);
+    QFETCH(QString, block_label);
+    QTranslator translator;
+    QVERIFY(translator.load(":/translations/" + locale));
+    QApplication::installTranslator(&translator);
+    RecycleSetupDialog dialog{"block", true, 0, true};
+    // Remove even if an assertion fails, so the next test starts in English.
+    QApplication::removeTranslator(&translator);
+    QCOMPARE(dialog.windowTitle(), title);
+    QCOMPARE(dialog.findChild<QRadioButton*>("blockMode")->text(), block_label);
+    for (const auto* source : {"Cannot inspect the data folder: %1", "Cannot save node preferences: %1"}) {
+        const auto translated{translator.translate("QObject", source)};
+        QVERIFY(!translated.isEmpty());
+        QVERIFY(translated.contains("%1"));
+    }
+}
+
 void RecycleSetupTests::firstRunChoices()
 {
     QTemporaryDir dir;

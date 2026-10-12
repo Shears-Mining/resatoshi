@@ -446,6 +446,14 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <source>default wallet</source>
         <translation type="unfinished">デフォルトウォレット</translation>
     </message>
+    <message>
+        <source>Cannot inspect the data folder: %1</source>
+        <translation>データフォルダーを確認できません：%1</translation>
+    </message>
+    <message>
+        <source>Cannot save node preferences: %1</source>
+        <translation>ノード設定を保存できません：%1</translation>
+    </message>
 </context>
 <context>
     <name>BitcoinGUI</name>
@@ -5165,6 +5173,73 @@ Please try running the latest software version.
     <message>
         <source>Settings file could not be written</source>
         <translation type="unfinished">設定ファイルを書けませんでした</translation>
+    </message>
+</context>
+<context>
+    <name>RecycleSetupDialog</name>
+    <message>
+        <source>Set up your ReSatoshi node</source>
+        <translation>ReSatoshi ノードの設定</translation>
+    </message>
+    <message>
+        <source>Choose how this node finds coins that have reached their expiry height. Both methods follow the same network rules and work with the wallet.</source>
+        <translation>有効期限のブロック高に達したコインを、このノードがどのように探すかを選択してください。どちらの方式も同じネットワークルールに従い、ウォレットと併用できます。</translation>
+    </message>
+    <message>
+        <source>Expiry processing</source>
+        <translation>有効期限の処理</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>インデックス</translation>
+    </message>
+    <message>
+        <source>Uses a list of unspent coins. Automatic checks look for inconsistencies.</source>
+        <translation>未使用のコインの一覧を使います。自動検査で不整合を確認します。</translation>
+    </message>
+    <message>
+        <source>Original blocks</source>
+        <translation>元のブロック</translation>
+    </message>
+    <message>
+        <source>Reads the block that created the expiring coins and checks which coins remain unspent. Does not maintain an expiry index.</source>
+        <translation>期限切れになるコインが作成されたブロックを読み、どのコインが未使用かを確認します。有効期限のインデックスは維持しません。</translation>
+    </message>
+    <message>
+        <source>The expiry method is supplied by your startup configuration.</source>
+        <translation>有効期限の処理方式は起動設定で指定されています。</translation>
+    </message>
+    <message>
+        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
+        <translation>この選択はこのデータフォルダーに固定されます。後から方式を変更するには、新しいフォルダーで同期する必要があります。フォルダーを変更する前にウォレットをバックアップしてください。</translation>
+    </message>
+    <message>
+        <source>Block history</source>
+        <translation>ブロック履歴</translation>
+    </message>
+    <message>
+        <source>Keep the complete history</source>
+        <translation>履歴をすべて保持する</translation>
+    </message>
+    <message>
+        <source>Prune old blocks after expiry processing</source>
+        <translation>有効期限の処理後に古いブロックを削除する</translation>
+    </message>
+    <message>
+        <source>Storage target (GB):</source>
+        <translation>保存容量の目標（GB）：</translation>
+    </message>
+    <message>
+        <source>Pruning keeps all blocks still needed for expiry and a buffer for chain reorganizations. Actual disk use can exceed the target. Keeping the complete history supports rebuilding locally if data needs repair.</source>
+        <translation>古いブロックを削除しても、有効期限の処理に必要なすべてのブロックと、チェーン再編成に備える余裕分は保持します。実際のディスク使用量は目標を超える場合があります。履歴をすべて保持すると、データの修復が必要なときにローカルで再構築できます。</translation>
+    </message>
+    <message>
+        <source>Storage is fixed by your startup configuration. To save a different storage preference here, enable settings and leave pruning unspecified.</source>
+        <translation>保存方式は起動設定で固定されています。ここで別の保存設定を保存するには、設定の保存を有効にし、起動時にブロック削除を指定しないでください。</translation>
+    </message>
+    <message>
+        <source>Start node</source>
+        <translation>ノードを起動</translation>
     </message>
 </context>
 </TS>

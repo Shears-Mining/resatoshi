@@ -462,6 +462,14 @@ Il n’est possible de signer qu’avec les adresses de type « legacy ».</tr
         <source>default wallet</source>
         <translation type="unfinished">portefeuille par défaut</translation>
     </message>
+    <message>
+        <source>Cannot inspect the data folder: %1</source>
+        <translation>Impossible d’inspecter le dossier de données : %1</translation>
+    </message>
+    <message>
+        <source>Cannot save node preferences: %1</source>
+        <translation>Impossible d’enregistrer les préférences du nœud : %1</translation>
+    </message>
 </context>
 <context>
     <name>BitcoinGUI</name>
@@ -5141,6 +5149,73 @@ Essayez d’utiliser la version la plus récente du logiciel.
     <message>
         <source>Settings file could not be written</source>
         <translation type="unfinished">Impossible d’écrire le fichier de paramètres</translation>
+    </message>
+</context>
+<context>
+    <name>RecycleSetupDialog</name>
+    <message>
+        <source>Set up your ReSatoshi node</source>
+        <translation>Configurer votre nœud ReSatoshi</translation>
+    </message>
+    <message>
+        <source>Choose how this node finds coins that have reached their expiry height. Both methods follow the same network rules and work with the wallet.</source>
+        <translation>Choisissez comment ce nœud recherche les pièces ayant atteint leur hauteur d’expiration. Les deux méthodes suivent les mêmes règles du réseau et fonctionnent avec le portefeuille.</translation>
+    </message>
+    <message>
+        <source>Expiry processing</source>
+        <translation>Traitement des expirations</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>Index</translation>
+    </message>
+    <message>
+        <source>Uses a list of unspent coins. Automatic checks look for inconsistencies.</source>
+        <translation>Utilise une liste des pièces non dépensées. Des vérifications automatiques recherchent les incohérences.</translation>
+    </message>
+    <message>
+        <source>Original blocks</source>
+        <translation>Blocs d’origine</translation>
+    </message>
+    <message>
+        <source>Reads the block that created the expiring coins and checks which coins remain unspent. Does not maintain an expiry index.</source>
+        <translation>Lit le bloc ayant créé les pièces arrivant à expiration et vérifie lesquelles restent non dépensées. Ne maintient pas d’index des expirations.</translation>
+    </message>
+    <message>
+        <source>The expiry method is supplied by your startup configuration.</source>
+        <translation>La méthode de traitement des expirations est définie par votre configuration de démarrage.</translation>
+    </message>
+    <message>
+        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
+        <translation>Ce choix est fixé pour ce dossier de données. Pour changer de méthode par la suite, il faut utiliser un nouveau dossier et effectuer une synchronisation. Sauvegardez vos portefeuilles avant de changer de dossier.</translation>
+    </message>
+    <message>
+        <source>Block history</source>
+        <translation>Historique des blocs</translation>
+    </message>
+    <message>
+        <source>Keep the complete history</source>
+        <translation>Conserver tout l’historique</translation>
+    </message>
+    <message>
+        <source>Prune old blocks after expiry processing</source>
+        <translation>Élaguer les anciens blocs après le traitement des expirations</translation>
+    </message>
+    <message>
+        <source>Storage target (GB):</source>
+        <translation>Objectif de stockage (Go) :</translation>
+    </message>
+    <message>
+        <source>Pruning keeps all blocks still needed for expiry and a buffer for chain reorganizations. Actual disk use can exceed the target. Keeping the complete history supports rebuilding locally if data needs repair.</source>
+        <translation>L’élagage conserve tous les blocs encore nécessaires au traitement des expirations ainsi qu’une marge pour les réorganisations de la chaîne. L’espace disque réellement utilisé peut dépasser l’objectif. Conserver tout l’historique permet une reconstruction locale si les données doivent être réparées.</translation>
+    </message>
+    <message>
+        <source>Storage is fixed by your startup configuration. To save a different storage preference here, enable settings and leave pruning unspecified.</source>
+        <translation>Le stockage est fixé par votre configuration de démarrage. Pour enregistrer ici une autre préférence de stockage, activez l’enregistrement des paramètres et ne spécifiez pas d’option d’élagage.</translation>
+    </message>
+    <message>
+        <source>Start node</source>
+        <translation>Démarrer le nœud</translation>
     </message>
 </context>
 </TS>

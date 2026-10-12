@@ -423,6 +423,14 @@ Solo es posible firmar con direcciones de tipo "legacy".</translation>
         <source>default wallet</source>
         <translation type="unfinished">monedero predeterminado</translation>
     </message>
+    <message>
+        <source>Cannot inspect the data folder: %1</source>
+        <translation>No se puede inspeccionar la carpeta de datos: %1</translation>
+    </message>
+    <message>
+        <source>Cannot save node preferences: %1</source>
+        <translation>No se pueden guardar las preferencias del nodo: %1</translation>
+    </message>
 </context>
 <context>
     <name>BitcoinGUI</name>
@@ -5079,6 +5087,73 @@ Intenta ejecutar la última versión del software.
     <message>
         <source>Settings file could not be written</source>
         <translation type="unfinished">El archivo de configuración no pudo escribirse</translation>
+    </message>
+</context>
+<context>
+    <name>RecycleSetupDialog</name>
+    <message>
+        <source>Set up your ReSatoshi node</source>
+        <translation>Configurar su nodo ReSatoshi</translation>
+    </message>
+    <message>
+        <source>Choose how this node finds coins that have reached their expiry height. Both methods follow the same network rules and work with the wallet.</source>
+        <translation>Elija cómo este nodo encuentra las monedas que han alcanzado su altura de caducidad. Ambos métodos siguen las mismas reglas de la red y funcionan con el monedero.</translation>
+    </message>
+    <message>
+        <source>Expiry processing</source>
+        <translation>Procesamiento de caducidades</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>Índice</translation>
+    </message>
+    <message>
+        <source>Uses a list of unspent coins. Automatic checks look for inconsistencies.</source>
+        <translation>Utiliza una lista de monedas no gastadas. Las comprobaciones automáticas buscan inconsistencias.</translation>
+    </message>
+    <message>
+        <source>Original blocks</source>
+        <translation>Bloques originales</translation>
+    </message>
+    <message>
+        <source>Reads the block that created the expiring coins and checks which coins remain unspent. Does not maintain an expiry index.</source>
+        <translation>Lee el bloque que creó las monedas próximas a caducar y comprueba cuáles siguen sin gastarse. No mantiene un índice de caducidades.</translation>
+    </message>
+    <message>
+        <source>The expiry method is supplied by your startup configuration.</source>
+        <translation>El método de procesamiento de caducidades está definido en su configuración de inicio.</translation>
+    </message>
+    <message>
+        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
+        <translation>Esta elección queda fijada para esta carpeta de datos. Para cambiar de método más adelante se requiere una carpeta nueva y una sincronización. Haga una copia de seguridad de sus monederos antes de cambiar de carpeta.</translation>
+    </message>
+    <message>
+        <source>Block history</source>
+        <translation>Historial de bloques</translation>
+    </message>
+    <message>
+        <source>Keep the complete history</source>
+        <translation>Conservar todo el historial</translation>
+    </message>
+    <message>
+        <source>Prune old blocks after expiry processing</source>
+        <translation>Podar bloques antiguos tras procesar las caducidades</translation>
+    </message>
+    <message>
+        <source>Storage target (GB):</source>
+        <translation>Objetivo de almacenamiento (GB):</translation>
+    </message>
+    <message>
+        <source>Pruning keeps all blocks still needed for expiry and a buffer for chain reorganizations. Actual disk use can exceed the target. Keeping the complete history supports rebuilding locally if data needs repair.</source>
+        <translation>La poda conserva todos los bloques aún necesarios para procesar las caducidades y un margen para las reorganizaciones de la cadena. El uso real del disco puede superar el objetivo. Conservar todo el historial permite reconstruir los datos localmente si necesitan reparación.</translation>
+    </message>
+    <message>
+        <source>Storage is fixed by your startup configuration. To save a different storage preference here, enable settings and leave pruning unspecified.</source>
+        <translation>El almacenamiento está fijado en su configuración de inicio. Para guardar aquí otra preferencia de almacenamiento, active el guardado de la configuración y no especifique una opción de poda.</translation>
+    </message>
+    <message>
+        <source>Start node</source>
+        <translation>Iniciar nodo</translation>
     </message>
 </context>
 </TS>

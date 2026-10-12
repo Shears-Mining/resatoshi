@@ -477,6 +477,14 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <source>default wallet</source>
         <translation type="unfinished">กระเป๋าเงินเริ่มต้น</translation>
     </message>
+    <message>
+        <source>Cannot inspect the data folder: %1</source>
+        <translation>ไม่สามารถตรวจสอบโฟลเดอร์ข้อมูล: %1</translation>
+    </message>
+    <message>
+        <source>Cannot save node preferences: %1</source>
+        <translation>ไม่สามารถบันทึกการตั้งค่าโหนด: %1</translation>
+    </message>
 </context>
 <context>
     <name>BitcoinGUI</name>
@@ -2553,4 +2561,71 @@ If you are receiving this error you should request the merchant provide a BIP21 
         <translation type="unfinished">กระเป๋าเงินเริ่มต้น</translation>
     </message>
     </context>
+<context>
+    <name>RecycleSetupDialog</name>
+    <message>
+        <source>Set up your ReSatoshi node</source>
+        <translation>ตั้งค่าโหนด ReSatoshi ของคุณ</translation>
+    </message>
+    <message>
+        <source>Choose how this node finds coins that have reached their expiry height. Both methods follow the same network rules and work with the wallet.</source>
+        <translation>เลือกวิธีที่โหนดนี้จะค้นหาเหรียญที่ถึงความสูงบล็อกที่หมดอายุ ทั้งสองวิธีใช้กฎเครือข่ายเดียวกันและใช้งานร่วมกับกระเป๋าเงินได้</translation>
+    </message>
+    <message>
+        <source>Expiry processing</source>
+        <translation>การจัดการเหรียญหมดอายุ</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>ดัชนี</translation>
+    </message>
+    <message>
+        <source>Uses a list of unspent coins. Automatic checks look for inconsistencies.</source>
+        <translation>ใช้รายการเหรียญที่ยังไม่ได้ใช้ การตรวจสอบอัตโนมัติจะค้นหาความไม่สอดคล้องกัน</translation>
+    </message>
+    <message>
+        <source>Original blocks</source>
+        <translation>บล็อกต้นฉบับ</translation>
+    </message>
+    <message>
+        <source>Reads the block that created the expiring coins and checks which coins remain unspent. Does not maintain an expiry index.</source>
+        <translation>อ่านบล็อกที่สร้างเหรียญที่กำลังหมดอายุ และตรวจสอบว่าเหรียญใดยังไม่ได้ใช้ โดยไม่สร้างหรือปรับปรุงดัชนีการหมดอายุ</translation>
+    </message>
+    <message>
+        <source>The expiry method is supplied by your startup configuration.</source>
+        <translation>วิธีจัดการเหรียญหมดอายุถูกระบุไว้ในการตั้งค่าเริ่มต้นของคุณ</translation>
+    </message>
+    <message>
+        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
+        <translation>ตัวเลือกนี้จะถูกกำหนดไว้สำหรับโฟลเดอร์ข้อมูลนี้ หากต้องการเปลี่ยนวิธีในภายหลัง ต้องใช้โฟลเดอร์ใหม่และซิงค์ข้อมูลอีกครั้ง โปรดสำรองกระเป๋าเงินก่อนเปลี่ยนโฟลเดอร์</translation>
+    </message>
+    <message>
+        <source>Block history</source>
+        <translation>ประวัติบล็อก</translation>
+    </message>
+    <message>
+        <source>Keep the complete history</source>
+        <translation>เก็บประวัติทั้งหมด</translation>
+    </message>
+    <message>
+        <source>Prune old blocks after expiry processing</source>
+        <translation>ลบบล็อกเก่าหลังจัดการเหรียญหมดอายุ</translation>
+    </message>
+    <message>
+        <source>Storage target (GB):</source>
+        <translation>เป้าหมายพื้นที่จัดเก็บ (GB):</translation>
+    </message>
+    <message>
+        <source>Pruning keeps all blocks still needed for expiry and a buffer for chain reorganizations. Actual disk use can exceed the target. Keeping the complete history supports rebuilding locally if data needs repair.</source>
+        <translation>การลบบล็อกเก่าจะยังคงเก็บบล็อกทั้งหมดที่จำเป็นต่อการจัดการเหรียญหมดอายุ รวมถึงช่วงสำรองสำหรับการจัดระเบียบเชนใหม่ พื้นที่ดิสก์ที่ใช้จริงอาจเกินเป้าหมาย การเก็บประวัติทั้งหมดช่วยให้สร้างข้อมูลใหม่จากข้อมูลในเครื่องได้เมื่อต้องซ่อมแซมข้อมูล</translation>
+    </message>
+    <message>
+        <source>Storage is fixed by your startup configuration. To save a different storage preference here, enable settings and leave pruning unspecified.</source>
+        <translation>วิธีจัดเก็บถูกกำหนดไว้ในการตั้งค่าเริ่มต้น หากต้องการบันทึกตัวเลือกการจัดเก็บอื่นที่นี่ ให้เปิดใช้งานการบันทึกการตั้งค่าและไม่ระบุตัวเลือกการลบบล็อกเก่า</translation>
+    </message>
+    <message>
+        <source>Start node</source>
+        <translation>เริ่มโหนด</translation>
+    </message>
+</context>
 </TS>

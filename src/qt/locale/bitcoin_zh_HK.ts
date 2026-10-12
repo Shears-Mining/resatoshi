@@ -448,6 +448,14 @@ Signing is only possible with addresses of the type 'legacy'.</source>
         <source>default wallet</source>
         <translation type="unfinished">預設錢包</translation>
     </message>
+    <message>
+        <source>Cannot inspect the data folder: %1</source>
+        <translation>無法檢查資料資料夾：%1</translation>
+    </message>
+    <message>
+        <source>Cannot save node preferences: %1</source>
+        <translation>無法儲存節點偏好設定：%1</translation>
+    </message>
 </context>
 <context>
     <name>BitcoinGUI</name>
@@ -4760,6 +4768,73 @@ Please try running the latest software version.
     <message>
         <source>Settings file could not be written</source>
         <translation type="unfinished">无法写入设置文件</translation>
+    </message>
+</context>
+<context>
+    <name>RecycleSetupDialog</name>
+    <message>
+        <source>Set up your ReSatoshi node</source>
+        <translation>設定您的 ReSatoshi 節點</translation>
+    </message>
+    <message>
+        <source>Choose how this node finds coins that have reached their expiry height. Both methods follow the same network rules and work with the wallet.</source>
+        <translation>選擇此節點尋找已達到到期高度的幣的方式。兩種方式皆遵循相同的網路規則，並可與錢包搭配使用。</translation>
+    </message>
+    <message>
+        <source>Expiry processing</source>
+        <translation>到期處理</translation>
+    </message>
+    <message>
+        <source>Index</source>
+        <translation>索引</translation>
+    </message>
+    <message>
+        <source>Uses a list of unspent coins. Automatic checks look for inconsistencies.</source>
+        <translation>使用未花費幣清單。自動檢查會找出不一致之處。</translation>
+    </message>
+    <message>
+        <source>Original blocks</source>
+        <translation>原始區塊</translation>
+    </message>
+    <message>
+        <source>Reads the block that created the expiring coins and checks which coins remain unspent. Does not maintain an expiry index.</source>
+        <translation>讀取建立到期幣的區塊，並檢查哪些幣仍未花費。不維護到期索引。</translation>
+    </message>
+    <message>
+        <source>The expiry method is supplied by your startup configuration.</source>
+        <translation>到期處理方式由您的啟動設定指定。</translation>
+    </message>
+    <message>
+        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
+        <translation>此選擇固定用於此資料資料夾。日後更改方式需要使用新資料夾並重新同步。更換資料夾前請備份錢包。</translation>
+    </message>
+    <message>
+        <source>Block history</source>
+        <translation>區塊歷史</translation>
+    </message>
+    <message>
+        <source>Keep the complete history</source>
+        <translation>保留完整歷史</translation>
+    </message>
+    <message>
+        <source>Prune old blocks after expiry processing</source>
+        <translation>到期處理後裁剪舊區塊</translation>
+    </message>
+    <message>
+        <source>Storage target (GB):</source>
+        <translation>儲存空間目標（GB）：</translation>
+    </message>
+    <message>
+        <source>Pruning keeps all blocks still needed for expiry and a buffer for chain reorganizations. Actual disk use can exceed the target. Keeping the complete history supports rebuilding locally if data needs repair.</source>
+        <translation>裁剪會保留到期處理仍需使用的所有區塊，以及用於因應鏈重組的緩衝區。實際磁碟用量可能超過目標。保留完整歷史可在資料需要修復時支援本機重建。</translation>
+    </message>
+    <message>
+        <source>Storage is fixed by your startup configuration. To save a different storage preference here, enable settings and leave pruning unspecified.</source>
+        <translation>儲存方式由您的啟動設定指定。若要在此儲存其他儲存偏好，請啟用設定儲存，並且不要指定裁剪選項。</translation>
+    </message>
+    <message>
+        <source>Start node</source>
+        <translation>啟動節點</translation>
     </message>
 </context>
 </TS>
