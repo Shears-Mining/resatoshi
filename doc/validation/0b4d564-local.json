@@ -1,0 +1,324 @@
+{
+  "schema_version": 1,
+  "kind": "maintainer-reported local maintenance validation",
+  "source_commit": "0b4d56493e0451cb211b8b31ad1e306ea44a7681",
+  "base_main_commit": "5a40c2eaed0b73dc108332d3ecae1e1d9afd64f6",
+  "source_tree": "0657f7db49a5fdb4f4cab8491b4fb968e42f8972",
+  "completed_utc": "2026-10-13T13:21:23.353363+00:00",
+  "status": "passed within the listed scope",
+  "hosted_ci": {
+    "configured_or_run": false,
+    "push_option": "ci.skip"
+  },
+  "build": {
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "compiler": "c++ (Ubuntu 15.2.0-16ubuntu1) 15.2.0",
+    "cmake": "cmake version 4.2.3",
+    "type": "incremental Linux RelWithDebInfo",
+    "enabled": [
+      "wallet",
+      "GUI",
+      "GUI tests",
+      "kernel library",
+      "kernel tests",
+      "IPC",
+      "benchmarks"
+    ],
+    "disabled": [
+      "USDT"
+    ],
+    "parallel_jobs": 2
+  },
+  "tests": {
+    "lint": {
+      "passed": 15,
+      "skipped": 0
+    },
+    "ctest": {
+      "passed": 158,
+      "failed": 0,
+      "skipped": 0
+    },
+    "headerssync_python": {
+      "passed": 9,
+      "failed": 0
+    },
+    "functional": {
+      "counts": {
+        "Passed": 470,
+        "Skipped": 7
+      },
+      "skipped": [
+        "feature_bind_port_discover.py",
+        "feature_bind_port_externalip.py",
+        "interface_usdt_coinselection.py",
+        "interface_usdt_mempool.py",
+        "interface_usdt_net.py",
+        "interface_usdt_utxocache.py",
+        "interface_usdt_validation.py"
+      ],
+      "skip_reasons": {
+        "feature_bind_port_discover.py": "Requires two explicitly configured routable interface addresses and an opt-in test flag",
+        "feature_bind_port_externalip.py": "Requires an explicitly configured routable interface address and an opt-in test flag",
+        "interface_usdt_*": "USDT tracepoints disabled in this build"
+      }
+    },
+    "required_full_block": {
+      "counts": {
+        "Passed": 1
+      }
+    },
+    "required_functional_cases_verified": [
+      "feature_recycle",
+      "feature_recycle_spend",
+      "feature_recycle_interfaces",
+      "feature_recycle_index",
+      "rpc_checkrecycleindex",
+      "feature_recycle_boundary",
+      "feature_recycle_modes",
+      "feature_recycle_recovery",
+      "rpc_generate_recycle",
+      "wallet_sendall_recycle",
+      "wallet_lockunspent_recycle",
+      "wallet_recycle_conflicts",
+      "wallet_recycle_external",
+      "rpc_getblockstats_recycle",
+      "mining_mainnet",
+      "p2p_resatoshi_bootstrap",
+      "feature_settings",
+      "p2p_private_broadcast",
+      "p2p_private_broadcast_retry_v1",
+      "feature_proxy",
+      "rpc_net",
+      "wallet_basic",
+      "tool_utxo_to_sqlite",
+      "rpc_getdescriptoractivity",
+      "rpc_scanblocks"
+    ]
+  },
+  "commands": {
+    "lint": {
+      "command": [
+        "/home/cjm/resatoshi/audit-local-ci-20260922/lint-runner/debug/test_runner"
+      ],
+      "exit_code": 0,
+      "seconds": 9.75,
+      "log": "lint.log"
+    },
+    "build": {
+      "command": [
+        "cmake",
+        "--build",
+        "build",
+        "-j",
+        "2"
+      ],
+      "exit_code": 0,
+      "seconds": 243.16,
+      "log": "build.log"
+    },
+    "ctest": {
+      "command": [
+        "ctest",
+        "--test-dir",
+        "build",
+        "--output-on-failure",
+        "--timeout",
+        "900",
+        "-j",
+        "2",
+        "--output-junit",
+        "/home/cjm/resatoshi/audit-required-ci-20261013/ctest.xml"
+      ],
+      "exit_code": 0,
+      "seconds": 122.65,
+      "log": "ctest.log"
+    },
+    "headerssync": {
+      "command": [
+        "/usr/bin/python3",
+        "contrib/devtools/test_headerssync_params.py"
+      ],
+      "exit_code": 0,
+      "seconds": 7.64,
+      "log": "headerssync.log"
+    },
+    "functional": {
+      "command": [
+        "/usr/bin/python3",
+        "build/test/functional/test_runner.py",
+        "-j",
+        "2",
+        "--tmpdirprefix=/home/cjm/resatoshi/audit-required-ci-20261013/functional-tmp",
+        "--resultsfile=/home/cjm/resatoshi/audit-required-ci-20261013/functional.csv"
+      ],
+      "exit_code": 0,
+      "seconds": 1282.12,
+      "log": "functional.log"
+    },
+    "full-block": {
+      "command": [
+        "/usr/bin/python3",
+        "build/test/functional/test_runner.py",
+        "-j",
+        "1",
+        "feature_recycle_full_block",
+        "--tmpdirprefix=/home/cjm/resatoshi/audit-required-ci-20261013/full-block-tmp",
+        "--resultsfile=/home/cjm/resatoshi/audit-required-ci-20261013/full-block.csv"
+      ],
+      "exit_code": 0,
+      "seconds": 97.04,
+      "log": "full-block.log"
+    }
+  },
+  "initial_issue": {
+    "check": "lint-locale-dependence",
+    "details": "Three std::to_string uses in existing GUI pruning settings and test were replaced with util::ToString; no lint exceptions added.",
+    "fixed_by": "0b4d56493e0451cb211b8b31ad1e306ea44a7681",
+    "original_log": "lint-initial.log"
+  },
+  "artifacts": [
+    {
+      "name": "source-0b4d564.tar.gz",
+      "sha256": "73553d2a390fae222d358656e887c1dc6b5eb576b0c9cfc8029861b1d412af76",
+      "bytes": 14739833,
+      "published": false,
+      "location": "/home/cjm/resatoshi/audit-required-ci-20261013/source-0b4d564.tar.gz"
+    },
+    {
+      "name": "bitcoind",
+      "sha256": "dd862e8c3c78552526f6a679b30b6942bd852b23981e7fa8b0a26230453bc103",
+      "bytes": 309724136,
+      "published": false,
+      "location": "/home/cjm/resatoshi/bitcoin-resatoshi-31.0/build/bin/bitcoind"
+    },
+    {
+      "name": "bitcoin-cli",
+      "sha256": "bfe9874597fa70073570b13b56d44c3caed4052c2535244cb7317c78d4894bcd",
+      "bytes": 21827360,
+      "published": false,
+      "location": "/home/cjm/resatoshi/bitcoin-resatoshi-31.0/build/bin/bitcoin-cli"
+    },
+    {
+      "name": "bitcoin-qt",
+      "sha256": "3be720cfdb89238ee754de27c3d9e9372e7039a4369b470c1dca466fb24cd898",
+      "bytes": 377552520,
+      "published": false,
+      "location": "/home/cjm/resatoshi/bitcoin-resatoshi-31.0/build/bin/bitcoin-qt"
+    },
+    {
+      "name": "bitcoin-gui",
+      "sha256": "7e8a18c7a13ab14c95bef7b81ade867d5e806905d705c59be6fc4507a904349d",
+      "bytes": 431410848,
+      "published": false,
+      "location": "/home/cjm/resatoshi/bitcoin-resatoshi-31.0/build/bin/bitcoin-gui"
+    },
+    {
+      "name": "test_bitcoin",
+      "sha256": "7ee4772ed3e6acf1afe538520c8377a09285b236ade88471d81567bf3f518c51",
+      "bytes": 667521160,
+      "published": false,
+      "location": "/home/cjm/resatoshi/bitcoin-resatoshi-31.0/build/bin/test_bitcoin"
+    },
+    {
+      "name": "test_bitcoin-qt",
+      "sha256": "b1771f60ce4a6e1207f4ef8d1bca4b6e4d16639db91e8ff25d0472f6443a6aff",
+      "bytes": 402624328,
+      "published": false,
+      "location": "/home/cjm/resatoshi/bitcoin-resatoshi-31.0/build/bin/test_bitcoin-qt"
+    },
+    {
+      "name": "test_kernel",
+      "sha256": "b7d264786d5d1c4006d4330a40c1a331de527cfad08bfa65ebfc8884a97d38da",
+      "bytes": 76367856,
+      "published": false,
+      "location": "/home/cjm/resatoshi/bitcoin-resatoshi-31.0/build/bin/test_kernel"
+    }
+  ],
+  "evidence": [
+    {
+      "name": "lint.log",
+      "sha256": "86b8a2cfbe5d7dd8e2e4f5117a8c0c85be8e7379222c2d519a35436ed20eb1fb",
+      "bytes": 2074,
+      "published": false,
+      "location": "/home/cjm/resatoshi/audit-required-ci-20261013/lint.log"
+    },
+    {
+      "name": "build.log",
+      "sha256": "6db07a3bd5d6f778e4801d6fbaec26c4c409276feb7178f2bffeac9936a02b4e",
+      "bytes": 12793,
+      "published": false,
+      "location": "/home/cjm/resatoshi/audit-required-ci-20261013/build.log"
+    },
+    {
+      "name": "ctest.log",
+      "sha256": "4801aa84f39cf5ab6e24d42fefdcb34cac935cc7247bffc5322e938598b6234c",
+      "bytes": 18244,
+      "published": false,
+      "location": "/home/cjm/resatoshi/audit-required-ci-20261013/ctest.log"
+    },
+    {
+      "name": "ctest.xml",
+      "sha256": "3e7dae82918b4fe5c6c3db6108d253e7fc16928da4dbfe71fd348bcc04b77ba5",
+      "bytes": 246401,
+      "published": false,
+      "location": "/home/cjm/resatoshi/audit-required-ci-20261013/ctest.xml"
+    },
+    {
+      "name": "headerssync.log",
+      "sha256": "0aa6b13c8a9bad8ca78133213d8bf1b641a1eeac7bd866ccf24a2a8d3cafe96a",
+      "bytes": 107,
+      "published": false,
+      "location": "/home/cjm/resatoshi/audit-required-ci-20261013/headerssync.log"
+    },
+    {
+      "name": "functional.log",
+      "sha256": "72365a12796cb8beeac93bb3145564b0c9ebabc3b314a576a7459fa8efce35b5",
+      "bytes": 81758,
+      "published": false,
+      "location": "/home/cjm/resatoshi/audit-required-ci-20261013/functional.log"
+    },
+    {
+      "name": "functional.csv",
+      "sha256": "3c8d7da7a0424e7765ab6bb7496380a63de66188f32c9ce42a884e3eed9d599f",
+      "bytes": 22002,
+      "published": false,
+      "location": "/home/cjm/resatoshi/audit-required-ci-20261013/functional.csv"
+    },
+    {
+      "name": "full-block.log",
+      "sha256": "6956600bd7da4ca9e0e94900c25398a6f516e0adc8aa0233d762b382de6d3a10",
+      "bytes": 641,
+      "published": false,
+      "location": "/home/cjm/resatoshi/audit-required-ci-20261013/full-block.log"
+    },
+    {
+      "name": "full-block.csv",
+      "sha256": "9e88743be7dcaf030d4e372a38cefcc40e5570c240a919b978921667ca7cf075",
+      "bytes": 87,
+      "published": false,
+      "location": "/home/cjm/resatoshi/audit-required-ci-20261013/full-block.csv"
+    }
+  ],
+  "limitations": [
+    "Local maintenance checks, not a fresh-checkout release build",
+    "Windows and macOS runtime/packaging not revalidated",
+    "Extended functional suite beyond the required full-block test not run",
+    "Sanitizers and fuzzing not run",
+    "Logs, source archive and binaries retained locally; not published with this record",
+    "This record does not claim to test its own future documentation commit"
+  ],
+  "production_services_changed": false,
+  "upload_review": {
+    "official_policy": "https://handbook.gitlab.com/handbook/legal/acceptable-use-policy/",
+    "pipeline_skip_documentation": "https://docs.gitlab.com/ci/pipelines/#skip-a-pipeline",
+    "scope": "source and maintenance validation JSON only; no compiled binaries, wallet data or test artifacts uploaded",
+    "gitlab_ci_configuration_added": false,
+    "push_option": "ci.skip",
+    "validation_commit_skip_marker": true,
+    "ci_settings_api_access": "403; credential supports Git repository push but settings and pipeline history could not be inspected",
+    "assessment": "No known prohibited activity identified in this upload; all PoW execution was local",
+    "limitation": "A repository review cannot guarantee account moderation decisions"
+  }
+}
