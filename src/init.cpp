@@ -1359,17 +1359,15 @@ static ChainstateLoadResult InitAndLoadChainstate(
         if (chainman_opts.recycle_recovery) LogWarning("Recycle corruption detected: rebuilding block index and chainstate from blocks before resuming\n");
         const auto mode_path{args.GetDataDirNet() / "recycle-mode"};
         const std::string requested{chainman_opts.recycle_from_block ? "block" : "index"};
-        if (fs::exists(mode_path)) {
-            std::ifstream stream{mode_path.std_path()};
-            std::string stored;
-            std::getline(stream, stored);
-            if (!stream || stored != requested) {
+        const auto directory_state{node::GetRecycleDirectoryState(args.GetDataDirNet())};
+        if (directory_state != node::RecycleDirectoryState::NEW && directory_state != node::RecycleDirectoryState::LEGACY_INDEX) {
+            const auto expected{chainman_opts.recycle_from_block ? node::RecycleDirectoryState::BLOCK : node::RecycleDirectoryState::INDEX};
+            if (directory_state != expected) {
                 return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Recycle mode differs from the data directory. Use its recorded mode, or synchronize a fresh data directory.")};
             }
         } else {
             // Legacy directories are index mode, even when -reindex was requested.
-            const bool legacy{fs::exists(args.GetDataDirNet() / "chainstate" / "CURRENT") ||
-                              fs::exists(args.GetDataDirNet() / "blocks" / "index" / "CURRENT")};
+            const bool legacy{directory_state == node::RecycleDirectoryState::LEGACY_INDEX};
             chainman_opts.recycle_check_startup = legacy;
             if (legacy && chainman_opts.recycle_from_block) {
                 return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Existing data directory uses index mode. Block mode requires a fresh data directory.")};

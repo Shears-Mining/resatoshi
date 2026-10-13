@@ -6,6 +6,7 @@
 
 #include <common/args.h>
 #include <common/settings.h>
+#include <node/chainstatemanager_args.h>
 #include <qt/guiconstants.h>
 #include <qt/guiutil.h>
 #include <qt/optionsmodel.h>
@@ -22,8 +23,10 @@
 #include <QVBoxLayout>
 
 #include <algorithm>
-#include <fstream>
 #include <limits>
+
+using node::GetRecycleDirectoryState;
+using node::RecycleDirectoryState;
 
 RecycleSetupDialog::RecycleSetupDialog(const std::string& mode, bool mode_editable,
                                        int64_t prune_mib, bool prune_editable, QWidget* parent)
@@ -113,23 +116,6 @@ RecycleSetupChoices RecycleSetupDialog::choices() const
     return {block ? "block" : "index",
             m_prune_editable ? (m_prune->isChecked() ? PruneGBtoMiB(m_prune_gb->value()) : 0) : m_configured_prune,
             m_mode_editable, block && m_prune_editable};
-}
-
-RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir)
-{
-    const auto marker{datadir / "recycle-mode"};
-    if (fs::exists(marker)) {
-        std::ifstream stream{marker.std_path()};
-        std::string mode;
-        std::getline(stream, mode);
-        if (stream && mode == "index") return RecycleDirectoryState::INDEX;
-        if (stream && mode == "block") return RecycleDirectoryState::BLOCK;
-        return RecycleDirectoryState::INVALID;
-    }
-    if (fs::exists(datadir / "chainstate" / "CURRENT") || fs::exists(datadir / "blocks" / "index" / "CURRENT")) {
-        return RecycleDirectoryState::INDEX;
-    }
-    return RecycleDirectoryState::NEW;
 }
 
 bool HasRecycleStartupSetting(ArgsManager& args, const std::string& name)

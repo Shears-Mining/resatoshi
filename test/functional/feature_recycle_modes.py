@@ -159,6 +159,23 @@ class RecycleModesTest(BitcoinTestFramework):
         self.connect_nodes(1, 2)
         self.check_equal()
 
+        self.log.info("Invalid mode records cannot fall back to legacy index mode")
+        self.stop_node(0)
+        mode_path = indexed.chain_path / "recycle-mode"
+        saved_mode = mode_path.read_bytes()
+        try:
+            for contents in (b"", b"\n", b"unknown\n", b"index \n"):
+                mode_path.write_bytes(contents)
+                indexed.assert_start_raises_init_error(
+                    expected_msg="Error: Recycle mode differs from the data directory. Use its recorded mode, or synchronize a fresh data directory.",
+                )
+                assert_equal(mode_path.read_bytes(), contents)
+        finally:
+            mode_path.write_bytes(saved_mode)
+        self.start_node(0)
+        self.connect_nodes(0, 1)
+        self.check_equal()
+
         self.log.info("Pruned recovery is refused before wiping chainstate")
         self.stop_node(2)
         database = pruned.chain_path / "chainstate"

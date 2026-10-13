@@ -19,9 +19,27 @@
 
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 #include <string>
 
 namespace node {
+RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir)
+{
+    const auto marker{datadir / "recycle-mode"};
+    if (fs::exists(marker)) {
+        std::ifstream stream{marker.std_path()};
+        std::string mode;
+        std::getline(stream, mode);
+        if (stream && mode == "index") return RecycleDirectoryState::INDEX;
+        if (stream && mode == "block") return RecycleDirectoryState::BLOCK;
+        return RecycleDirectoryState::INVALID;
+    }
+    if (fs::exists(datadir / "chainstate" / "CURRENT") || fs::exists(datadir / "blocks" / "index" / "CURRENT")) {
+        return RecycleDirectoryState::LEGACY_INDEX;
+    }
+    return RecycleDirectoryState::NEW;
+}
+
 util::Result<void> ApplyArgsManOptions(const ArgsManager& args, ChainstateManager::Options& opts)
 {
     const auto recycle_mode{args.GetArg("-recyclemode", "index")};

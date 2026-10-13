@@ -7,6 +7,7 @@
 #include <common/args.h>
 #include <common/settings.h>
 #include <init.h>
+#include <node/chainstatemanager_args.h>
 #include <qt/optionsmodel.h>
 #include <qt/recyclesetup.h>
 #include <univalue.h>
@@ -22,6 +23,9 @@
 #include <QTranslator>
 
 #include <fstream>
+
+using node::GetRecycleDirectoryState;
+using node::RecycleDirectoryState;
 
 namespace {
 void Configure(ArgsManager& args, const QTemporaryDir& dir)
@@ -48,19 +52,49 @@ void RecycleSetupTests::directoryStates()
     const auto blocks{root / "external-blocks"};
     QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::NEW);
     Write(root / "chainstate" / "CURRENT", "legacy");
-    QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::INDEX);
+    QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::LEGACY_INDEX);
     fs::remove_all(root / "chainstate");
     Write(blocks / "index" / "CURRENT", "legacy");
     // Raw blocks may be external; their directory is not the block-index DB.
     QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::NEW);
     Write(root / "blocks" / "index" / "CURRENT", "legacy");
-    QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::INDEX);
+    QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::LEGACY_INDEX);
     Write(root / "recycle-mode", "block\n");
     QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::BLOCK);
     Write(root / "recycle-mode", "index\n");
     QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::INDEX);
     Write(root / "recycle-mode", "broken\n");
     QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::INVALID);
+}
+
+void RecycleSetupTests::modeFileContents_data()
+{
+    QTest::addColumn<QByteArray>("contents");
+    QTest::addColumn<int>("expected");
+    QTest::newRow("index") << QByteArray{"index\n"} << int(RecycleDirectoryState::INDEX);
+    QTest::newRow("block") << QByteArray{"block\n"} << int(RecycleDirectoryState::BLOCK);
+    QTest::newRow("no-final-newline") << QByteArray{"block"} << int(RecycleDirectoryState::BLOCK);
+    QTest::newRow("empty") << QByteArray{} << int(RecycleDirectoryState::INVALID);
+    QTest::newRow("blank-line") << QByteArray{"\n"} << int(RecycleDirectoryState::INVALID);
+    QTest::newRow("unknown") << QByteArray{"unknown\n"} << int(RecycleDirectoryState::INVALID);
+    QTest::newRow("leading-space") << QByteArray{" index\n"} << int(RecycleDirectoryState::INVALID);
+    QTest::newRow("trailing-space") << QByteArray{"block \n"} << int(RecycleDirectoryState::INVALID);
+    // Preserve the existing first-line-only interpretation.
+    QTest::newRow("additional-line") << QByteArray{"index\nblock\n"} << int(RecycleDirectoryState::INDEX);
+}
+
+void RecycleSetupTests::modeFileContents()
+{
+    QFETCH(QByteArray, contents);
+    QFETCH(int, expected);
+    QTemporaryDir dir;
+    const auto root{fs::PathFromString(dir.path().toStdString())};
+    Write(root / "chainstate" / "CURRENT", "legacy");
+    Write(root / "recycle-mode", contents.toStdString());
+    QCOMPARE(int(GetRecycleDirectoryState(root)), expected);
+    // A recorded mode, including invalid data, takes precedence over legacy DBs.
+    fs::remove_all(root / "chainstate");
+    QCOMPARE(int(GetRecycleDirectoryState(root)), expected);
 }
 
 void RecycleSetupTests::koreanLabels()

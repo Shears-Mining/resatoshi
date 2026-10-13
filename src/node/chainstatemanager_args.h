@@ -5,6 +5,7 @@
 #ifndef BITCOIN_NODE_CHAINSTATEMANAGER_ARGS_H
 #define BITCOIN_NODE_CHAINSTATEMANAGER_ARGS_H
 
+#include <util/fs.h>
 #include <util/result.h>
 #include <validation.h>
 
@@ -14,6 +15,10 @@ class ArgsManager;
 static constexpr int DEFAULT_SCRIPTCHECK_THREADS{0};
 
 namespace node {
+/** Recorded expiry mode, or index-mode legacy data without a mode record. */
+enum class RecycleDirectoryState { NEW, LEGACY_INDEX, INDEX, BLOCK, INVALID };
+RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir);
+
 [[nodiscard]] util::Result<void> ApplyArgsManOptions(const ArgsManager& args, ChainstateManager::Options& opts);
 } // namespace node
 

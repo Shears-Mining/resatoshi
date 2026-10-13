@@ -5,8 +5,6 @@
 #ifndef BITCOIN_QT_RECYCLESETUP_H
 #define BITCOIN_QT_RECYCLESETUP_H
 
-#include <util/fs.h>
-
 #include <QDialog>
 
 #include <cstdint>
@@ -18,8 +16,6 @@ class ArgsManager;
 class QGroupBox;
 class QRadioButton;
 class QSpinBox;
-
-enum class RecycleDirectoryState { NEW, INDEX, BLOCK, INVALID };
 
 struct RecycleSetupChoices {
     std::string mode;
@@ -50,7 +46,6 @@ private:
     const int64_t m_configured_prune;
 };
 
-RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir);
 bool HasRecycleStartupSetting(ArgsManager& args, const std::string& name);
 /** Called after InitConfig. Cancel leaves settings and mode metadata untouched. */
 bool ShowRecycleSetupIfNeeded(ArgsManager& args, bool recycling_enabled,
