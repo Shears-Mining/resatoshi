@@ -1369,7 +1369,7 @@ static ChainstateLoadResult InitAndLoadChainstate(
         } else {
             // Legacy directories are index mode, even when -reindex was requested.
             const bool legacy{fs::exists(args.GetDataDirNet() / "chainstate" / "CURRENT") ||
-                              fs::exists(args.GetBlocksDirPath() / "index" / "CURRENT")};
+                              fs::exists(args.GetDataDirNet() / "blocks" / "index" / "CURRENT")};
             chainman_opts.recycle_check_startup = legacy;
             if (legacy && chainman_opts.recycle_from_block) {
                 return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Existing data directory uses index mode. Block mode requires a fresh data directory.")};

@@ -6586,19 +6586,22 @@ bool ChainstateManager::CheckRecycleIndexAutomatically()
     } catch (const std::exception& e) {
         LogError("Automatic recycle index check failed: %s\n", e.what());
     }
-    {
-        LOCK(cs_main);
-        m_recycle_failed = true;
-        if (!m_options.datadir.empty()) {
-            if (FILE* file{fsbridge::fopen(m_options.datadir / "recycle-corrupt", "wb")}) {
-                if (!FileCommit(file)) LogError("Cannot commit recycle corruption marker\n");
-                std::fclose(file);
-                DirectoryCommit(m_options.datadir);
-            } else {
-                LogError("Cannot create recycle corruption marker\n");
-            }
-        }
-        GetNotifications().fatalError(Untranslated("Recycle index inconsistency detected. Validation and mining stopped. Restart to rebuild the block index and chainstate automatically from blocks; a pruned node requires a fresh synchronization."));
-    }
+    HandleRecycleIndexFailure();
     return false;
+}
+
+void ChainstateManager::HandleRecycleIndexFailure()
+{
+    LOCK(cs_main);
+    m_recycle_failed = true;
+    if (!m_options.datadir.empty()) {
+        if (FILE* file{fsbridge::fopen(m_options.datadir / "recycle-corrupt", "wb")}) {
+            if (!FileCommit(file)) LogError("Cannot commit recycle corruption marker\n");
+            std::fclose(file);
+            DirectoryCommit(m_options.datadir);
+        } else {
+            LogError("Cannot create recycle corruption marker\n");
+        }
+    }
+    GetNotifications().fatalError(Untranslated("Recycle index inconsistency detected. Validation and mining stopped. Restart to rebuild the block index and chainstate automatically from blocks; a pruned node requires a fresh synchronization."));
 }

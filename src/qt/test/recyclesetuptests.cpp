@@ -46,18 +46,21 @@ void RecycleSetupTests::directoryStates()
     QTemporaryDir dir;
     const auto root{fs::PathFromString(dir.path().toStdString())};
     const auto blocks{root / "external-blocks"};
-    QCOMPARE(GetRecycleDirectoryState(root, blocks), RecycleDirectoryState::NEW);
+    QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::NEW);
     Write(root / "chainstate" / "CURRENT", "legacy");
-    QCOMPARE(GetRecycleDirectoryState(root, blocks), RecycleDirectoryState::INDEX);
+    QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::INDEX);
     fs::remove_all(root / "chainstate");
     Write(blocks / "index" / "CURRENT", "legacy");
-    QCOMPARE(GetRecycleDirectoryState(root, blocks), RecycleDirectoryState::INDEX);
+    // Raw blocks may be external; their directory is not the block-index DB.
+    QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::NEW);
+    Write(root / "blocks" / "index" / "CURRENT", "legacy");
+    QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::INDEX);
     Write(root / "recycle-mode", "block\n");
-    QCOMPARE(GetRecycleDirectoryState(root, blocks), RecycleDirectoryState::BLOCK);
+    QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::BLOCK);
     Write(root / "recycle-mode", "index\n");
-    QCOMPARE(GetRecycleDirectoryState(root, blocks), RecycleDirectoryState::INDEX);
+    QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::INDEX);
     Write(root / "recycle-mode", "broken\n");
-    QCOMPARE(GetRecycleDirectoryState(root, blocks), RecycleDirectoryState::INVALID);
+    QCOMPARE(GetRecycleDirectoryState(root), RecycleDirectoryState::INVALID);
 }
 
 void RecycleSetupTests::koreanLabels()

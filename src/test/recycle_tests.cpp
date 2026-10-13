@@ -10,8 +10,10 @@
 #include <test/util/setup_common.h>
 #include <txdb.h>
 #include <primitives/block.h>
+#include <rpc/server.h>
 #include <script/script.h>
 #include <undo.h>
+#include <univalue.h>
 #include <validation.h>
 
 #include <algorithm>
@@ -866,43 +868,75 @@ BOOST_FIXTURE_TEST_CASE(block_source_without_height_index, BasicTestingSetup)
     BOOST_CHECK(indexed.NeedsUpgrade());
 }
 
-BOOST_AUTO_TEST_CASE(automatic_check_stops_on_missing_entry)
+BOOST_AUTO_TEST_CASE(automatic_and_manual_checks_stop_on_missing_entry)
 {
-    TestingSetup setup{ChainType::REGTEST, {.extra_args = {"-test=recycle"}, .coins_db_in_memory = false}};
-    auto& chainman{*setup.m_node.chainman};
-    auto& chainstate{chainman.ActiveChainstate()};
-    const CBlock origin{CoinbaseBlock(COIN, 1)};
-    const COutPoint output{origin.vtx[0]->GetHash(), 0};
-    {
-        LOCK(cs_main);
-        AddCoins(chainstate.CoinsTip(), *origin.vtx[0], 1);
+    for (bool manual : {false, true}) {
+        TestingSetup setup{ChainType::REGTEST, {.extra_args = {"-test=recycle"}, .coins_db_in_memory = false}};
+        auto& chainman{*setup.m_node.chainman};
+        auto& chainstate{chainman.ActiveChainstate()};
+        const CBlock origin{CoinbaseBlock(COIN, 1)};
+        const COutPoint output{origin.vtx[0]->GetHash(), 0};
+        {
+            LOCK(cs_main);
+            AddCoins(chainstate.CoinsTip(), *origin.vtx[0], 1);
+        }
+        BOOST_REQUIRE(chainman.CheckRecycleIndexAutomatically());
+        BOOST_CHECK(!chainman.m_recycle_failed);
+        const auto path{chainstate.StoragePath()};
+        {
+            LOCK(cs_main);
+            chainstate.ResetCoinsViews();
+        }
+        {
+            CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
+            BOOST_REQUIRE(raw.Exists(TestHeightEntry{'E', 1, output}));
+            raw.Erase(TestHeightEntry{'E', 1, output}, true);
+        }
+        {
+            LOCK(cs_main);
+            chainstate.InitCoinsDB(1 << 20, false, false);
+            chainstate.InitCoinsCache(1 << 20);
+        }
+        if (manual) {
+            JSONRPCRequest request;
+            request.context = &setup.m_node;
+            request.strMethod = "checkrecycleindex";
+            request.params = UniValue{UniValue::VARR};
+            request.params.push_back("start");
+            if (RPCIsInWarmup(nullptr)) SetRPCWarmupFinished();
+            // Cancel at the final callback, after the missing entry was counted.
+            // Partial diagnostic results must not trigger the recovery latch.
+            int interruption_points{0};
+            setup.m_node.rpc_interruption_point = [&] {
+                if (++interruption_points != 3) return;
+                auto abort_request{request};
+                abort_request.params = UniValue{UniValue::VARR};
+                abort_request.params.push_back("abort");
+                BOOST_CHECK(tableRPC.execute(abort_request).get_bool());
+            };
+            const auto cancelled{tableRPC.execute(request)};
+            BOOST_CHECK(!cancelled["success"].get_bool());
+            BOOST_CHECK(cancelled.find_value("valid").isNull());
+            BOOST_CHECK_EQUAL(cancelled["missing"].getInt<int>(), 1);
+            BOOST_CHECK(!chainman.m_recycle_failed);
+            BOOST_CHECK(!fs::exists(setup.m_args.GetDataDirNet() / "recycle-corrupt"));
+            setup.m_node.rpc_interruption_point = [] {};
+            const auto checked{tableRPC.execute(request)};
+            BOOST_CHECK(checked["success"].get_bool());
+            BOOST_CHECK(!checked["valid"].get_bool());
+            BOOST_CHECK_EQUAL(checked["missing"].getInt<int>(), 1);
+        } else {
+            BOOST_CHECK(!chainman.CheckRecycleIndexAutomatically());
+        }
+        BOOST_CHECK(chainman.m_recycle_failed);
+        {
+            LOCK(cs_main);
+            BlockValidationState state;
+            BOOST_CHECK(!chainstate.ConnectBlock(chainman.GetParams().GenesisBlock(), state, chainstate.m_chain.Tip(), chainstate.CoinsTip()));
+            BOOST_CHECK(state.IsError());
+        }
+        BOOST_CHECK(fs::exists(setup.m_args.GetDataDirNet() / "recycle-corrupt"));
     }
-    BOOST_REQUIRE(chainman.CheckRecycleIndexAutomatically());
-    BOOST_CHECK(!chainman.m_recycle_failed);
-    const auto path{chainstate.StoragePath()};
-    {
-        LOCK(cs_main);
-        chainstate.ResetCoinsViews();
-    }
-    {
-        CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
-        BOOST_REQUIRE(raw.Exists(TestHeightEntry{'E', 1, output}));
-        raw.Erase(TestHeightEntry{'E', 1, output}, true);
-    }
-    {
-        LOCK(cs_main);
-        chainstate.InitCoinsDB(1 << 20, false, false);
-        chainstate.InitCoinsCache(1 << 20);
-    }
-    BOOST_CHECK(!chainman.CheckRecycleIndexAutomatically());
-    BOOST_CHECK(chainman.m_recycle_failed);
-    {
-        LOCK(cs_main);
-        BlockValidationState state;
-        BOOST_CHECK(!chainstate.ConnectBlock(chainman.GetParams().GenesisBlock(), state, chainstate.m_chain.Tip(), chainstate.CoinsTip()));
-        BOOST_CHECK(state.IsError());
-    }
-    BOOST_CHECK(fs::exists(setup.m_args.GetDataDirNet() / "recycle-corrupt"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

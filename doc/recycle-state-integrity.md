@@ -113,8 +113,10 @@ cost, limiting scan duty cycle to 0.1%. Each completed check logs duration and
 record counts. An overlapping manual scan or a cache-resize cancellation is
 retried on a later tick; shutdown cancels the scan and joins the worker.
 
-A failed check latches validation/mining off and requests shutdown. A durable
-`recycle-corrupt` marker forces automatic block-index and chainstate replay on the next start
+A completed inconsistent check, automatic or manual, latches validation/mining
+off and requests shutdown. Cancelled or incomplete manual checks do not trigger
+recovery. A durable `recycle-corrupt` marker forces automatic block-index and
+chainstate replay on the next start
 when complete history is available. The marker is cleared only after block
 import and activation complete without interruption. A directory that has
 actually pruned history is refused before its chainstate is wiped; synchronize
@@ -135,7 +137,7 @@ require `-reindex` and retrieval of missing history; `-reindex-chainstate` is
 incompatible with prune mode. Compare the resulting tip, UTXO statistics and
 recycle pool against an independently validated node at the same block hash.
 Successful startup or `verifychain` alone must not be advertised as an exhaustive
-index audit. Use the read-only correspondence check below for this purpose.
+index audit. Use the correspondence check below for this purpose.
 
 ### Full index correspondence check
 

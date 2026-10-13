@@ -50,7 +50,7 @@ private:
     const int64_t m_configured_prune;
 };
 
-RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir, const fs::path& blocksdir);
+RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir);
 bool HasRecycleStartupSetting(ArgsManager& args, const std::string& name);
 /** Called after InitConfig. Cancel leaves settings and mode metadata untouched. */
 bool ShowRecycleSetupIfNeeded(ArgsManager& args, bool recycling_enabled,

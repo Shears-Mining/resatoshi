@@ -1006,6 +1006,8 @@ public:
     std::function<void()> snapshot_download_completed = std::function<void()>();
 
     std::atomic<bool> m_recycle_failed{false};
+    /** Stop validation/mining and persist the recovery latch after a confirmed inconsistency. */
+    void HandleRecycleIndexFailure();
     bool CheckRecycleIndexAutomatically();
     bool ReadRecycleOrigin(CBlock& block, const CBlockIndex* previous) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 

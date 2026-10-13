@@ -115,7 +115,7 @@ RecycleSetupChoices RecycleSetupDialog::choices() const
             m_mode_editable, block && m_prune_editable};
 }
 
-RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir, const fs::path& blocksdir)
+RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir)
 {
     const auto marker{datadir / "recycle-mode"};
     if (fs::exists(marker)) {
@@ -126,7 +126,7 @@ RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir, const fs
         if (stream && mode == "block") return RecycleDirectoryState::BLOCK;
         return RecycleDirectoryState::INVALID;
     }
-    if (fs::exists(datadir / "chainstate" / "CURRENT") || fs::exists(blocksdir / "index" / "CURRENT")) {
+    if (fs::exists(datadir / "chainstate" / "CURRENT") || fs::exists(datadir / "blocks" / "index" / "CURRENT")) {
         return RecycleDirectoryState::INDEX;
     }
     return RecycleDirectoryState::NEW;
@@ -150,7 +150,7 @@ bool ShowRecycleSetupIfNeeded(ArgsManager& args, bool recycling_enabled,
 {
     selected.reset();
     if (!recycling_enabled) return true;
-    const auto state{GetRecycleDirectoryState(args.GetDataDirNet(), args.GetBlocksDirPath())};
+    const auto state{GetRecycleDirectoryState(args.GetDataDirNet())};
     const bool configured_mode{HasRecycleStartupSetting(args, "recyclemode")};
     if (state != RecycleDirectoryState::NEW) {
         // The folder remains authoritative after GUI settings are reset. Explicit

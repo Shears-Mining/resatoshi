@@ -43,6 +43,39 @@ the fresh checkout. Run CTest and the affected functional tests using isolated
 test datadirs. For a GUI release, also build the GUI and Qt tests and record the
 Qt version and whether QR encoding, DBus and other optional features are enabled.
 
+## Required recycling checks
+
+Run this set for every node release on the recorded source, in addition to CTest
+and any other affected tests. Use the corresponding build directory on each
+validated platform; a Linux run does not validate a Windows or macOS binary.
+
+```sh
+python3 build/test/functional/test_runner.py -j 2 \
+  feature_recycle feature_recycle_spend feature_recycle_interfaces \
+  feature_recycle_index rpc_checkrecycleindex feature_recycle_boundary \
+  feature_recycle_modes feature_recycle_recovery feature_recycle_full_block \
+  rpc_generate_recycle wallet_sendall_recycle wallet_lockunspent_recycle \
+  wallet_recycle_conflicts wallet_recycle_external rpc_getblockstats_recycle \
+  mining_mainnet p2p_resatoshi_bootstrap
+```
+
+The runner includes both index and block variants of `rpc_generate_recycle`.
+It checks GBT proposals before expiry, at the first expiry with an empty pool,
+and with an existing pool. Adding a transaction that spends an expiring output
+can reduce the permitted recycle reward. A client changing GBT transactions
+must account for that change as well as fees and validate its final block with
+proposal mode. The original `coinbasevalue` applies to the original template.
+The test verifies rejection of a stale excessive reward and acceptance of the
+adjusted reward without changing consensus rules.
+
+Mainnet AssumeUTXO loading is not currently supported: its approved snapshot
+table is empty. After recycling starts, the internal pool state uses reserved
+output number `0xffffffff`, which the inherited snapshot loader rejects.
+Do not advertise post-expiry snapshot support or merely exempt that number
+from validation. Support requires reviewing state encoding, snapshot hashes,
+loading and background validation together, with expiry and restart tests.
+Recycle-index diagnostic database snapshots are separate from AssumeUTXO.
+
 ## Windows
 
 Follow [the Windows build guide](build-windows.md). A cross-build checks the
@@ -82,6 +115,9 @@ cmake --build build-release-check -j 2
 ctest --test-dir build-release-check --output-on-failure --timeout 900
 python3 build-release-check/test/functional/test_runner.py -j 2 \
   feature_recycle feature_recycle_spend feature_recycle_interfaces \
+  feature_recycle_index rpc_checkrecycleindex feature_recycle_boundary \
+  feature_recycle_modes feature_recycle_recovery feature_recycle_full_block \
+  rpc_generate_recycle wallet_recycle_conflicts wallet_recycle_external \
   wallet_sendall_recycle wallet_lockunspent_recycle rpc_getblockstats_recycle \
   mining_mainnet p2p_resatoshi_bootstrap
 ```

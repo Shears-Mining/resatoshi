@@ -272,6 +272,7 @@ BASE_SCRIPTS = [
     'feature_recycle_boundary.py',
     'feature_recycle_spend.py',
     'rpc_generate_recycle.py',
+    'rpc_generate_recycle.py --recycle-mode=block',
     'wallet_recycle_conflicts.py',
     'wallet_recycle_external.py',
     'wallet_recycle_external.py --reorg',

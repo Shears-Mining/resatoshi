@@ -57,6 +57,25 @@ class RecycleRecoveryTest(BitcoinTestFramework):
             preserved_state = self.file_hashes(chainstate)
             preserved_blocks = self.file_hashes(blocks)
             mode = (node.chain_path / "recycle-mode").read_bytes()
+            if i == 1:
+                self.log.info("External blocks with only the block-index DB remain a legacy index directory")
+                mode_path = node.chain_path / "recycle-mode"
+                saved_chainstate = node.chain_path / "chainstate.saved"
+                mode_path.unlink()
+                chainstate.rename(saved_chainstate)
+                preserved_index = self.file_hashes(index)
+                try:
+                    node.assert_start_raises_init_error(
+                        extra_args=node.extra_args + ["-recyclemode=block"],
+                        expected_msg="Error: Existing data directory uses index mode. Block mode requires a fresh data directory.",
+                    )
+                    assert not mode_path.exists()
+                    assert not chainstate.exists()
+                    assert_equal(self.file_hashes(index), preserved_index)
+                    assert_equal(self.file_hashes(blocks), preserved_blocks)
+                finally:
+                    saved_chainstate.rename(chainstate)
+                    mode_path.write_bytes(mode)
             marker = node.chain_path / "recycle-corrupt"
             marker.touch()
             try:

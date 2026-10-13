@@ -55,10 +55,12 @@ for details. The periodic checks can still miss an omission until a later scan.
   recovery after detected inconsistency. Block mode supports full retention or
   pruning that preserves the expiry and reorganization windows.
 
-- Add `checkrecycleindex start|status|abort` for a full, read-only UTXO/height-index
+- Add `checkrecycleindex start|status|abort` for a full UTXO/height-index
   correspondence check at one coherent database snapshot. Report missing,
   orphaned, wrong-height and malformed records with bounded examples, without
   repairing data or claiming historical consensus verification.
+  Completed inconsistent manual checks now stop validation/mining and persist
+  the same restart recovery latch as automatic checks; cancellation does not.
 - Identify display release `31.0.0-rsat.1` as ReSatoshi, with the Bitcoin Core
   base and source revision, while preserving numeric client/protocol versions.
 - Add opt-in `getblockchaininfo include_recycling=true` rules and pool status;

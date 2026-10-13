@@ -72,6 +72,7 @@ class RecycleIndexCheckTest(BitcoinTestFramework):
             interrupted = future.result(timeout=60)
             assert_equal(interrupted["success"], False)
             assert "valid" not in interrupted
+            assert not (node.chain_path / "recycle-corrupt").exists()
 
         # Abort must release both the RPC reservation and database snapshot.
         checked = node.checkrecycleindex("start")

@@ -2373,7 +2373,9 @@ static RPCHelpMan checkrecycleindex()
     return RPCHelpMan{
         "checkrecycleindex",
         "Check the full persisted UTXO/recycle height-index correspondence at one flushed block.\n"
-        "Read-only after flushing the coin cache; does not repair data or verify historical expiry.\n"
+        "Does not repair data or verify historical expiry.\n"
+        "A completed inconsistent check stops validation/mining and marks the node for recovery on restart.\n"
+        "An interrupted check does not trigger recovery.\n"
         "The scan uses a consistent database snapshot, bounded memory and does not hold the chain lock.\n"
         "Database cache resizing cancels the check. Snapshot retention can temporarily increase disk use.\n"
         "Only available on networks with recycling enabled. Start returns when the scan completes.\n",
@@ -2457,6 +2459,7 @@ static RPCHelpMan checkrecycleindex()
                 g_recycle_check.entries = counts.index_entries;
                 return !g_recycle_check.abort;
             })};
+            if (checked.completed && !checked.Valid()) chainman.HandleRecycleIndexFailure();
             UniValue result{UniValue::VOBJ};
             result.pushKV("success", checked.completed);
             if (checked.completed) result.pushKV("valid", checked.Valid());
