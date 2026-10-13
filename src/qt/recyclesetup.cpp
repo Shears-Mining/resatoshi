@@ -11,6 +11,7 @@
 #include <qt/guiutil.h>
 #include <qt/optionsmodel.h>
 #include <univalue.h>
+#include <util/string.h>
 #include <validation.h>
 
 #include <QDialogButtonBox>
@@ -156,7 +157,7 @@ bool ShowRecycleSetupIfNeeded(ArgsManager& args, bool recycling_enabled,
     if (dialog.exec() != QDialog::Accepted) return false;
     selected = dialog.choices();
     if (selected->set_mode) args.ForceSetArg("-recyclemode", selected->mode);
-    if (selected->set_prune) args.ForceSetArg("-prune", std::to_string(selected->prune_mib));
+    if (selected->set_prune) args.ForceSetArg("-prune", util::ToString(selected->prune_mib));
     return true;
 }
 
@@ -166,7 +167,7 @@ bool SaveRecycleSetup(ArgsManager& args, const RecycleSetupChoices& selected,
     if (!args.GetSettingsPath()) return true;
     args.LockSettings([&](common::Settings& settings) {
         if (selected.set_mode) settings.rw_settings["recyclemode"] = selected.mode;
-        if (selected.set_prune) settings.rw_settings["prune"] = std::to_string(selected.prune_mib);
+        if (selected.set_prune) settings.rw_settings["prune"] = util::ToString(selected.prune_mib);
     });
     return args.WriteSettingsFile(&errors);
 }

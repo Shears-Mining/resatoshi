@@ -11,6 +11,7 @@
 #include <qt/optionsmodel.h>
 #include <qt/recyclesetup.h>
 #include <univalue.h>
+#include <util/string.h>
 
 #include <QApplication>
 #include <QDir>
@@ -197,7 +198,7 @@ void RecycleSetupTests::firstRunChoices()
     std::map<std::string, common::SettingsValue> saved;
     QVERIFY(common::ReadSettings(args.GetDataDirNet() / "settings.json", saved, errors));
     QCOMPARE(saved.at("recyclemode").get_str(), std::string{"block"});
-    QCOMPARE(saved.at("prune").get_str(), std::to_string(PruneGBtoMiB(9)));
+    QCOMPARE(saved.at("prune").get_str(), util::ToString(PruneGBtoMiB(9)));
 
     RecycleSetupDialog full{"index", true, 0, true};
     QCOMPARE(full.windowTitle(), QString{"Set up your ReSatoshi node"});
