@@ -208,11 +208,10 @@ bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CA
     return true;
 }
 
-bool ReadUndo(const CTxUndo& undo, CAmount& pool_before, std::vector<std::pair<COutPoint, Coin>>& expired)
+bool ReadExpiredCoins(const CTxUndo& undo, std::vector<std::pair<COutPoint, Coin>>& expired)
 {
     UndoData data;
     if (!DecodeUndo(&undo, data)) return false;
-    pool_before = data.pool_before;
     expired = std::move(data.expired);
     return true;
 }

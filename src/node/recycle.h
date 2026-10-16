@@ -52,8 +52,8 @@ bool DisconnectBlock(CCoinsViewCache& view, int height, CTxUndo* undo, int expir
 bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
                       const CTxUndo* undo, int expiry_blocks = EXPIRY_BLOCKS);
 
-/** Read the existing undo payload for index accounting. */
-bool ReadUndo(const CTxUndo& undo, CAmount& pool_before, std::vector<std::pair<COutPoint, Coin>>& expired);
+/** Read expired coins from the existing undo payload without changing its format. */
+bool ReadExpiredCoins(const CTxUndo& undo, std::vector<std::pair<COutPoint, Coin>>& expired);
 
 /** Whether the network rules require an internal state undo entry at this height.
  * Does not inspect or modify undo data.

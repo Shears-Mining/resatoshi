@@ -2162,9 +2162,8 @@ static RPCHelpMan getblockstats()
         // Expiry removes coins without transaction inputs. The extra undo entry
         // records only coins actually recycled, not those spent in this block.
         CHECK_NONFATAL(blockUndo.vtxundo.size() == block.vtx.size());
-        CAmount pool_before{0};
         std::vector<std::pair<COutPoint, Coin>> expired;
-        CHECK_NONFATAL(node::recycle::ReadUndo(blockUndo.vtxundo.back(), pool_before, expired));
+        CHECK_NONFATAL(node::recycle::ReadExpiredCoins(blockUndo.vtxundo.back(), expired));
         expired_outputs = expired.size();
         if (do_all || stats.contains("utxo_size_inc_actual")) {
             for (const auto& [outpoint, coin] : expired) {
@@ -3098,9 +3097,8 @@ static RPCHelpMan getdescriptoractivity()
         // spending transaction, so never synthesize a spend_txid for these events.
         if (self.Arg<bool>("include_expired") && node::recycle::ExpectsStateUndo(blockindex->nHeight, chainman.GetConsensus())) {
             CHECK_NONFATAL(block_undo.vtxundo.size() == block.vtx.size());
-            CAmount pool_before;
             std::vector<std::pair<COutPoint, Coin>> expired;
-            CHECK_NONFATAL(node::recycle::ReadUndo(block_undo.vtxundo.back(), pool_before, expired));
+            CHECK_NONFATAL(node::recycle::ReadExpiredCoins(block_undo.vtxundo.back(), expired));
             for (const auto& [outpoint, coin] : expired) {
                 if (!scripts_to_watch.contains(coin.out.scriptPubKey)) continue;
                 UniValue event{UniValue::VOBJ};

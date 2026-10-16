@@ -140,9 +140,8 @@ BOOST_AUTO_TEST_CASE(transaction_undo_excludes_recycle_state)
     BOOST_CHECK_EQUAL(exposed.vtxundo.size(), 1U);
 
     // Stripping the API copy must leave on-disk recovery information intact.
-    CAmount pool_before;
     std::vector<std::pair<COutPoint, Coin>> expired;
-    BOOST_REQUIRE(node::recycle::ReadUndo(disk.vtxundo.back(), pool_before, expired));
+    BOOST_REQUIRE(node::recycle::ReadExpiredCoins(disk.vtxundo.back(), expired));
     BOOST_CHECK_EQUAL(expired.size(), 1U);
     BOOST_REQUIRE(node::recycle::DisconnectBlock(view, 201, &disk.vtxundo.back(), 200));
     BOOST_CHECK(view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));

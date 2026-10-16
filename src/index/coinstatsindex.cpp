@@ -47,6 +47,19 @@ static constexpr uint8_t DB_MUHASH{'M'};
 
 namespace {
 
+// Check undo structure before changing statistics. Genesis has no undo.
+bool ReadUndoForStats(const interfaces::BlockInfo& block, std::vector<std::pair<COutPoint, Coin>>& expired)
+{
+    if (!block.data) return false;
+    if (block.height == 0) return true;
+    const auto& consensus{Params().GetConsensus()};
+    if (!block.undo_data || !node::recycle::HasExpectedUndoCount(*block.undo_data, block.height, block.data->vtx.size(), consensus)) return false;
+    for (size_t i{1}; i < block.data->vtx.size(); ++i) {
+        if (block.undo_data->vtxundo[i - 1].vprevout.size() != block.data->vtx[i]->vin.size()) return false;
+    }
+    return !node::recycle::ExpectsStateUndo(block.height, consensus) || node::recycle::ReadExpiredCoins(block.undo_data->vtxundo.back(), expired);
+}
+
 struct DBVal {
     uint256 muhash{uint256::ZERO};
     uint64_t transaction_output_count{0};
@@ -121,6 +134,8 @@ CoinStatsIndex::CoinStatsIndex(std::unique_ptr<interfaces::Chain> chain, size_t 
 
 bool CoinStatsIndex::CustomAppend(const interfaces::BlockInfo& block)
 {
+    std::vector<std::pair<COutPoint, Coin>> expired;
+    if (!ReadUndoForStats(block, expired)) return false;
     const CAmount block_subsidy{GetBlockSubsidy(block.height, Params().GetConsensus())};
     m_total_subsidy += block_subsidy;
 
@@ -194,10 +209,6 @@ bool CoinStatsIndex::CustomAppend(const interfaces::BlockInfo& block)
 
     const auto& consensus{Params().GetConsensus()};
     if (node::recycle::ExpectsStateUndo(block.height, consensus)) {
-        if (!block.undo_data || !block.data || block.undo_data->vtxundo.size() != block.data->vtx.size()) return false;
-        CAmount pool_before{0};
-        std::vector<std::pair<COutPoint, Coin>> expired;
-        if (!node::recycle::ReadUndo(block.undo_data->vtxundo.back(), pool_before, expired)) return false;
         for (const auto& [outpoint, coin] : expired) {
             RemoveCoinHash(m_muhash, outpoint, coin);
             --m_transaction_output_count;
@@ -362,6 +373,8 @@ interfaces::Chain::NotifyOptions CoinStatsIndex::CustomOptions()
 // Revert a single block as part of a reorg
 bool CoinStatsIndex::RevertBlock(const interfaces::BlockInfo& block)
 {
+    std::vector<std::pair<COutPoint, Coin>> expired;
+    if (!ReadUndoForStats(block, expired)) return false;
     std::pair<uint256, DBVal> read_out;
 
     // Ignore genesis block
@@ -419,10 +432,6 @@ bool CoinStatsIndex::RevertBlock(const interfaces::BlockInfo& block)
 
     const auto& consensus{Params().GetConsensus()};
     if (node::recycle::ExpectsStateUndo(block.height, consensus)) {
-        if (block.undo_data->vtxundo.size() != block.data->vtx.size()) return false;
-        CAmount pool_before{0};
-        std::vector<std::pair<COutPoint, Coin>> expired;
-        if (!node::recycle::ReadUndo(block.undo_data->vtxundo.back(), pool_before, expired)) return false;
         for (const auto& [outpoint, coin] : expired) ApplyCoinHash(m_muhash, outpoint, coin);
     }
 
