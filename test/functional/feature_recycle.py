@@ -10,9 +10,10 @@ import subprocess
 import time
 
 from test_framework.blocktools import create_block, create_coinbase
-from test_framework.messages import COIN, CTxOut
+from test_framework.messages import COIN, CTxOut, MAGIC_BYTES, hash256
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_raises_rpc_error
+from test_framework.test_node import ErrorMatch
+from test_framework.util import assert_equal, assert_raises_rpc_error, util_xor
 
 
 class RecycleTest(BitcoinTestFramework):
@@ -20,7 +21,52 @@ class RecycleTest(BitcoinTestFramework):
         self.num_nodes = 2
         self.setup_clean_chain = True
         self.extra_args = [["-test=recycle", "-coinstatsindex", "-checklevel=4"] for _ in range(2)]
-        self.extra_args[1].append("-recyclemode=block")
+
+    def add_options(self, parser):
+        parser.add_argument('--crash-mode', choices=('index', 'block'), default='block')
+
+    def setup_network(self):
+        self.extra_args[1].append(f'-recyclemode={self.options.crash_mode}')
+        super().setup_network()
+
+    def check_replay_undo_counts(self, blockhash):
+        node = self.nodes[1]  # Stopped after an interrupted chainstate flush.
+        previous = bytes.fromhex(self.nodes[0].getblockheader(blockhash)['previousblockhash'])[::-1]
+        path = node.blocks_path / 'rev00000.dat'
+        original = path.read_bytes()
+        key = node.read_xor_key()
+        decoded = util_xor(original, key, offset=0)
+        offset = 0
+        matches = []
+        while decoded[offset:offset + 4] == MAGIC_BYTES['regtest']:
+            start = offset + 8
+            size = int.from_bytes(decoded[offset + 4:start], 'little')
+            end = start + size
+            if hash256(previous + decoded[start:end]) == decoded[end:end + 32]:
+                matches.append((start, end))
+            offset = end + 32
+        assert_equal(len(matches), 1)
+        start, end = matches[0]
+        assert_equal(end + 32, offset)  # Only resize the last undo record.
+        payload = decoded[start:end]
+        assert_equal(payload[0], 1)  # Coinbase-only expiry block: one state undo.
+        try:
+            for damaged in (b'\x00', b'\x02\x00' + payload[1:]):
+                # Keep a valid checksum so recovery must check record counts,
+                # rather than reject an unreadable or truncated disk record.
+                replacement = len(damaged).to_bytes(4, 'little') + damaged + hash256(previous + damaged)
+                changed = decoded[:start - 4] + replacement + decoded[end + 32:]
+                path.write_bytes(util_xor(changed, key, offset=0))
+                with node.assert_debug_log(['ReplayBlock(): block and undo data inconsistent']):
+                    node.assert_start_raises_init_error(
+                        extra_args=self.extra_args[1],
+                        expected_msg='Unable to replay blocks',
+                        match=ErrorMatch.PARTIAL_REGEX,
+                    )
+        finally:
+            if node.running:
+                self.stop_node(1)
+            path.write_bytes(original)
 
     def skip_test_if_missing_module(self):
         self.skip_if_no_wallet()
@@ -81,6 +127,7 @@ class RecycleTest(BitcoinTestFramework):
                 assert_equal(error.returncode, 1)
                 assert "Could not connect to the server" in error.output
             self.nodes[1].wait_until_stopped(timeout=20)
+        self.check_replay_undo_counts(expiry_hash)
         self.start_node(1)
         self.connect_nodes(0, 1)
         self.check_stats()

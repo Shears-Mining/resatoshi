@@ -265,6 +265,7 @@ BASE_SCRIPTS = [
     'rpc_invalidateblock.py',
     'feature_utxo_set_hash.py',
     'feature_recycle.py',
+    'feature_recycle.py --crash-mode=index',
     'feature_recycle_modes.py',
     'feature_recycle_recovery.py',
     'feature_recycle_index.py',

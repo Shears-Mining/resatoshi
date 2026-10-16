@@ -225,13 +225,16 @@ bool ExpectsStateUndo(int height, const Consensus::Params& consensus)
     return consensus.recycle_enabled && height > consensus.recycle_expiry_blocks;
 }
 
-bool RemoveStateUndo(CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus)
+bool HasExpectedUndoCount(const CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus)
 {
     if (transaction_count == 0) return false;
-    const bool has_state{ExpectsStateUndo(height, consensus)};
-    const size_t expected{transaction_count - 1 + size_t{has_state}};
-    if (undo.vtxundo.size() != expected) return false;
-    if (has_state) undo.vtxundo.pop_back();
+    return undo.vtxundo.size() == transaction_count - 1 + size_t{ExpectsStateUndo(height, consensus)};
+}
+
+bool RemoveStateUndo(CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus)
+{
+    if (!HasExpectedUndoCount(undo, height, transaction_count, consensus)) return false;
+    if (ExpectsStateUndo(height, consensus)) undo.vtxundo.pop_back();
     return true;
 }
 

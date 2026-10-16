@@ -2208,7 +2208,7 @@ DisconnectResult Chainstate::DisconnectBlock(const CBlock& block, const CBlockIn
 
     const bool recycle_enabled{m_chainman.GetConsensus().recycle_enabled};
     const size_t recycle_undos{node::recycle::ExpectsStateUndo(pindex->nHeight, m_chainman.GetConsensus()) ? 1U : 0U};
-    if (blockUndo.vtxundo.size() + 1 != block.vtx.size() + recycle_undos) {
+    if (!node::recycle::HasExpectedUndoCount(blockUndo, pindex->nHeight, block.vtx.size(), m_chainman.GetConsensus())) {
         LogError("DisconnectBlock(): block and undo data inconsistent\n");
         return DISCONNECT_FAILED;
     }
@@ -4879,6 +4879,10 @@ bool Chainstate::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& in
         LogError("ReplayBlock(): ReadBlockUndo failed at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
         return false;
     }
+    if (recycle_enabled && !node::recycle::HasExpectedUndoCount(block_undo, pindex->nHeight, block.vtx.size(), m_chainman.GetConsensus())) {
+        LogError("ReplayBlock(): block and undo data inconsistent\n");
+        return false;
+    }
 
     CAmount fees{0};
     for (size_t i{0}; i < block.vtx.size(); ++i) {
@@ -4899,9 +4903,7 @@ bool Chainstate::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& in
     }
     if (!recycle_enabled) return true;
     const bool has_recycle_undo{node::recycle::ExpectsStateUndo(pindex->nHeight, m_chainman.GetConsensus())};
-    const CTxUndo* recycle_undo{has_recycle_undo && block_undo.vtxundo.size() >= block.vtx.size()
-                                    ? &block_undo.vtxundo.back()
-                                    : nullptr};
+    const CTxUndo* recycle_undo{has_recycle_undo ? &block_undo.vtxundo.back() : nullptr};
     return node::recycle::RollforwardBlock(inputs, block, pindex->nHeight,
                                            fees + GetBlockSubsidy(pindex->nHeight, m_chainman.GetConsensus()),
                                            recycle_undo, m_chainman.GetConsensus().recycle_expiry_blocks);

@@ -64,6 +64,32 @@ bool ContinueCheck(const std::string&, const RecycleIndexCheckResult&) { return 
 
 BOOST_AUTO_TEST_SUITE(recycle_tests)
 
+BOOST_AUTO_TEST_CASE(undo_count_boundaries)
+{
+    Consensus::Params consensus;
+    consensus.recycle_enabled = true;
+    consensus.recycle_expiry_blocks = 200;
+    CBlockUndo undo;
+    // Coinbase-only blocks have no transaction undo; the first expiry adds
+    // exactly one state record. Ordinary transactions each add one record.
+    BOOST_CHECK(node::recycle::HasExpectedUndoCount(undo, 200, 1, consensus));
+    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 201, 1, consensus));
+    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 200, 2, consensus));
+    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 200, 0, consensus));
+    undo.vtxundo.resize(1);
+    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 200, 1, consensus));
+    BOOST_CHECK(node::recycle::HasExpectedUndoCount(undo, 201, 1, consensus));
+    BOOST_CHECK(node::recycle::HasExpectedUndoCount(undo, 200, 2, consensus));
+    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 201, 2, consensus));
+    undo.vtxundo.resize(2);
+    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 201, 1, consensus));
+    BOOST_CHECK(node::recycle::HasExpectedUndoCount(undo, 201, 2, consensus));
+    consensus.recycle_enabled = false;
+    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 201, 2, consensus));
+    undo.vtxundo.resize(1);
+    BOOST_CHECK(node::recycle::HasExpectedUndoCount(undo, 201, 2, consensus));
+}
+
 BOOST_AUTO_TEST_CASE(transaction_undo_excludes_recycle_state)
 {
     Consensus::Params consensus;

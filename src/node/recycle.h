@@ -60,6 +60,9 @@ bool ReadUndo(const CTxUndo& undo, CAmount& pool_before, std::vector<std::pair<C
  */
 bool ExpectsStateUndo(int height, const Consensus::Params& consensus);
 
+/** Check the exact transaction/state undo count without modifying the records. */
+bool HasExpectedUndoCount(const CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus);
+
 /** Remove internal state from a copy of block undo before exposing transaction inputs.
  * Returns false, without modifying undo, if its entry count is inconsistent.
  */
