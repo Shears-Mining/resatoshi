@@ -133,7 +133,9 @@ size_t CNetMessage::GetMemoryUsage() const noexcept
 void CConnman::AddAddrFetch(const std::string& strDest)
 {
     LOCK(m_addr_fetches_mutex);
-    m_addr_fetches.push_back(strDest);
+    if (std::find(m_addr_fetches.begin(), m_addr_fetches.end(), strDest) == m_addr_fetches.end()) {
+        m_addr_fetches.push_back(strDest);
+    }
 }
 
 uint16_t GetListenPort()
@@ -2464,10 +2466,14 @@ void CConnman::ProcessAddrFetch()
 {
     AssertLockNotHeld(m_unused_i2p_sessions_mutex);
     std::string strDest;
+    CountingSemaphoreGrant<> grant;
     {
         LOCK(m_addr_fetches_mutex);
         if (m_addr_fetches.empty())
             return;
+        // Leave the request queued until an outbound slot is available.
+        grant = CountingSemaphoreGrant<>(*semOutbound, /*fTry=*/true);
+        if (!grant) return;
         strDest = m_addr_fetches.front();
         m_addr_fetches.pop_front();
     }
@@ -2475,16 +2481,13 @@ void CConnman::ProcessAddrFetch()
     // peer doesn't support it or immediately disconnects us for another reason.
     const bool use_v2transport(GetLocalServices() & NODE_P2P_V2);
     CAddress addr;
-    CountingSemaphoreGrant<> grant(*semOutbound, /*fTry=*/true);
-    if (grant) {
-        OpenNetworkConnection(/*addrConnect=*/addr,
-                              /*fCountFailure=*/false,
-                              /*grant_outbound=*/std::move(grant),
-                              /*pszDest=*/strDest.c_str(),
-                              /*conn_type=*/ConnectionType::ADDR_FETCH,
-                              /*use_v2transport=*/use_v2transport,
-                              /*proxy_override=*/std::nullopt);
-    }
+    OpenNetworkConnection(/*addrConnect=*/addr,
+                          /*fCountFailure=*/false,
+                          /*grant_outbound=*/std::move(grant),
+                          /*pszDest=*/strDest.c_str(),
+                          /*conn_type=*/ConnectionType::ADDR_FETCH,
+                          /*use_v2transport=*/use_v2transport,
+                          /*proxy_override=*/std::nullopt);
 }
 
 bool CConnman::GetTryNewOutboundPeer() const
@@ -2669,8 +2672,9 @@ void CConnman::ThreadOpenConnections(const std::vector<std::string> connect, std
                 seed_retry_delay = 60s;
                 next_seed_retry = now + seed_retry_delay;
             } else if (now >= next_seed_retry) {
-                LOCK(m_addr_fetches_mutex);
-                if (m_addr_fetches.empty() && !m_dns_seed_retry.exchange(true)) {
+                // Pending fetches must not block DNS recovery. AddAddrFetch()
+                // deduplicates destinations to keep repeated fallback bounded.
+                if (!m_dns_seed_retry.exchange(true)) {
                     LogInfo("Retrying DNS seed address fetches: no established automatic outbound peers\n");
                     seed_retry_delay = std::min(seed_retry_delay * 2, 900s);
                 }

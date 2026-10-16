@@ -34,6 +34,7 @@
 #include <ios>
 #include <memory>
 #include <optional>
+#include <semaphore>
 #include <string>
 #include <thread>
 
@@ -62,7 +63,53 @@ bool WaitForSeed(const Predicate& predicate, std::chrono::seconds timeout)
 }
 } // namespace
 
+void ConnmanTestMsg::TestAddrFetchSlotExhaustion()
+{
+    // No workers are running. Disable networking so draining the queue cannot
+    // open public sockets or resolve the test destinations.
+    SetNetworkActive(false);
+    semOutbound = std::make_unique<std::counting_semaphore<>>(1);
+    CountingSemaphoreGrant<> occupied{*semOutbound};
+    AddAddrFetch("first.invalid");
+    AddAddrFetch("second.invalid");
+    ProcessAddrFetch();
+    ProcessAddrFetch();
+    {
+        LOCK(m_addr_fetches_mutex);
+        BOOST_CHECK_EQUAL(m_addr_fetches.size(), 2U);
+    }
+    // Repeated DNS fallback must not grow a queue blocked on connection slots
+    // or change the order of the destinations already waiting.
+    AddAddrFetch("second.invalid");
+    AddAddrFetch("first.invalid");
+    {
+        LOCK(m_addr_fetches_mutex);
+        BOOST_CHECK_EQUAL(m_addr_fetches.size(), 2U);
+    }
+    occupied.Release();
+    ProcessAddrFetch();
+    {
+        LOCK(m_addr_fetches_mutex);
+        BOOST_REQUIRE_EQUAL(m_addr_fetches.size(), 1U);
+        BOOST_CHECK_EQUAL(m_addr_fetches.front(), "second.invalid");
+    }
+    ProcessAddrFetch();
+    {
+        LOCK(m_addr_fetches_mutex);
+        BOOST_CHECK(m_addr_fetches.empty());
+    }
+    // A failed connection and an empty queue must both return their slot.
+    ProcessAddrFetch();
+    CountingSemaphoreGrant<> available{*semOutbound, /*fTry=*/true};
+    BOOST_CHECK(bool{available});
+}
+
 BOOST_FIXTURE_TEST_SUITE(net_tests, RegTestingSetup)
+
+BOOST_AUTO_TEST_CASE(addr_fetch_preserves_requests_without_slots)
+{
+    static_cast<ConnmanTestMsg&>(*m_node.connman).TestAddrFetchSlotExhaustion();
+}
 
 BOOST_FIXTURE_TEST_CASE(dns_service_bits_recovery, TestingSetup)
 {

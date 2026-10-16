@@ -920,8 +920,27 @@ BOOST_AUTO_TEST_CASE(automatic_and_manual_checks_stop_on_missing_entry)
             BOOST_CHECK_EQUAL(cancelled["missing"].getInt<int>(), 1);
             BOOST_CHECK(!chainman.m_recycle_failed);
             BOOST_CHECK(!fs::exists(setup.m_args.GetDataDirNet() / "recycle-corrupt"));
-            setup.m_node.rpc_interruption_point = [] {};
+            // At the final progress callback, let cache resizing acquire
+            // cs_main. Check() has already tested cancellation at this point,
+            // so it will complete with the missing entry. The RPC must release
+            // its snapshot before failure handling tries to acquire cs_main.
+            std::promise<void> resizing;
+            auto resizing_started{resizing.get_future()};
+            std::future<void> resized;
+            interruption_points = 0;
+            setup.m_node.rpc_interruption_point = [&] {
+                if (++interruption_points != 3) return;
+                resized = std::async(std::launch::async, [&] {
+                    LOCK(cs_main);
+                    resizing.set_value();
+                    chainstate.CoinsDB().ResizeCache(2 << 20);
+                });
+                resizing_started.wait();
+            };
             const auto checked{tableRPC.execute(request)};
+            BOOST_REQUIRE(resized.valid());
+            resized.get();
+            setup.m_node.rpc_interruption_point = [] {};
             BOOST_CHECK(checked["success"].get_bool());
             BOOST_CHECK(!checked["valid"].get_bool());
             BOOST_CHECK_EQUAL(checked["missing"].getInt<int>(), 1);

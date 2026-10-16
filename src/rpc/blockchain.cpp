@@ -2437,6 +2437,7 @@ static RPCHelpMan checkrecycleindex()
             auto& node{EnsureAnyNodeContext(request.context)};
             auto& chainman{EnsureChainman(node)};
             std::unique_ptr<RecycleIndexSnapshot> snapshot;
+            uint256 bestblock;
             int height;
             {
                 LOCK(cs_main);
@@ -2448,7 +2449,8 @@ static RPCHelpMan checkrecycleindex()
                 snapshot = chainstate.CoinsDB().GetRecycleIndexSnapshot();
                 if (!snapshot) throw JSONRPCError(RPC_MISC_ERROR, "Recycle index database is already being checked");
                 const auto* tip{CHECK_NONFATAL(chainstate.m_chain.Tip())};
-                if (snapshot->GetBestBlock() != tip->GetBlockHash()) throw JSONRPCError(RPC_INTERNAL_ERROR, "Flushed chainstate does not match the active tip");
+                bestblock = snapshot->GetBestBlock();
+                if (bestblock != tip->GetBlockHash()) throw JSONRPCError(RPC_INTERNAL_ERROR, "Flushed chainstate does not match the active tip");
                 height = tip->nHeight;
             }
             const auto checked{snapshot->Check([&](const std::string& phase, const RecycleIndexCheckResult& counts) {
@@ -2459,12 +2461,15 @@ static RPCHelpMan checkrecycleindex()
                 g_recycle_check.entries = counts.index_entries;
                 return !g_recycle_check.abort;
             })};
+            // Cache resizing may hold cs_main while waiting for this snapshot.
+            // Release it before failure handling acquires cs_main.
+            snapshot.reset();
             if (checked.completed && !checked.Valid()) chainman.HandleRecycleIndexFailure();
             UniValue result{UniValue::VOBJ};
             result.pushKV("success", checked.completed);
             if (checked.completed) result.pushKV("valid", checked.Valid());
             result.pushKV("height", height);
-            result.pushKV("bestblock", snapshot->GetBestBlock().GetHex());
+            result.pushKV("bestblock", bestblock.GetHex());
             result.pushKV("coins_scanned", checked.coins_scanned);
             result.pushKV("indexed_coins", checked.indexed_coins);
             result.pushKV("index_entries", checked.index_entries);

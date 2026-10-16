@@ -55,6 +55,8 @@ struct ConnmanTestMsg : public CConnman {
     //! Run real discovery workers without connection slots or public sockets.
     void StartSeedTestThreads();
 
+    void TestAddrFetchSlotExhaustion();
+
     std::vector<CNode*> TestNodes()
     {
         LOCK(m_nodes_mutex);
