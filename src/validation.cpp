@@ -2642,20 +2642,23 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                 return FatalError(m_chainman.GetNotifications(), state, Untranslated("Cannot read recycle expiry origin block; restore block data before continuing"));
             }
             CTxUndo recycle_undo;
-            std::string recycle_error;
-            if (!node::recycle::ConnectBlock(view, block, pindex->nHeight, blockReward,
-                                             recycle_undo, recycle_error, expired, params.GetConsensus().recycle_expiry_blocks,
-                                             m_chainman.m_options.recycle_from_block ? &origin_block : nullptr)) {
-                const bool excessive_coinbase{recycle_error.starts_with("coinbase claims")};
-                if (excessive_coinbase) {
-                    state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount", recycle_error);
-                } else {
-                    // Local state damage must not permanently mark a valid
-                    // network block invalid.
-                    state.Error(recycle_error);
-                }
-            } else if (!recycle_undo.vprevout.empty()) {
-                blockundo.vtxundo.push_back(std::move(recycle_undo));
+            const auto recycle_error{node::recycle::ConnectBlock(view, block, pindex->nHeight, blockReward,
+                recycle_undo, expired, params.GetConsensus().recycle_expiry_blocks,
+                m_chainman.m_options.recycle_from_block ? &origin_block : nullptr)};
+            switch (recycle_error) {
+            case node::recycle::Error::NONE:
+                if (!recycle_undo.vprevout.empty()) blockundo.vtxundo.push_back(std::move(recycle_undo));
+                break;
+            case node::recycle::Error::PREMATURE_REWARD:
+                state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount", "coinbase claims recycle reward before any output can expire");
+                break;
+            case node::recycle::Error::EXCESSIVE_REWARD:
+                state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount", "coinbase claims excessive recycle reward");
+                break;
+            case node::recycle::Error::SPEND_FAILED:
+                // Local state damage must not permanently mark a valid network block invalid.
+                state.Error("recycle expiry: SpendCoin failed");
+                break;
             }
         } else if (block.vtx[0]->GetValueOut() > blockReward) {
             state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount",

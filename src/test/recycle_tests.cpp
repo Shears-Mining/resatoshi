@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <chrono>
 #include <future>
+#include <string>
 #include <thread>
 
 #include <boost/test/unit_test.hpp>
@@ -73,8 +74,7 @@ BOOST_AUTO_TEST_CASE(transaction_undo_excludes_recycle_state)
     CBlock origin{CoinbaseBlock(2 * COIN, 1)};
     AddCoins(view, *origin.vtx[0], 1);
     CTxUndo early;
-    std::string error;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, 2 * COIN, early, error, nullptr, 200));
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, 2 * COIN, early, nullptr, 200) == node::recycle::Error::NONE);
 
     // Before expiry a coinbase-only block has no input records.
     CBlockUndo before;
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(transaction_undo_excludes_recycle_state)
     CBlock expiry{CoinbaseBlock(COIN, 201)};
     AddCoins(view, *expiry.vtx[0], 201);
     CTxUndo state;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, 201, 0, state, error, nullptr, 200));
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, 201, 0, state, nullptr, 200) == node::recycle::Error::NONE);
     CBlockUndo disk;
     disk.vtxundo.push_back(state);
     CBlockUndo exposed{disk};
@@ -122,6 +122,23 @@ BOOST_AUTO_TEST_CASE(transaction_undo_excludes_recycle_state)
     BOOST_CHECK(view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));
 }
 
+BOOST_AUTO_TEST_CASE(rewards_before_first_expiry)
+{
+    constexpr CAmount BASE_REWARD{50 * COIN};
+    for (const int height : {1, node::recycle::EXPIRY_BLOCKS}) {
+        CCoinsView base;
+        CCoinsViewCache view{&base};
+        CTxUndo undo;
+        const auto excessive{CoinbaseBlock(BASE_REWARD + 1, height)};
+        BOOST_CHECK(node::recycle::ConnectBlock(view, excessive, height, BASE_REWARD, undo) == node::recycle::Error::PREMATURE_REWARD);
+        BOOST_CHECK(undo.vprevout.empty());
+        const auto valid{CoinbaseBlock(BASE_REWARD, height)};
+        BOOST_CHECK(node::recycle::ConnectBlock(view, valid, height, BASE_REWARD, undo) == node::recycle::Error::NONE);
+        BOOST_CHECK(undo.vprevout.empty());
+        BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 0);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(expiry_reward_and_disconnect)
 {
     CCoinsView base;
@@ -132,8 +149,7 @@ BOOST_AUTO_TEST_CASE(expiry_reward_and_disconnect)
     CBlock origin{CoinbaseBlock(EXPIRED_VALUE, 1)};
     AddCoins(view, *origin.vtx[0], /*nHeight=*/1);
     CTxUndo early_undo;
-    std::string error;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, EXPIRED_VALUE, early_undo, error));
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, EXPIRED_VALUE, early_undo) == node::recycle::Error::NONE);
     BOOST_CHECK(!view.HaveCoin(COutPoint{Txid{}, 1}));
     BOOST_CHECK(early_undo.vprevout.empty());
 
@@ -145,7 +161,7 @@ BOOST_AUTO_TEST_CASE(expiry_reward_and_disconnect)
     CTxUndo recycle_undo;
     std::vector<COutPoint> expired;
     BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD,
-                                               recycle_undo, error, &expired));
+                                               recycle_undo, &expired) == node::recycle::Error::NONE);
     BOOST_CHECK_EQUAL(expired.size(), 1U);
     BOOST_CHECK(!view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 0);
@@ -164,8 +180,7 @@ BOOST_AUTO_TEST_CASE(unclaimed_value_stays_in_pool_and_reward_is_capped)
     CBlock origin{CoinbaseBlock(2 * COIN, 3)};
     AddCoins(view, *origin.vtx[0], /*nHeight=*/1);
     CTxUndo unused;
-    std::string error;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, 2 * COIN, unused, error));
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, 2 * COIN, unused) == node::recycle::Error::NONE);
 
     const int expiry_height{1 + node::recycle::EXPIRY_BLOCKS};
     CBlock expiry{CoinbaseBlock(BASE_REWARD, 4)};
@@ -173,7 +188,7 @@ BOOST_AUTO_TEST_CASE(unclaimed_value_stays_in_pool_and_reward_is_capped)
     AddCoins(view, *expiry.vtx[0], expiry_height);
     CTxUndo recycle_undo;
     BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD,
-                                               recycle_undo, error));
+                                               recycle_undo) == node::recycle::Error::NONE);
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 2 * COIN);
 }
 
@@ -187,8 +202,7 @@ BOOST_AUTO_TEST_CASE(reward_boundaries_and_excess_claim)
     CBlock origin{CoinbaseBlock(REMAINDER, 10)};
     AddCoins(view, *origin.vtx[0], /*nHeight=*/1);
     CTxUndo unused;
-    std::string error;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, REMAINDER, unused, error));
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, REMAINDER, unused) == node::recycle::Error::NONE);
 
     const int expiry_height{1 + node::recycle::EXPIRY_BLOCKS};
     CBlock exact{CoinbaseBlock(BASE_REWARD + REMAINDER, 11)};
@@ -197,8 +211,7 @@ BOOST_AUTO_TEST_CASE(reward_boundaries_and_excess_claim)
     CBlock excessive{CoinbaseBlock(BASE_REWARD + REMAINDER + 1, 12)};
     AddCoins(view, *excessive.vtx[0], expiry_height);
     CTxUndo undo;
-    BOOST_CHECK(!node::recycle::ConnectBlock(view, excessive, expiry_height, BASE_REWARD, undo, error));
-    BOOST_CHECK_EQUAL(error, "coinbase claims excessive recycle reward");
+    BOOST_CHECK(node::recycle::ConnectBlock(view, excessive, expiry_height, BASE_REWARD, undo) == node::recycle::Error::EXCESSIVE_REWARD);
 }
 
 BOOST_AUTO_TEST_CASE(pool_accounting_stress)
@@ -214,8 +227,7 @@ BOOST_AUTO_TEST_CASE(pool_accounting_stress)
         CBlock origin{CoinbaseBlock(expiring, 1'000 + iteration)};
         AddCoins(view, *origin.vtx[0], origin_height);
         CTxUndo unused;
-        std::string error;
-        BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, origin_height, expiring, unused, error));
+        BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, origin_height, expiring, unused) == node::recycle::Error::NONE);
 
         const int expiry_height{origin_height + node::recycle::EXPIRY_BLOCKS};
         const CAmount available{expected_pool + expiring};
@@ -224,7 +236,7 @@ BOOST_AUTO_TEST_CASE(pool_accounting_stress)
         BOOST_REQUIRE_EQUAL(node::recycle::AvailableReward(view, expiry, expiry_height), claimed);
         AddCoins(view, *expiry.vtx[0], expiry_height);
         CTxUndo undo;
-        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD, undo, error));
+        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD, undo) == node::recycle::Error::NONE);
         expected_pool = available - claimed;
         BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), expected_pool);
         BOOST_REQUIRE(expected_pool >= 0);
@@ -243,15 +255,14 @@ BOOST_AUTO_TEST_CASE(partial_reward_fee_separation_and_reorg)
     CBlock origin{CoinbaseBlock(EXPIRED, 20'000)};
     AddCoins(view, *origin.vtx[0], /*nHeight=*/1);
     CTxUndo unused;
-    std::string error;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, EXPIRED, unused, error));
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, EXPIRED, unused) == node::recycle::Error::NONE);
 
     const int expiry_height{1 + node::recycle::EXPIRY_BLOCKS};
     CBlock expiry{CoinbaseBlock(SUBSIDY + FEES + PARTIAL_REWARD, 20'001)};
     AddCoins(view, *expiry.vtx[0], expiry_height);
     CTxUndo expiry_undo;
     BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, SUBSIDY + FEES,
-                                               expiry_undo, error));
+                                               expiry_undo) == node::recycle::Error::NONE);
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), EXPIRED - PARTIAL_REWARD);
 
     // Crash recovery may replay a transition whose UTXO and recycle changes
@@ -269,7 +280,7 @@ BOOST_AUTO_TEST_CASE(partial_reward_fee_separation_and_reorg)
     AddCoins(view, *alternate.vtx[0], expiry_height);
     CTxUndo alternate_undo;
     BOOST_REQUIRE(node::recycle::ConnectBlock(view, alternate, expiry_height, SUBSIDY + FEES,
-                                               alternate_undo, error));
+                                               alternate_undo) == node::recycle::Error::NONE);
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), EXPIRED);
 }
 
@@ -284,8 +295,7 @@ BOOST_AUTO_TEST_CASE(spent_in_expiry_block_is_not_recycled)
     const COutPoint origin_out{origin.vtx[0]->GetHash(), 0};
     AddCoins(view, *origin.vtx[0], /*nHeight=*/1);
     CTxUndo unused;
-    std::string error;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, VALUE, unused, error));
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, VALUE, unused) == node::recycle::Error::NONE);
 
     CMutableTransaction spend;
     spend.vin.emplace_back(origin_out);
@@ -304,7 +314,7 @@ BOOST_AUTO_TEST_CASE(spent_in_expiry_block_is_not_recycled)
     AddCoins(view, *expiry.vtx[1], expiry_height);
     CTxUndo recycle_undo;
     BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD,
-                                               recycle_undo, error));
+                                               recycle_undo) == node::recycle::Error::NONE);
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 0);
 }
 
@@ -324,8 +334,7 @@ BOOST_FIXTURE_TEST_CASE(large_state_disk_and_undo_roundtrip, BasicTestingSetup)
             CCoinsViewCache view{&db};
             AddCoins(view, *origin.vtx[0], 1);
             CTxUndo unused;
-            std::string error;
-            BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, count, unused, error));
+            BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, count, unused) == node::recycle::Error::NONE);
             view.SetBestBlock(uint256{1});
             view.Flush();
         }
@@ -341,8 +350,7 @@ BOOST_FIXTURE_TEST_CASE(large_state_disk_and_undo_roundtrip, BasicTestingSetup)
             AddCoins(view, *expiry.vtx[0], height);
             CBlockUndo block_undo;
             block_undo.vtxundo.emplace_back();
-            std::string error;
-            BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, height, 50 * COIN, block_undo.vtxundo.back(), error));
+            BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, height, 50 * COIN, block_undo.vtxundo.back()) == node::recycle::Error::NONE);
             DataStream bytes;
             bytes << block_undo;
             CBlockUndo restored;
@@ -413,8 +421,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
         CCoinsViewCache view{&db};
         AddCoins(view, *origin.vtx[0], 1);
         CTxUndo unused;
-        std::string error;
-        BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, VALUE, unused, error));
+        BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, VALUE, unused) == node::recycle::Error::NONE);
         BOOST_CHECK_EQUAL(view.GetCoinsByHeight(1).size(), COUNT);
         view.SetBestBlock(uint256{1});
         view.Flush();
@@ -422,7 +429,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
         compact_and_resize(db);
 
         AddCoins(view, *expiry.vtx[0], expiry_height);
-        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, 50 * COIN, expiry_undo, error));
+        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, 50 * COIN, expiry_undo) == node::recycle::Error::NONE);
         BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), VALUE);
         view.SetBestBlock(uint256{2});
         view.Flush();
@@ -840,8 +847,7 @@ BOOST_FIXTURE_TEST_CASE(block_source_without_height_index, BasicTestingSetup)
         BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, 200, &origin), 0);
         expiry.vtx.pop_back();
         CTxUndo undo;
-        std::string error;
-        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, 201, 0, undo, error, nullptr, 200, &origin));
+        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, 201, 0, undo, nullptr, 200, &origin) == node::recycle::Error::NONE);
         BOOST_CHECK(view.AccessCoin(output).IsSpent());
         BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), COIN);
         BOOST_REQUIRE(node::recycle::DisconnectBlock(view, 201, &undo, 200));

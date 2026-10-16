@@ -111,8 +111,8 @@ CAmount ExpiringValue(const CCoinsViewCache& view, const CBlock& block, int heig
     return amount;
 }
 
-bool Apply(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
-           CTxUndo* undo, std::string& error, std::vector<COutPoint>* expired_outpoints, int expiry_blocks, const CBlock* origin_block)
+Error Apply(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
+            CTxUndo* undo, std::vector<COutPoint>* expired_outpoints, int expiry_blocks, const CBlock* origin_block)
 {
     UndoData undo_data;
     undo_data.pool_before = PoolBalance(view);
@@ -121,10 +121,9 @@ bool Apply(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_
     const int origin{height - expiry_blocks};
     if (origin < 1) {
         if (block.vtx[0]->GetValueOut() > base_reward) {
-            error = "coinbase claims recycle reward before any output can expire";
-            return false;
+            return Error::PREMATURE_REWARD;
         }
-        return true;
+        return Error::NONE;
     }
     {
         const auto outputs{ExpiryCandidates(view, origin, origin_block)};
@@ -133,8 +132,7 @@ bool Apply(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_
             if (!coin.IsSpent() && coin.nHeight == origin) {
                 Coin expired;
                 if (!view.SpendCoin(outpoint, &expired)) {
-                    error = "recycle expiry: SpendCoin failed";
-                    return false;
+                    return Error::SPEND_FAILED;
                 }
                 expired_value += expired.out.nValue;
                 if (expired_outpoints) expired_outpoints->push_back(outpoint);
@@ -146,14 +144,13 @@ bool Apply(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_
     const CAmount available{undo_data.pool_before + expired_value};
     const CAmount claimed{std::max<CAmount>(0, block.vtx[0]->GetValueOut() - base_reward)};
     if (claimed > std::min(MAX_REWARD, available)) {
-        error = "coinbase claims excessive recycle reward";
-        return false;
+        return Error::EXCESSIVE_REWARD;
     }
 
     PutStateCoin(view, PoolOutpoint(), StateCoin(available - claimed, CScript{OP_RETURN}, height));
 
     if (undo) undo->vprevout.emplace_back(StateCoin(0, Encode(undo_data), height));
-    return true;
+    return Error::NONE;
 }
 
 } // namespace
@@ -169,10 +166,10 @@ CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int he
     return std::min(MAX_REWARD, PoolBalance(view) + ExpiringValue(view, block, height, expiry_blocks, origin_block));
 }
 
-bool ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
-                  CTxUndo& undo, std::string& error, std::vector<COutPoint>* expired, int expiry_blocks, const CBlock* origin_block)
+Error ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
+                   CTxUndo& undo, std::vector<COutPoint>* expired, int expiry_blocks, const CBlock* origin_block)
 {
-    return Apply(view, block, height, base_reward, &undo, error, expired, expiry_blocks, origin_block);
+    return Apply(view, block, height, base_reward, &undo, expired, expiry_blocks, origin_block);
 }
 
 bool DisconnectBlock(CCoinsViewCache& view, int height, CTxUndo* undo, int expiry_blocks)
@@ -196,8 +193,7 @@ bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CA
 {
     const int origin{height - expiry_blocks};
     if (origin < 1) {
-        std::string error;
-        return Apply(view, block, height, base_reward, nullptr, error, nullptr, expiry_blocks, nullptr);
+        return Apply(view, block, height, base_reward, nullptr, nullptr, expiry_blocks, nullptr) == Error::NONE;
     }
     if (!undo || undo->vprevout.size() != 1) return false;
 
