@@ -65,6 +65,11 @@ bool Decode(const CScript& script, T& value)
     }
 }
 
+bool DecodeUndo(const CTxUndo* undo, UndoData& data)
+{
+    return undo && undo->vprevout.size() == 1 && Decode(undo->vprevout[0].out.scriptPubKey, data);
+}
+
 Coin StateCoin(CAmount amount, CScript script, int height)
 {
     return Coin{CTxOut{amount, std::move(script)}, height, false};
@@ -111,8 +116,21 @@ CAmount ExpiringValue(const CCoinsViewCache& view, const CBlock& block, int heig
     return amount;
 }
 
-Error Apply(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
-            CTxUndo* undo, std::vector<COutPoint>* expired_outpoints, int expiry_blocks, const CBlock* origin_block)
+} // namespace
+
+CAmount PoolBalance(const CCoinsViewCache& view)
+{
+    const Coin& coin{view.AccessCoin(PoolOutpoint())};
+    return coin.IsSpent() ? 0 : coin.out.nValue;
+}
+
+CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int height, int expiry_blocks, const CBlock* origin_block)
+{
+    return std::min(MAX_REWARD, PoolBalance(view) + ExpiringValue(view, block, height, expiry_blocks, origin_block));
+}
+
+Error ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
+                   CTxUndo& undo, std::vector<COutPoint>* expired_outpoints, int expiry_blocks, const CBlock* origin_block)
 {
     const int origin{height - expiry_blocks};
     if (origin < 1) {
@@ -149,35 +167,15 @@ Error Apply(CCoinsViewCache& view, const CBlock& block, int height, CAmount base
 
     PutStateCoin(view, PoolOutpoint(), StateCoin(available - claimed, CScript{OP_RETURN}, height));
 
-    if (undo) undo->vprevout.emplace_back(StateCoin(0, Encode(undo_data), height));
+    undo.vprevout.emplace_back(StateCoin(0, Encode(undo_data), height));
     return Error::NONE;
-}
-
-} // namespace
-
-CAmount PoolBalance(const CCoinsViewCache& view)
-{
-    const Coin& coin{view.AccessCoin(PoolOutpoint())};
-    return coin.IsSpent() ? 0 : coin.out.nValue;
-}
-
-CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int height, int expiry_blocks, const CBlock* origin_block)
-{
-    return std::min(MAX_REWARD, PoolBalance(view) + ExpiringValue(view, block, height, expiry_blocks, origin_block));
-}
-
-Error ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
-                   CTxUndo& undo, std::vector<COutPoint>* expired, int expiry_blocks, const CBlock* origin_block)
-{
-    return Apply(view, block, height, base_reward, &undo, expired, expiry_blocks, origin_block);
 }
 
 bool DisconnectBlock(CCoinsViewCache& view, int height, CTxUndo* undo, int expiry_blocks)
 {
     if (height - expiry_blocks < 1) return true;
-    if (!undo || undo->vprevout.size() != 1) return false;
     UndoData data;
-    if (!Decode(undo->vprevout[0].out.scriptPubKey, data)) return false;
+    if (!DecodeUndo(undo, data)) return false;
 
     if (height - expiry_blocks == 1) {
         view.SpendCoin(PoolOutpoint());
@@ -193,12 +191,11 @@ bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CA
 {
     const int origin{height - expiry_blocks};
     if (origin < 1) {
-        return Apply(view, block, height, base_reward, nullptr, nullptr, expiry_blocks, nullptr) == Error::NONE;
+        return block.vtx[0]->GetValueOut() <= base_reward;
     }
-    if (!undo || undo->vprevout.size() != 1) return false;
 
     UndoData data;
-    if (!Decode(undo->vprevout[0].out.scriptPubKey, data)) return false;
+    if (!DecodeUndo(undo, data)) return false;
     CAmount expired_value{0};
     for (const auto& [outpoint, coin] : data.expired) expired_value += coin.out.nValue;
 
@@ -214,7 +211,7 @@ bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CA
 bool ReadUndo(const CTxUndo& undo, CAmount& pool_before, std::vector<std::pair<COutPoint, Coin>>& expired)
 {
     UndoData data;
-    if (undo.vprevout.size() != 1 || !Decode(undo.vprevout[0].out.scriptPubKey, data)) return false;
+    if (!DecodeUndo(&undo, data)) return false;
     pool_before = data.pool_before;
     expired = std::move(data.expired);
     return true;
