@@ -4869,7 +4869,8 @@ VerifyDBResult CVerifyDB::VerifyDB(
 bool Chainstate::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& inputs)
 {
     AssertLockHeld(cs_main);
-    // TODO: merge with ConnectBlock
+    // Keep replay separate from normal block connection: an interrupted flush
+    // may have already applied some coin changes, so replay must tolerate them.
     CBlock block;
     if (!m_blockman.ReadBlock(block, *pindex)) {
         LogError("ReplayBlock(): ReadBlock failed at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
