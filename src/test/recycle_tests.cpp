@@ -355,7 +355,7 @@ BOOST_FIXTURE_TEST_CASE(large_state_disk_and_undo_roundtrip, BasicTestingSetup)
         origin.vtx[0] = MakeTransactionRef(std::move(tx));
         const COutPoint schedule_key{Txid{}, 1'000'001};
         {
-            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
             BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             CCoinsViewCache view{&db};
             AddCoins(view, *origin.vtx[0], 1);
@@ -365,7 +365,7 @@ BOOST_FIXTURE_TEST_CASE(large_state_disk_and_undo_roundtrip, BasicTestingSetup)
             view.Flush();
         }
         {
-            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
             BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             CCoinsViewCache view{&db};
             BOOST_CHECK(!view.HaveCoin(schedule_key));
@@ -442,7 +442,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
     Records expired_records;
     std::shared_future<void> pending_shutdown;
     {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
         BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
         CCoinsViewCache view{&db};
         AddCoins(view, *origin.vtx[0], 1);
@@ -468,7 +468,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
     BOOST_REQUIRE(pending_shutdown.wait_for(std::chrono::seconds{0}) == std::future_status::ready);
     pending_shutdown.get();
     {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
         BOOST_CHECK(same_records(snapshot(db), expired_records));
         BOOST_CHECK(db.GetBestBlock() == uint256{2});
         BOOST_REQUIRE(db.RecycleStateReady());
@@ -492,7 +492,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
         compact_and_resize(db);
     }
     {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
         BOOST_CHECK(same_records(snapshot(db), original_records));
         BOOST_CHECK(db.GetBestBlock() == uint256{1});
         BOOST_CHECK(db.RecycleStateReady());
@@ -542,7 +542,7 @@ BOOST_FIXTURE_TEST_CASE(index_migration_and_interruption, BasicTestingSetup)
         view.Flush();
     }
     {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true, .batch_write_bytes = 1}};
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX, .batch_write_bytes = 1}};
         BOOST_CHECK_THROW(db.GetCoinsByHeight(1), std::runtime_error);
         int calls{0};
         BOOST_CHECK(!db.UpgradeRecycleIndex([&] { return ++calls == 4; }));
@@ -550,7 +550,7 @@ BOOST_FIXTURE_TEST_CASE(index_migration_and_interruption, BasicTestingSetup)
         BOOST_CHECK(!db.HaveCoin(schedule));
     }
     {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true, .batch_write_bytes = 1}};
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX, .batch_write_bytes = 1}};
         BOOST_CHECK(!db.NeedsUpgrade());
         BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
         BOOST_CHECK(db.RecycleStateReady());
@@ -601,7 +601,7 @@ BOOST_FIXTURE_TEST_CASE(index_iterator_io_error_and_restart, BasicTestingSetup)
             raw.Write(uint8_t{'r'}, phase == 2 ? 2 : 1, true);
         }
         {
-            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true, .batch_write_bytes = 1}};
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX, .batch_write_bytes = 1}};
             const auto hidden{fs::PathFromString(fs::PathToString(table) + ".unavailable")};
             fs::rename(table, hidden);
             fs::create_directory(table);
@@ -619,7 +619,7 @@ BOOST_FIXTURE_TEST_CASE(index_iterator_io_error_and_restart, BasicTestingSetup)
         }
         // Restore the file, reopen and require a complete, correct rebuild.
         {
-            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true, .batch_write_bytes = 1}};
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX, .batch_write_bytes = 1}};
             if (phase != 2) BOOST_CHECK(!db.RecycleStateReady());
             BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             BOOST_CHECK(db.RecycleStateReady());
@@ -647,7 +647,7 @@ BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
         const COutPoint phantom{Txid::FromUint256(uint256{42}), 0};
         const std::set<COutPoint> expected{output};
         {
-            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
             BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             CCoinsViewCache view{&db};
             AddCoins(view, *origin.vtx[0], 1);
@@ -667,7 +667,7 @@ BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
             }
         }
         {
-            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
             // The ready marker certifies migration completion, not completeness.
             BOOST_REQUIRE(db.RecycleStateReady());
             BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
@@ -696,7 +696,7 @@ BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
             raw.Write(uint8_t{'r'}, 3, true);
         }
         {
-            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true, .batch_write_bytes = 1}};
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX, .batch_write_bytes = 1}};
             BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             BOOST_CHECK(db.GetCoinsByHeight(1) == expected);
             BOOST_CHECK(db.GetCoinsByHeight(2).empty());
@@ -713,7 +713,7 @@ BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
 
 BOOST_FIXTURE_TEST_CASE(index_check_snapshot_and_cancellation, BasicTestingSetup)
 {
-    CCoinsViewDB db{{.path = m_path_root / "check-snapshot", .cache_bytes = 1 << 20}, {.recycle_index = true}};
+    CCoinsViewDB db{{.path = m_path_root / "check-snapshot", .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
     BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
     CCoinsViewCache view{&db};
     const auto block{CoinbaseBlock(COIN, 1)};
@@ -764,7 +764,7 @@ BOOST_FIXTURE_TEST_CASE(index_check_malformed_records_and_bounded_examples, Basi
     const COutPoint output{block.vtx[0]->GetHash(), 0};
     const COutPoint pool{Txid{}, std::numeric_limits<uint32_t>::max()};
     {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
         BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
         CCoinsViewCache view{&db};
         AddCoins(view, *block.vtx[0], 1);
@@ -788,7 +788,7 @@ BOOST_FIXTURE_TEST_CASE(index_check_malformed_records_and_bounded_examples, Basi
         }
     }
     {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
         auto snapshot{CheckSnapshot(db)};
         const auto checked{snapshot->Check(ContinueCheck)};
         BOOST_CHECK(checked.completed);
@@ -804,7 +804,7 @@ BOOST_FIXTURE_TEST_CASE(index_check_malformed_records_and_bounded_examples, Basi
 
 BOOST_FIXTURE_TEST_CASE(index_cache_overlays_and_overwrites, BasicTestingSetup)
 {
-    CCoinsViewDB db{{.path = m_path_root / "index-cache", .cache_bytes = 1 << 20}, {.recycle_index = true}};
+    CCoinsViewDB db{{.path = m_path_root / "index-cache", .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
     BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
     CCoinsViewCache parent{&db};
     const CBlock block{CoinbaseBlock(COIN, 102)};
@@ -850,13 +850,49 @@ BOOST_FIXTURE_TEST_CASE(index_cache_overlays_and_overwrites, BasicTestingSetup)
     }
 }
 
+BOOST_FIXTURE_TEST_CASE(database_mode_codecs_and_indexing, BasicTestingSetup)
+{
+    struct Case { const char* name; RecycleMode mode; int codec; };
+    const Case cases[]{{"disabled", RecycleMode::DISABLED, 0},
+                       {"index", RecycleMode::INDEX, 2},
+                       {"block", RecycleMode::BLOCK, 4}};
+    const auto origin{CoinbaseBlock(COIN, 1)};
+    const COutPoint output{origin.vtx[0]->GetHash(), 0};
+    for (const auto& test : cases) {
+        const auto path{m_path_root / test.name};
+        {
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = test.mode}};
+            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+            CCoinsViewCache view{&db};
+            AddCoins(view, *origin.vtx[0], 1);
+            view.SetBestBlock(uint256{1});
+            view.Flush();
+            BOOST_CHECK(!db.NeedsUpgrade());
+            if (test.mode == RecycleMode::INDEX) {
+                BOOST_CHECK(db.GetCoinsByHeight(1).contains(output));
+            } else {
+                BOOST_CHECK_THROW(db.GetCoinsByHeight(1), std::runtime_error);
+            }
+        }
+        CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
+        if (test.codec == 0) {
+            BOOST_CHECK(!raw.Exists(uint8_t{'r'}));
+        } else {
+            int codec{0};
+            BOOST_REQUIRE(raw.Read(uint8_t{'r'}, codec));
+            BOOST_CHECK_EQUAL(codec, test.codec);
+        }
+        BOOST_CHECK_EQUAL(raw.Exists(TestHeightEntry{'E', 1, output}), test.mode == RecycleMode::INDEX);
+    }
+}
+
 BOOST_FIXTURE_TEST_CASE(block_source_without_height_index, BasicTestingSetup)
 {
     const auto path{m_path_root / "block-source"};
     const CBlock origin{CoinbaseBlock(2 * COIN, 1)};
     const COutPoint output{origin.vtx[0]->GetHash(), 0};
     {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_from_block = true}};
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::BLOCK}};
         BOOST_CHECK(!db.NeedsUpgrade());
         BOOST_CHECK(!db.RecycleStateReady());
         CCoinsViewCache view{&db};
@@ -896,7 +932,7 @@ BOOST_FIXTURE_TEST_CASE(block_source_without_height_index, BasicTestingSetup)
         cursor->CheckStatus();
     }
     // Older/index-mode code must reject the block-mode codec.
-    CCoinsViewDB indexed{{.path = path, .cache_bytes = 1 << 20}, {.recycle_index = true}};
+    CCoinsViewDB indexed{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
     BOOST_CHECK(indexed.NeedsUpgrade());
 }
 

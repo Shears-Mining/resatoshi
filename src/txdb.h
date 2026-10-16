@@ -63,12 +63,12 @@ public:
     RecycleIndexCheckResult Check(const std::function<bool(const std::string&, const RecycleIndexCheckResult&)>& progress) const EXCLUSIVE_LOCKS_REQUIRED(!cs_main);
 };
 
+//! In-memory DB behavior; does not change persisted codec values.
+enum class RecycleMode { DISABLED, INDEX, BLOCK };
+
 //! User-controlled performance and debug options.
 struct CoinsViewOptions {
-    //! Maintain the derived creation-height index on recycling networks.
-    bool recycle_index{false};
-    //! Use block-source codec without maintaining the height index.
-    bool recycle_from_block{false};
+    RecycleMode recycle_mode{RecycleMode::DISABLED};
     //! Maximum database write batch size in bytes.
     size_t batch_write_bytes{DEFAULT_DB_CACHE_BATCH};
     //! If non-zero, randomly exit when the database is flushed with (1/ratio) probability.

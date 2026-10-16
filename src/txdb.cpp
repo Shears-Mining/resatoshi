@@ -55,7 +55,7 @@ bool CCoinsViewDB::NeedsUpgrade()
     if (cursor->Valid() && cursor->GetKey(key) && key == DB_COINS) return true;
     int version{0};
     return m_db->Exists(DB_RECYCLE_CODEC) && (!m_db->Read(DB_RECYCLE_CODEC, version) ||
-        (m_options.recycle_from_block ? version != RECYCLE_BLOCK_VERSION :
+        (m_options.recycle_mode == RecycleMode::BLOCK ? version != RECYCLE_BLOCK_VERSION :
          (version != 1 && version != RECYCLE_INDEX_VERSION && version != RECYCLE_INDEX_BUILDING)));
 }
 
@@ -211,7 +211,7 @@ RecycleIndexCheckResult RecycleIndexSnapshot::Check(
 std::unique_ptr<RecycleIndexSnapshot> CCoinsViewDB::GetRecycleIndexSnapshot()
 {
     AssertLockHeld(cs_main);
-    if (!m_options.recycle_index) throw std::runtime_error("Recycle height index is disabled");
+    if (m_options.recycle_mode != RecycleMode::INDEX) throw std::runtime_error("Recycle height index is disabled");
     if (!m_recycle_check.expired()) return {};
     auto control{std::make_shared<RecycleIndexScanControl>()};
     auto snapshot{std::unique_ptr<RecycleIndexSnapshot>(new RecycleIndexSnapshot{m_db, control})};
@@ -230,7 +230,7 @@ void CCoinsViewDB::CancelRecycleIndexCheck()
 
 bool CCoinsViewDB::UpgradeRecycleIndex(const std::function<bool()>& interrupted)
 {
-    if (!m_options.recycle_index || RecycleStateReady()) return true;
+    if (m_options.recycle_mode != RecycleMode::INDEX || RecycleStateReady()) return true;
     // Mark before the first mutation. Legacy binaries that know the codec
     // marker must not open a partially migrated database.
     m_db->Write(DB_RECYCLE_CODEC, RECYCLE_INDEX_BUILDING, /*fSync=*/true);
@@ -286,7 +286,7 @@ bool CCoinsViewDB::UpgradeRecycleIndex(const std::function<bool()>& interrupted)
 
 std::set<COutPoint> CCoinsViewDB::GetCoinsByHeight(uint32_t height) const
 {
-    if (!m_options.recycle_index || !RecycleStateReady()) {
+    if (m_options.recycle_mode != RecycleMode::INDEX || !RecycleStateReady()) {
         throw std::runtime_error("Recycle height index is not ready");
     }
     std::set<COutPoint> outputs;
@@ -309,7 +309,7 @@ CCoinsViewDB::CCoinsViewDB(DBParams db_params, CoinsViewOptions options) :
     m_options{std::move(options)},
     m_db{std::make_shared<CDBWrapper>(m_db_params)}
 {
-    if (m_options.recycle_from_block && !m_db->Exists(DB_RECYCLE_CODEC)) {
+    if (m_options.recycle_mode == RecycleMode::BLOCK && !m_db->Exists(DB_RECYCLE_CODEC)) {
         m_db->Write(DB_RECYCLE_CODEC, RECYCLE_BLOCK_VERSION, /*fSync=*/true);
     }
 }
@@ -408,7 +408,7 @@ void CCoinsViewDB::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashB
     for (auto it{cursor.Begin()}; it != cursor.End();) {
         if (it->second.IsDirty()) {
             CoinEntry entry(&it->first);
-            if (m_options.recycle_index) {
+            if (m_options.recycle_mode == RecycleMode::INDEX) {
                 // The old height is no longer present in a spent cache entry.
                 // Read the persisted coin and update both keys in the SAME batch,
                 // including across interrupted flushes and BIP30 overwrites.

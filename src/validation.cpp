@@ -1932,8 +1932,11 @@ void Chainstate::InitCoinsDB(
     bool should_wipe)
 {
     auto coins_options{m_chainman.m_options.coins_view};
-    coins_options.recycle_index = m_chainman.GetConsensus().recycle_enabled && !m_chainman.m_options.recycle_from_block;
-    coins_options.recycle_from_block = m_chainman.GetConsensus().recycle_enabled && m_chainman.m_options.recycle_from_block;
+    if (m_chainman.GetConsensus().recycle_enabled) {
+        coins_options.recycle_mode = m_chainman.m_options.recycle_from_block ? RecycleMode::BLOCK : RecycleMode::INDEX;
+    } else {
+        coins_options.recycle_mode = RecycleMode::DISABLED;
+    }
     m_coins_views = std::make_unique<CoinsViews>(
         DBParams{
             .path = StoragePath(),
