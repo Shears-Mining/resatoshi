@@ -4873,8 +4873,9 @@ bool Chainstate::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& in
         return false;
     }
 
+    const bool recycle_enabled{m_chainman.GetConsensus().recycle_enabled};
     CBlockUndo block_undo;
-    if (m_chainman.GetConsensus().recycle_enabled && !m_blockman.ReadBlockUndo(block_undo, *pindex)) {
+    if (recycle_enabled && !m_blockman.ReadBlockUndo(block_undo, *pindex)) {
         LogError("ReplayBlock(): ReadBlockUndo failed at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
         return false;
     }
@@ -4883,21 +4884,20 @@ bool Chainstate::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& in
     for (size_t i{0}; i < block.vtx.size(); ++i) {
         const CTransactionRef& tx{block.vtx[i]};
         if (!tx->IsCoinBase()) {
-            CAmount value_in{0};
-            if (m_chainman.GetConsensus().recycle_enabled) {
+            if (recycle_enabled) {
+                CAmount value_in{0};
                 if (i - 1 >= block_undo.vtxundo.size() || block_undo.vtxundo[i - 1].vprevout.size() != tx->vin.size()) return false;
                 for (const Coin& coin : block_undo.vtxundo[i - 1].vprevout) value_in += coin.out.nValue;
+                fees += value_in - tx->GetValueOut();
             }
             for (const CTxIn& txin : tx->vin) {
-                if (!m_chainman.GetConsensus().recycle_enabled) value_in += inputs.AccessCoin(txin.prevout).out.nValue;
                 inputs.SpendCoin(txin.prevout);
             }
-            fees += value_in - tx->GetValueOut();
         }
         // Pass check = true as every addition may be an overwrite.
         AddCoins(inputs, *tx, pindex->nHeight, true);
     }
-    if (!m_chainman.GetConsensus().recycle_enabled) return true;
+    if (!recycle_enabled) return true;
     const bool has_recycle_undo{node::recycle::ExpectsStateUndo(pindex->nHeight, m_chainman.GetConsensus())};
     const CTxUndo* recycle_undo{has_recycle_undo && block_undo.vtxundo.size() >= block.vtx.size()
                                     ? &block_undo.vtxundo.back()
