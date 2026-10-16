@@ -114,10 +114,6 @@ CAmount ExpiringValue(const CCoinsViewCache& view, const CBlock& block, int heig
 Error Apply(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
             CTxUndo* undo, std::vector<COutPoint>* expired_outpoints, int expiry_blocks, const CBlock* origin_block)
 {
-    UndoData undo_data;
-    undo_data.pool_before = PoolBalance(view);
-
-    CAmount expired_value{0};
     const int origin{height - expiry_blocks};
     if (origin < 1) {
         if (block.vtx[0]->GetValueOut() > base_reward) {
@@ -125,6 +121,10 @@ Error Apply(CCoinsViewCache& view, const CBlock& block, int height, CAmount base
         }
         return Error::NONE;
     }
+
+    UndoData undo_data;
+    undo_data.pool_before = PoolBalance(view);
+    CAmount expired_value{0};
     {
         const auto outputs{ExpiryCandidates(view, origin, origin_block)};
         for (const auto& outpoint : outputs) {
