@@ -267,6 +267,7 @@ BASE_SCRIPTS = [
     'feature_recycle.py',
     'feature_recycle.py --crash-mode=index',
     'feature_recycle_modes.py',
+    'feature_recycle_mixed_versions.py',
     'feature_recycle_recovery.py',
     'feature_recycle_index.py',
     'rpc_checkrecycleindex.py',

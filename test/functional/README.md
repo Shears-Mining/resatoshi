@@ -222,3 +222,11 @@ the reference index path. They also accept `--small-cache --crash-height=200` (o
 Unit `recycle_tests` cover typed undo boundaries, pool cache rollback, disk/reopen,
 compaction, index damage and cancellation, and block-source equivalence. Kernel
 `btck_recycle_spent_outputs_disk_tests` covers transaction-input API lifetime and reopen.
+
+`feature_recycle_mixed_versions --reference-bitcoind=PATH` connects the experimental
+and reference nodes over P2P and mines blocks on both. It checks transaction relay
+in both directions, concurrent competing blocks at first expiry, reorganizations
+in both directions, renewed expiry and restart with an empty UTXO set and nonzero
+pool. `--candidate-mode` and `--reference-mode` select index/block independently;
+`--v2transport` and `--v1transport` cover both wire transports. It uses no
+RPC block submission to the receiving peer and never shares data directories.
