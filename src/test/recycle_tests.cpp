@@ -147,10 +147,46 @@ BOOST_AUTO_TEST_CASE(typed_undo_boundaries_and_transaction_separation)
     BOOST_CHECK_EQUAL(disk.vtxundo[0].vprevout.size(), 1U);
     BOOST_CHECK_EQUAL(disk.recycle.expired.size(), 1U);
     BOOST_CHECK(node::recycle::HasExpectedUndo(disk, 201, 2, consensus));
-    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, 201, &disk.recycle, consensus));
+    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, 201, &disk.recycle, consensus) == node::recycle::UndoResult::CLEAN);
     BOOST_CHECK(view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));
     disk.recycle.expired.push_back(disk.recycle.expired[0]);
     BOOST_CHECK(!node::recycle::HasExpectedUndo(disk, 201, 2, consensus));
+}
+
+BOOST_FIXTURE_TEST_CASE(expiry_undo_replay_preserves_persisted_coin_deletion, BasicTestingSetup)
+{
+    // A partial reorg flush can leave an origin output already restored on disk.
+    // Rolling back the old branch and then expiring it on the new branch must
+    // still erase that persisted coin, rather than treat it as cache-only FRESH.
+    for (const auto mode : {RecycleMode::INDEX, RecycleMode::BLOCK}) for (bool cached : {false, true}) {
+        const auto path{m_path_root / fs::PathFromString(strprintf("reorg-undo-%d-%d", static_cast<int>(mode), cached))};
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = mode}};
+        const CBlock origin{CoinbaseBlock(2 * COIN, 1)};
+        const COutPoint outpoint{origin.vtx[0]->GetHash(), 0};
+        {
+            CCoinsViewCache persisted{&db};
+            AddCoins(persisted, *origin.vtx[0], 1);
+            persisted.SetBestBlock(uint256{1});
+            persisted.Flush();
+        }
+        CRecycleUndo undo;
+        undo.active = true;
+        undo.expired.emplace_back(outpoint, Coin{origin.vtx[0]->vout[0], 1, true});
+        const auto consensus{RecycleParams(200)};
+        const CBlock expiry{CoinbaseBlock(COIN, 201)};
+        {
+            CCoinsViewCache replay{&db};
+            if (cached) BOOST_REQUIRE(replay.HaveCoin(outpoint));
+            BOOST_REQUIRE(node::recycle::DisconnectBlock(replay, 201, &undo, consensus) == node::recycle::UndoResult::UNCLEAN);
+            BOOST_REQUIRE(node::recycle::DisconnectBlock(replay, 201, &undo, consensus) == node::recycle::UndoResult::UNCLEAN);
+            BOOST_REQUIRE(node::recycle::RollforwardBlock(replay, expiry, 201, 0, &undo, consensus));
+            replay.SetBestBlock(uint256{2});
+            replay.Flush();
+        }
+        BOOST_CHECK(!db.HaveCoin(outpoint));
+        BOOST_CHECK_EQUAL(db.GetRecyclePool(), COIN);
+        if (mode == RecycleMode::INDEX) BOOST_CHECK(db.GetCoinsByHeight(1).empty());
+    }
 }
 
 BOOST_FIXTURE_TEST_CASE(pool_cache_rollback_flush_and_reopen, BasicTestingSetup)
@@ -253,7 +289,7 @@ BOOST_AUTO_TEST_CASE(expiry_reward_and_disconnect)
     BOOST_CHECK(!view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 0);
 
-    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &recycle_undo, RecycleParams()));
+    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &recycle_undo, RecycleParams()) == node::recycle::UndoResult::CLEAN);
     BOOST_CHECK(view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 0);
 }
@@ -357,7 +393,7 @@ BOOST_AUTO_TEST_CASE(partial_reward_fee_separation_and_reorg)
 
     // Reorg the partially rewarded expiry block out and replace it with a block
     // that claims no recycle reward. The expiry must be applied exactly once.
-    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &expiry_undo, RecycleParams()));
+    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &expiry_undo, RecycleParams()) == node::recycle::UndoResult::CLEAN);
     BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), 0);
     BOOST_REQUIRE(view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));
     CBlock alternate{CoinbaseBlock(SUBSIDY + FEES, 20'002)};
@@ -436,7 +472,7 @@ BOOST_FIXTURE_TEST_CASE(large_state_disk_and_undo_roundtrip, BasicTestingSetup)
             bytes >> restored;
             BOOST_REQUIRE_EQUAL(restored.recycle.expired.size(), count);
             BOOST_REQUIRE(node::recycle::RollforwardBlock(view, expiry, height, 50 * COIN, &restored.recycle, RecycleParams()));
-            BOOST_REQUIRE(node::recycle::DisconnectBlock(view, height, &restored.recycle, RecycleParams()));
+            BOOST_REQUIRE(node::recycle::DisconnectBlock(view, height, &restored.recycle, RecycleParams()) == node::recycle::UndoResult::CLEAN);
             BOOST_CHECK(!view.HaveCoin(schedule_key));
             BOOST_CHECK_EQUAL(view.GetCoinsByHeight(1).size(), count);
             BOOST_CHECK(!view.HaveCoin(COutPoint{Txid{}, std::numeric_limits<uint32_t>::max()}));
@@ -535,7 +571,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
         view.Flush();
         BOOST_CHECK(same_records(snapshot(db), expired_records));
 
-        BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &expiry_undo, RecycleParams()));
+        BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &expiry_undo, RecycleParams()) == node::recycle::UndoResult::CLEAN);
         BOOST_REQUIRE(view.SpendCoin(COutPoint{expiry.vtx[0]->GetHash(), 0}));
         BOOST_CHECK_EQUAL(view.GetCoinsByHeight(1).size(), COUNT);
         BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), 0);
@@ -909,7 +945,7 @@ BOOST_FIXTURE_TEST_CASE(block_source_without_height_index, BasicTestingSetup)
         BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, 201, 0, undo, RecycleParams(200), node::recycle::ExpirySource::Block(origin)) == node::recycle::Error::NONE);
         BOOST_CHECK(view.AccessCoin(output).IsSpent());
         BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), COIN);
-        BOOST_REQUIRE(node::recycle::DisconnectBlock(view, 201, &undo, RecycleParams(200)));
+        BOOST_REQUIRE(node::recycle::DisconnectBlock(view, 201, &undo, RecycleParams(200)) == node::recycle::UndoResult::CLEAN);
         BOOST_CHECK(!view.AccessCoin(output).IsSpent());
         // A stale outpoint at a different creation height must not expire.
         view.SpendCoin(output);

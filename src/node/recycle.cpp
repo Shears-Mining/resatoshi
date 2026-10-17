@@ -106,13 +106,22 @@ Error ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmou
     return Error::NONE;
 }
 
-bool DisconnectBlock(CCoinsViewCache& view, int height, const CRecycleUndo* undo, const Consensus::Params& consensus)
+UndoResult DisconnectBlock(CCoinsViewCache& view, int height, const CRecycleUndo* undo, const Consensus::Params& consensus)
 {
-    if (height <= consensus.recycle_expiry_blocks) return !undo || !undo->active;
-    if (!undo || !undo->active || !MoneyRange(undo->pool_before)) return false;
+    if (height <= consensus.recycle_expiry_blocks) return !undo || !undo->active ? UndoResult::CLEAN : UndoResult::FAILED;
+    if (!undo || !undo->active || !MoneyRange(undo->pool_before)) return UndoResult::FAILED;
     view.SetRecyclePool(undo->pool_before);
-    for (const auto& [outpoint, coin] : undo->expired) view.AddCoin(outpoint, Coin{coin}, false);
-    return true;
+    auto result{UndoResult::CLEAN};
+    for (const auto& [outpoint, coin] : undo->expired) {
+        // Like transaction-input undo, load the persisted state before restoring.
+        // A partial reorg flush may already have restored this output. Marking
+        // it FRESH would let a later replay erase only the cache entry and leave
+        // the persisted coin (and its height-index key) spendable on disk.
+        const bool overwrite{view.HaveCoin(outpoint)};
+        view.AddCoin(outpoint, Coin{coin}, overwrite);
+        if (overwrite) result = UndoResult::UNCLEAN;
+    }
+    return result;
 }
 
 bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,

@@ -51,6 +51,9 @@ A large UTXO flush may span multiple LevelDB batches. The first marks the old
 and new tips in `DB_HEAD_BLOCKS`; the final publishes the pool balance and new
 best-block marker together and clears the head marker. Restart recovery uses
 typed undo to restore the previous state and replay the transition idempotently.
+Expiry restoration checks whether each coin already exists before adding it, as
+transaction-input undo does. Overwrites are reported as unclean during normal
+disconnection and tolerated by interrupted-flush replay.
 Simply sharing one database is not sufficient to guarantee these recovery semantics.
 
 ## Index checks and recovery

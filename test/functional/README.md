@@ -232,3 +232,14 @@ in both directions, renewed expiry and restart with an empty UTXO set and nonzer
 pool. `--candidate-mode` and `--reference-mode` select index/block independently;
 `--v2transport` and `--v1transport` cover both wire transports. It uses no
 RPC block submission to the receiving peer and never shares data directories.
+
+`feature_recycle_boundary --crash-reorg` interrupts partial chainstate writes
+after rolling back across expiry and after switching between competing branches.
+It checks three recoveries against the independent ledger, including statistics
+index rewind through hash-keyed records. The index-mode configuration runs in
+the base suite; `--expiry-mode=block` exercises the original-block path.
+
+`wallet_recycle_upgrade --reference-bitcoind=PATH` backs up a reference wallet,
+restores it into a separately synchronized candidate directory, relays and confirms
+a payment through the reference node, and checks wallet reload after restart.
+`--candidate-mode=block` covers the second expiry mode.

@@ -2254,9 +2254,13 @@ DisconnectResult Chainstate::DisconnectBlock(const CBlock& block, const CBlockIn
     }
 
     const CRecycleUndo* recycle_undo{&blockUndo.recycle};
-    if (recycle_enabled && !node::recycle::DisconnectBlock(view, pindex->nHeight, recycle_undo, m_chainman.GetConsensus())) {
-        LogError("DisconnectBlock(): invalid recycle undo data\n");
-        return DISCONNECT_FAILED;
+    if (recycle_enabled) {
+        const auto result{node::recycle::DisconnectBlock(view, pindex->nHeight, recycle_undo, m_chainman.GetConsensus())};
+        if (result == node::recycle::UndoResult::FAILED) {
+            LogError("DisconnectBlock(): invalid recycle undo data\n");
+            return DISCONNECT_FAILED;
+        }
+        fClean &= result == node::recycle::UndoResult::CLEAN;
     }
 
     // move best block pointer to prevout block

@@ -55,7 +55,9 @@ Error ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmou
                    CRecycleUndo& undo, const Consensus::Params& consensus,
                    ExpirySource source, std::vector<COutPoint>* expired = nullptr);
 
-bool DisconnectBlock(CCoinsViewCache& view, int height, const CRecycleUndo* undo, const Consensus::Params& consensus);
+/** An overwrite is unclean during normal disconnect, but expected in crash replay. */
+enum class UndoResult { CLEAN, UNCLEAN, FAILED };
+UndoResult DisconnectBlock(CCoinsViewCache& view, int height, const CRecycleUndo* undo, const Consensus::Params& consensus);
 
 /** Idempotent replay of an interrupted, possibly partial chainstate flush. */
 bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,

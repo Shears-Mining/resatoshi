@@ -36,6 +36,7 @@ class RecycleBoundaryTest(BitcoinTestFramework):
         parser.add_argument('--boundary-seed', type=int, default=17)
         parser.add_argument('--boundary-results')
         parser.add_argument('--small-cache', action='store_true')
+        parser.add_argument('--crash-reorg', action='store_true', help='Crash partial flushes during both directions of expiry reorganization')
         parser.add_argument('--crash-height', type=int, choices=(200, 201, 202))
 
     def setup_network(self):
@@ -163,6 +164,24 @@ class RecycleBoundaryTest(BitcoinTestFramework):
         assert_equal(*states)
         self.checkpoints += 1
 
+    def arm_reorg_crash(self):
+        if self.options.crash_reorg:
+            self.restart_node(0, extra_args=self.extra_args[0] + ['-dbbatchsize=1', '-dbcrashratio=1'])
+
+    def flush_reorg_crash(self):
+        if not self.options.crash_reorg:
+            return
+        node = self.nodes[0]
+        with node.assert_debug_log(['Simulating a crash. Goodbye.']):
+            try:
+                node.gettxoutsetinfo('muhash', use_index=False)
+            except (http.client.RemoteDisconnected, ConnectionResetError):
+                pass
+            node.wait_until_stopped(timeout=20)
+        with node.assert_debug_log(['Replaying blocks']):
+            self.start_node(0)
+        self.reorg_crashes += 1
+
     def restore(self, tip):
         self.tip = tip
         self.height, self.pool, coins = self.history[tip]
@@ -172,6 +191,7 @@ class RecycleBoundaryTest(BitcoinTestFramework):
     def run_test(self):
         self.coins, self.pool, self.height, self.unique = {}, 0, 0, 0
         self.crashed = False
+        self.reorg_crashes = 0
         self.accepted, self.rejected, self.checkpoints, self.cases = 0, 0, 0, []
         self.tip = self.nodes[0].getbestblockhash()
         self.history = {self.tip: (0, 0, {})}
@@ -252,8 +272,11 @@ class RecycleBoundaryTest(BitcoinTestFramework):
         self.accept(self.candidate())
         canonical_tip, canonical_height = self.tip, self.height
         self.mark('Multi-block reorg across expiry, alternate spends, and switching branches twice')
+        self.check()
+        self.arm_reorg_crash()
         for node in self.nodes:
             node.invalidateblock(canonical201.hash_hex)
+        self.flush_reorg_crash()
         self.restore(at200)
         alt_spends = [self.spend([self.point(origin, n)], fee=30_000) for n in (2, 3)]
         alternate201 = self.accept(self.candidate(alt_spends, claim=COIN // 2, spendable_reward=True))
@@ -261,13 +284,17 @@ class RecycleBoundaryTest(BitcoinTestFramework):
         self.accept(self.candidate([alt202], claim=0))
         self.advance(canonical_height + 1)
         alternate_tip = self.tip
+        self.arm_reorg_crash()
         for node in self.nodes:
             node.reconsiderblock(canonical201.hash_hex)
             assert_equal(node.getbestblockhash(), alternate_tip)
             node.invalidateblock(alternate201.hash_hex)
+        self.flush_reorg_crash()
         self.restore(canonical_tip)
+        self.arm_reorg_crash()
         for node in self.nodes:
             node.reconsiderblock(alternate201.hash_hex)
+        self.flush_reorg_crash()
         self.restore(alternate_tip)
         for height in (254, 255, 256, 257, 258):
             if height == 256:
@@ -340,7 +367,8 @@ class RecycleBoundaryTest(BitcoinTestFramework):
         for node in self.nodes:
             assert node.verifychain(4, 0)
         assert self.crashed == (self.options.crash_height is not None)
-        result = {'crash_height': self.options.crash_height, 'seed': self.options.boundary_seed, 'small_cache': self.options.small_cache,
+        assert_equal(self.reorg_crashes, 3 if self.options.crash_reorg else 0)
+        result = {'reorg_crashes': self.reorg_crashes, 'crash_height': self.options.crash_height, 'seed': self.options.boundary_seed, 'small_cache': self.options.small_cache,
                   'reference': self.options.reference_bitcoind, 'expiry_mode': self.options.expiry_mode, 'accepted_blocks': self.accepted,
                   'rejected_blocks': self.rejected, 'state_checkpoints': self.checkpoints,
                   'final_height': self.height, 'utxos': len(self.coins), 'pool_satoshis': self.pool,

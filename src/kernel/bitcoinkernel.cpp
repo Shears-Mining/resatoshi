@@ -1221,6 +1221,9 @@ btck_BlockSpentOutputs* btck_block_spent_outputs_read(const btck_ChainstateManag
         LogError("Block spent outputs count does not match its transactions.");
         return nullptr;
     }
+    // The public handle exposes only transaction inputs. Do not retain a large
+    // expiry cohort for the lifetime of the handle and its shared copies.
+    block_undo->recycle = {};
     return btck_BlockSpentOutputs::create(block_undo);
 }
 

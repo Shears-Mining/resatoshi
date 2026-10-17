@@ -389,7 +389,9 @@ bool CoinStatsIndex::RevertBlock(const interfaces::BlockInfo& block)
             LogWarning("previous block header belongs to unexpected block %s; expected %s",
                       read_out.first.ToString(), expected_block_hash.ToString());
 
-            if (!m_db->Read(index_util::DBHashKey(expected_block_hash), read_out)) {
+            // Height keys store (hash, statistics), but hash keys store only
+            // statistics. Decoding a hash row as a pair fails after a reorg.
+            if (!m_db->Read(index_util::DBHashKey(expected_block_hash), read_out.second)) {
                 LogError("previous block header not found; expected %s",
                           expected_block_hash.ToString());
                 return false;
