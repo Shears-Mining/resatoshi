@@ -25,6 +25,17 @@ namespace node::recycle {
 
 inline constexpr CAmount MAX_REWARD{COIN};
 
+/** Callers must explicitly select the candidate source; block mode requires a block. */
+class ExpirySource
+{
+    const CBlock* m_block;
+    explicit ExpirySource(const CBlock* block) : m_block{block} {}
+public:
+    static ExpirySource Index() { return ExpirySource{nullptr}; }
+    static ExpirySource Block(const CBlock& block) { return ExpirySource{&block}; }
+    const CBlock* GetBlock() const { return m_block; }
+};
+
 enum class Error {
     NONE,
     PREMATURE_REWARD,
@@ -37,12 +48,12 @@ CAmount PoolBalance(const CCoinsViewCache& view);
 
 /** Maximum claim after candidate transactions and expiry. */
 CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int height,
-                        const Consensus::Params& consensus, const CBlock* origin_block = nullptr);
+                        const Consensus::Params& consensus, ExpirySource source);
 
 /** Apply expiry using the height index, or the supplied origin block. */
 Error ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
                    CRecycleUndo& undo, const Consensus::Params& consensus,
-                   std::vector<COutPoint>* expired = nullptr, const CBlock* origin_block = nullptr);
+                   ExpirySource source, std::vector<COutPoint>* expired = nullptr);
 
 bool DisconnectBlock(CCoinsViewCache& view, int height, const CRecycleUndo* undo, const Consensus::Params& consensus);
 

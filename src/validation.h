@@ -1008,7 +1008,8 @@ public:
     std::atomic<bool> m_recycle_failed{false};
     /** Stop validation/mining and persist the recovery latch after a confirmed inconsistency. */
     void HandleRecycleIndexFailure();
-    bool CheckRecycleIndexAutomatically();
+    enum class RecycleCheckResult { VALID, SKIPPED, INTERRUPTED, CORRUPT };
+    [[nodiscard]] RecycleCheckResult CheckRecycleIndexAutomatically();
     bool ReadRecycleOrigin(CBlock& block, const CBlockIndex* previous) const EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
     const CChainParams& GetParams() const { return m_options.chainparams; }

@@ -1372,11 +1372,9 @@ static ChainstateLoadResult InitAndLoadChainstate(
             if (directory_state != node::RecycleDirectoryState::NEW) {
                 return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Unsupported recycle storage format. Synchronize a fresh data directory.")};
             }
-            FILE* format_file{fsbridge::fopen(format_path, "wb")};
-            if (!format_file) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot record recycle storage format")};
-            const bool written{std::fwrite("1\n", 1, 2, format_file) == 2 && FileCommit(format_file)};
-            const bool closed{std::fclose(format_file) == 0};
-            if (!written || !closed) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot persist recycle storage format")};
+            if (!node::WriteRecycleMarker(format_path, "1\n")) {
+                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot persist recycle storage format")};
+            }
         }
         if (directory_state != node::RecycleDirectoryState::NEW) {
             const auto expected{chainman_opts.recycle_from_block ? node::RecycleDirectoryState::BLOCK : node::RecycleDirectoryState::INDEX};
@@ -1384,13 +1382,7 @@ static ChainstateLoadResult InitAndLoadChainstate(
                 return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Recycle mode differs from the data directory. Use its recorded mode, or synchronize a fresh data directory.")};
             }
         } else {
-            const auto temporary{args.GetDataDirNet() / "recycle-mode.tmp"};
-            FILE* file{fsbridge::fopen(temporary, "wb")};
-            if (!file) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot record recycle mode")};
-            const std::string contents{requested + "\n"};
-            const bool written{std::fwrite(contents.data(), 1, contents.size(), file) == contents.size() && FileCommit(file)};
-            const bool closed{std::fclose(file) == 0};
-            if (!written || !closed || !RenameOver(temporary, mode_path)) {
+            if (!node::WriteRecycleMarker(mode_path, requested + "\n")) {
                 return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot persist recycle mode")};
             }
         }
@@ -1485,8 +1477,15 @@ static ChainstateLoadResult InitAndLoadChainstate(
     };
     auto [status, error] = catch_exceptions([&] { return LoadChainstate(chainman, cache_sizes, options); });
     if (status == node::ChainstateLoadStatus::SUCCESS) {
-        if (chainman.m_options.recycle_check_startup && !chainman.CheckRecycleIndexAutomatically()) {
-            return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Recycle index check failed after an unclean shutdown. Restart to rebuild automatically from blocks, or synchronize a fresh data directory.")};
+        if (chainman.m_options.recycle_check_startup) {
+            const auto result{chainman.CheckRecycleIndexAutomatically()};
+            if (result == ChainstateManager::RecycleCheckResult::INTERRUPTED) return {ChainstateLoadStatus::INTERRUPTED, {}};
+            if (result == ChainstateManager::RecycleCheckResult::SKIPPED) {
+                return {ChainstateLoadStatus::FAILURE_FATAL, Untranslated("Startup recycle index check could not run. Restart to retry.")};
+            }
+            if (result == ChainstateManager::RecycleCheckResult::CORRUPT) {
+                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Recycle index check failed after an unclean shutdown. Restart to rebuild automatically from blocks, or synchronize a fresh data directory.")};
+            }
         }
         uiInterface.InitMessage(_("Verifying blocks…"));
         if (chainman.m_blockman.m_have_pruned && options.check_blocks > MIN_BLOCKS_TO_KEEP) {
@@ -2383,7 +2382,11 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             while (!node.recycle_check_cv.wait_for(lock, interval, [&] { return node.recycle_check_stop; })) {
                 lock.unlock();
                 const auto started{std::chrono::steady_clock::now()};
-                chainman.CheckRecycleIndexAutomatically();
+                const auto result{chainman.CheckRecycleIndexAutomatically()};
+                if (result == ChainstateManager::RecycleCheckResult::INTERRUPTED) break;
+                if (result == ChainstateManager::RecycleCheckResult::SKIPPED) {
+                    LogInfo("Automatic recycle index check postponed; it will be retried\n");
+                }
                 interval = std::max(std::chrono::duration_cast<std::chrono::milliseconds>(chainman.m_options.recycle_check_interval),
                     std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started) * 1000);
                 lock.lock();

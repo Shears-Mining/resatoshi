@@ -13,8 +13,11 @@ new state. Software that ignores format checks must not share these directories.
 ## Expiry modes
 
 Choose `-recyclemode=index` (default) or `-recyclemode=block` for a fresh directory.
-The `recycle-mode` file records that choice. Changing it requires another fresh
-directory. The GUI retains its initial mode/storage selection.
+The `recycle-mode` file records that choice. On subsequent starts, both daemon
+and GUI use the recorded mode unless command-line/config settings explicitly
+request a mode. An explicit mismatch is rejected. Changing modes requires another
+fresh directory. Format and mode markers are published by committing a temporary
+file and renaming it; an abandoned temporary file is replaced on retry.
 
 Index mode maintains `(E, creation_height, outpoint)` keys for current spendable
 UTXOs. The key plus placeholder value has 42 raw bytes before database overhead
@@ -57,6 +60,9 @@ shutdown, and periodically during operation. A pinned database snapshot compares
 both directions: every spendable coin must have its correct height key, and every
 height key must match a live spendable coin. Reports bound examples while retaining
 complete counters. Cache resizing cancels a leased scan before replacing the DB.
+Automatic checks distinguish valid results, deferred checks, shutdown interruption,
+and detected corruption. A busy or cancelled scan is retried rather than treated
+as damaged state.
 
 The normal expiry lookup cannot distinguish a missing index entry from an empty
 result. The background checks detect persistent discrepancies but are not a proof

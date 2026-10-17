@@ -12,6 +12,7 @@
 #include <undo.h>
 
 #include <algorithm>
+#include <optional>
 #include <set>
 #include <utility>
 #include <vector>
@@ -19,8 +20,9 @@
 namespace node::recycle {
 namespace {
 
-std::set<COutPoint> ExpiryCandidates(const CCoinsViewCache& view, int origin, const CBlock* origin_block)
+std::set<COutPoint> ExpiryCandidates(const CCoinsViewCache& view, int origin, ExpirySource source)
 {
+    const CBlock* origin_block{source.GetBlock()};
     if (!origin_block) return view.GetCoinsByHeight(origin);
     std::set<COutPoint> outputs;
     for (const auto& tx : origin_block->vtx) {
@@ -31,12 +33,12 @@ std::set<COutPoint> ExpiryCandidates(const CCoinsViewCache& view, int origin, co
     return outputs;
 }
 
-CAmount ExpiringValue(const CCoinsViewCache& view, const CBlock& block, int height, int expiry_blocks, const CBlock* origin_block)
+CAmount ExpiringValue(const CCoinsViewCache& view, const CBlock& block, int height, int expiry_blocks, ExpirySource source)
 {
     const int origin{height - expiry_blocks};
     if (origin < 1) return 0;
 
-    const auto outputs{ExpiryCandidates(view, origin, origin_block)};
+    const auto outputs{ExpiryCandidates(view, origin, source)};
 
     std::set<COutPoint> spent;
     for (const auto& tx : block.vtx) {
@@ -53,6 +55,14 @@ CAmount ExpiringValue(const CCoinsViewCache& view, const CBlock& block, int heig
     return amount;
 }
 
+// Pure accounting shared by normal connection and idempotent crash replay.
+std::optional<CAmount> NextPoolBalance(CAmount available, CAmount coinbase_value, CAmount base_reward)
+{
+    const CAmount claimed{std::max<CAmount>(0, coinbase_value - base_reward)};
+    if (claimed > std::min(MAX_REWARD, available)) return std::nullopt;
+    return available - claimed;
+}
+
 } // namespace
 
 CAmount PoolBalance(const CCoinsViewCache& view)
@@ -61,14 +71,14 @@ CAmount PoolBalance(const CCoinsViewCache& view)
 }
 
 CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int height,
-                        const Consensus::Params& consensus, const CBlock* origin_block)
+                        const Consensus::Params& consensus, ExpirySource source)
 {
-    return std::min(MAX_REWARD, PoolBalance(view) + ExpiringValue(view, block, height, consensus.recycle_expiry_blocks, origin_block));
+    return std::min(MAX_REWARD, PoolBalance(view) + ExpiringValue(view, block, height, consensus.recycle_expiry_blocks, source));
 }
 
 Error ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
                    CRecycleUndo& undo, const Consensus::Params& consensus,
-                   std::vector<COutPoint>* expired_outpoints, const CBlock* origin_block)
+                   ExpirySource source, std::vector<COutPoint>* expired_outpoints)
 {
     const int origin{height - consensus.recycle_expiry_blocks};
     undo = {};
@@ -79,7 +89,7 @@ Error ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmou
     undo.active = true;
     undo.pool_before = PoolBalance(view);
     CAmount expired_value{0};
-    for (const auto& outpoint : ExpiryCandidates(view, origin, origin_block)) {
+    for (const auto& outpoint : ExpiryCandidates(view, origin, source)) {
         const Coin& coin{view.AccessCoin(outpoint)};
         if (!coin.IsSpent() && coin.nHeight == origin) {
             Coin expired;
@@ -90,9 +100,9 @@ Error ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmou
         }
     }
     const CAmount available{undo.pool_before + expired_value};
-    const CAmount claimed{std::max<CAmount>(0, block.vtx[0]->GetValueOut() - base_reward)};
-    if (claimed > std::min(MAX_REWARD, available)) return Error::EXCESSIVE_REWARD;
-    view.SetRecyclePool(available - claimed);
+    const auto pool{NextPoolBalance(available, block.vtx[0]->GetValueOut(), base_reward)};
+    if (!pool) return Error::EXCESSIVE_REWARD;
+    view.SetRecyclePool(*pool);
     return Error::NONE;
 }
 
@@ -115,10 +125,10 @@ bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CA
         if (!MoneyRange(coin.out.nValue) || coin.out.nValue > MAX_MONEY - available) return false;
         available += coin.out.nValue;
     }
-    const CAmount claimed{std::max<CAmount>(0, block.vtx[0]->GetValueOut() - base_reward)};
-    if (claimed > std::min(MAX_REWARD, available)) return false;
+    const auto pool{NextPoolBalance(available, block.vtx[0]->GetValueOut(), base_reward)};
+    if (!pool) return false;
     for (const auto& [outpoint, coin] : undo->expired) view.SpendCoin(outpoint);
-    view.SetRecyclePool(available - claimed);
+    view.SetRecyclePool(*pool);
     return true;
 }
 

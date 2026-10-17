@@ -12,6 +12,8 @@
 #include <node/database_args.h>
 #include <tinyformat.h>
 #include <uint256.h>
+#include <univalue.h>
+#include <util/fs_helpers.h>
 #include <util/result.h>
 #include <util/strencodings.h>
 #include <util/translation.h>
@@ -19,6 +21,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdio>
 #include <fstream>
 #include <string>
 
@@ -40,9 +43,45 @@ RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir)
     return RecycleDirectoryState::NEW;
 }
 
+bool HasExplicitStartupSetting(const ArgsManager& args, const std::string& name)
+{
+    bool supplied{false};
+    const auto network{args.GetChainTypeString()};
+    args.LockSettings([&](const common::Settings& settings) {
+        auto external{settings};
+        external.rw_settings.clear();
+        supplied = !common::GetSetting(external, network, name, /*ignore_default_section_config=*/false,
+                                       /*ignore_nonpersistent=*/false, /*get_chain_type=*/false).isNull();
+    });
+    return supplied;
+}
+
+std::string GetRecycleMode(const ArgsManager& args)
+{
+    if (!HasExplicitStartupSetting(args, "recyclemode")) {
+        const auto state{GetRecycleDirectoryState(args.GetDataDirNet())};
+        if (state == RecycleDirectoryState::INDEX) return "index";
+        if (state == RecycleDirectoryState::BLOCK) return "block";
+    }
+    return args.GetArg("-recyclemode", "index");
+}
+
+bool WriteRecycleMarker(const fs::path& path, std::string_view contents)
+{
+    auto temporary{path};
+    temporary += ".tmp";
+    FILE* file{fsbridge::fopen(temporary, "wb")};
+    if (!file) return false;
+    const bool written{std::fwrite(contents.data(), 1, contents.size(), file) == contents.size() && FileCommit(file)};
+    const bool closed{std::fclose(file) == 0};
+    if (!written || !closed || !RenameOver(temporary, path)) return false;
+    DirectoryCommit(path.parent_path());
+    return true;
+}
+
 util::Result<void> ApplyArgsManOptions(const ArgsManager& args, ChainstateManager::Options& opts)
 {
-    const auto recycle_mode{args.GetArg("-recyclemode", "index")};
+    const auto recycle_mode{GetRecycleMode(args)};
     if (recycle_mode != "index" && recycle_mode != "block") {
         return util::Error{Untranslated("Invalid -recyclemode; use index or block")};
     }

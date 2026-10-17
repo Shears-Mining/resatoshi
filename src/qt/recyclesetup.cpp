@@ -121,15 +121,7 @@ RecycleSetupChoices RecycleSetupDialog::choices() const
 
 bool HasRecycleStartupSetting(ArgsManager& args, const std::string& name)
 {
-    bool supplied{false};
-    const auto network{args.GetChainTypeString()};
-    args.LockSettings([&](const common::Settings& settings) {
-        auto external{settings};
-        external.rw_settings.clear();
-        supplied = !common::GetSetting(external, network, name, /*ignore_default_section_config=*/false,
-                                       /*ignore_nonpersistent=*/false, /*get_chain_type=*/false).isNull();
-    });
-    return supplied;
+    return node::HasExplicitStartupSetting(args, name);
 }
 
 bool ShowRecycleSetupIfNeeded(ArgsManager& args, bool recycling_enabled,
@@ -139,14 +131,8 @@ bool ShowRecycleSetupIfNeeded(ArgsManager& args, bool recycling_enabled,
     if (!recycling_enabled) return true;
     const auto state{GetRecycleDirectoryState(args.GetDataDirNet())};
     const bool configured_mode{HasRecycleStartupSetting(args, "recyclemode")};
-    if (state != RecycleDirectoryState::NEW) {
-        // The folder remains authoritative after GUI settings are reset. Explicit
-        // command-line/config mismatches are left for the core to reject.
-        if (!configured_mode && (state == RecycleDirectoryState::INDEX || state == RecycleDirectoryState::BLOCK)) {
-            args.ForceSetArg("-recyclemode", state == RecycleDirectoryState::BLOCK ? "block" : "index");
-        }
-        return true;
-    }
+    // Core resolves the folder's mode for GUI and daemon alike.
+    if (state != RecycleDirectoryState::NEW) return true;
     const std::string mode{args.GetArg("-recyclemode", "index")};
     const int64_t prune{args.GetIntArg("-prune", 0)};
     const bool configured_prune{HasRecycleStartupSetting(args, "prune")};

@@ -241,7 +241,7 @@ void RecycleSetupTests::existingFolders()
     args.LockSettings([](common::Settings& settings) { settings.rw_settings["recyclemode"] = "index"; });
     QVERIFY(ShowRecycleSetupIfNeeded(args, true, selected));
     QVERIFY(!selected);
-    QCOMPARE(args.GetArg("-recyclemode", ""), std::string{"block"});
+    QCOMPARE(node::GetRecycleMode(args), std::string{"block"});
     args.ForceSetArg("-recyclemode", "index");
     QVERIFY(ShowRecycleSetupIfNeeded(args, true, selected));
     QCOMPARE(args.GetArg("-recyclemode", ""), std::string{"index"}); // core rejects explicit mismatch

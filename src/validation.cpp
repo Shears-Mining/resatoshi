@@ -2633,8 +2633,8 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
                 return FatalError(m_chainman.GetNotifications(), state, Untranslated("Cannot read recycle expiry origin block; restore block data before continuing"));
             }
             const auto recycle_error{node::recycle::ConnectBlock(view, block, pindex->nHeight, blockReward,
-                blockundo.recycle, params.GetConsensus(), expired,
-                m_chainman.m_options.recycle_from_block ? &origin_block : nullptr)};
+                blockundo.recycle, params.GetConsensus(),
+                m_chainman.m_options.recycle_from_block ? node::recycle::ExpirySource::Block(origin_block) : node::recycle::ExpirySource::Index(), expired)};
             switch (recycle_error) {
             case node::recycle::Error::NONE:
                 break;
@@ -6557,16 +6557,16 @@ bool ChainstateManager::ReadRecycleOrigin(CBlock& block, const CBlockIndex* prev
     return BlockMerkleRoot(block, &mutated) == block.hashMerkleRoot && !mutated;
 }
 
-bool ChainstateManager::CheckRecycleIndexAutomatically()
+ChainstateManager::RecycleCheckResult ChainstateManager::CheckRecycleIndexAutomatically()
 {
-    if (!GetConsensus().recycle_enabled || m_options.recycle_from_block) return true;
+    if (!GetConsensus().recycle_enabled || m_options.recycle_from_block) return RecycleCheckResult::VALID;
     const auto started{std::chrono::steady_clock::now()};
     try {
         std::unique_ptr<RecycleIndexSnapshot> snapshot;
         {
             LOCK(cs_main);
             auto& chainstate{ActiveChainstate()};
-            if (!chainstate.m_chain.Tip()) return true;
+            if (!chainstate.m_chain.Tip()) return RecycleCheckResult::VALID;
             chainstate.ForceFlushStateToDisk(/*wipe_cache=*/false);
             snapshot = chainstate.CoinsDB().GetRecycleIndexSnapshot();
             if (snapshot && snapshot->GetBestBlock() != chainstate.m_chain.Tip()->GetBlockHash()) {
@@ -6574,18 +6574,18 @@ bool ChainstateManager::CheckRecycleIndexAutomatically()
             }
         }
         // A manual check already owns the snapshot; retry on the next scheduled tick.
-        if (!snapshot) return false;
+        if (!snapshot) return RecycleCheckResult::SKIPPED;
         const auto result{snapshot->Check([&](const std::string&, const RecycleIndexCheckResult&) { return !m_interrupt; })};
         LogInfo("Automatic recycle index check: %.3f seconds, %u coins, %u entries",
                 std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count(),
                 result.coins_scanned, result.index_entries);
-        if (!result.completed) return false;
-        if (result.Valid()) return true;
+        if (!result.completed) return m_interrupt ? RecycleCheckResult::INTERRUPTED : RecycleCheckResult::SKIPPED;
+        if (result.Valid()) return RecycleCheckResult::VALID;
     } catch (const std::exception& e) {
         LogError("Automatic recycle index check failed: %s\n", e.what());
     }
     HandleRecycleIndexFailure();
-    return false;
+    return RecycleCheckResult::CORRUPT;
 }
 
 void ChainstateManager::HandleRecycleIndexFailure()

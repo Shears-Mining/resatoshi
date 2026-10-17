@@ -38,6 +38,13 @@ class RecycleModesTest(BitcoinTestFramework):
         assert_raises_rpc_error(-1, "disabled in block mode", archival.checkrecycleindex, "start")
         assert_raises_rpc_error(-1, "disabled in block mode", pruned.checkrecycleindex, "start")
 
+        self.log.info("Daemon inherits its recorded block mode when no mode is supplied")
+        self.restart_node(1, extra_args=["-test=recycle"])
+        assert_equal(archival.getblockchaininfo(True)["recycling"]["mode"], "block")
+        self.connect_nodes(0, 1)
+        self.connect_nodes(1, 2)
+        self.check_equal()
+
         self.generatetodescriptor(indexed, 200, "raw(51)")
         self.check_equal()
         before = indexed.gettxoutsetinfo("muhash")["muhash"]

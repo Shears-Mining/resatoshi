@@ -428,6 +428,14 @@ protected:
         fn(m_settings);
     }
 
+    /** Read settings under the same lock without permitting mutation. */
+    template <typename Fn>
+    void LockSettings(Fn&& fn) const
+    {
+        LOCK(cs_args);
+        fn(static_cast<const common::Settings&>(m_settings));
+    }
+
     /**
      * Log the config file options and the command line arguments,
      * useful for troubleshooting.

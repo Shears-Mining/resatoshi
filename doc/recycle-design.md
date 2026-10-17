@@ -2,7 +2,10 @@
 
 The consensus transition is independent of its candidate source: process
 transactions, expire surviving outputs of the origin height, credit the pool,
-and debit the claimed reward. Both expiry modes are retained.
+and debit the claimed reward. Both expiry modes are retained. Callers explicitly select an index source or
+supply an original block; omitting a block cannot implicitly select the index.
+Normal connection and crash replay share the pure pool reward calculation, while
+retaining their different state update sequences.
 
 The index trades extra O(live UTXO) storage and writes for direct origin-height
 lookup and practical pruning. It is derived from UTXOs and can be checked or

@@ -180,7 +180,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock()
     CBlock origin_block;
     if (!m_chainstate.m_chainman.ReadRecycleOrigin(origin_block, pindexPrev)) throw std::runtime_error("Cannot read recycle expiry origin block");
     const CAmount recycle_reward{chainparams.GetConsensus().recycle_enabled
-                                     ? recycle::AvailableReward(m_chainstate.CoinsTip(), *pblock, nHeight, chainparams.GetConsensus(), m_chainstate.m_chainman.m_options.recycle_from_block ? &origin_block : nullptr)
+                                     ? recycle::AvailableReward(m_chainstate.CoinsTip(), *pblock, nHeight, chainparams.GetConsensus(), m_chainstate.m_chainman.m_options.recycle_from_block ? recycle::ExpirySource::Block(origin_block) : recycle::ExpirySource::Index())
                                      : 0};
     const CAmount block_reward{nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus()) + recycle_reward};
     coinbaseTx.vout[0].nValue = block_reward;
