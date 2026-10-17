@@ -36,7 +36,7 @@ namespace node {
 //! before being used. Thus, new fields should be added only if needed.
 class SnapshotMetadata
 {
-    inline static const uint16_t VERSION{2};
+    inline static const uint16_t VERSION{3};
     const std::set<uint16_t> m_supported_versions{VERSION};
     const MessageStartChars m_network_magic;
 public:
@@ -48,6 +48,7 @@ public:
     //! The number of coins in the UTXO set contained in this snapshot. Used
     //! during snapshot load to estimate progress of UTXO set reconstruction.
     uint64_t m_coins_count = 0;
+    CAmount m_recycle_pool{0};
 
     SnapshotMetadata(
         const MessageStartChars network_magic) :
@@ -55,10 +56,11 @@ public:
     SnapshotMetadata(
         const MessageStartChars network_magic,
         const uint256& base_blockhash,
-        uint64_t coins_count) :
+        uint64_t coins_count, CAmount recycle_pool = 0) :
             m_network_magic(network_magic),
             m_base_blockhash(base_blockhash),
-            m_coins_count(coins_count) { }
+            m_coins_count(coins_count),
+            m_recycle_pool(recycle_pool) { }
 
     template <typename Stream>
     inline void Serialize(Stream& s) const {
@@ -67,6 +69,7 @@ public:
         s << m_network_magic;
         s << m_base_blockhash;
         s << m_coins_count;
+        s << m_recycle_pool;
     }
 
     template <typename Stream>
@@ -102,6 +105,8 @@ public:
 
         s >> m_base_blockhash;
         s >> m_coins_count;
+        s >> m_recycle_pool;
+        if (!MoneyRange(m_recycle_pool)) throw std::ios_base::failure("Invalid recycle pool balance");
     }
 };
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 The ReSatoshi developers
+// Copyright (c) 2026 The Resatoshi developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or https://opensource.org/license/mit/.
 
@@ -36,7 +36,7 @@ RecycleSetupDialog::RecycleSetupDialog(const std::string& mode, bool mode_editab
       m_configured_prune{prune_mib}
 {
     setObjectName("recycleSetupDialog");
-    setWindowTitle(tr("Set up your ReSatoshi node"));
+    setWindowTitle(tr("Set up your Resatoshi node"));
     setMinimumWidth(540);
     auto* layout = new QVBoxLayout(this);
     auto add_text = [](QVBoxLayout* target, const QString& text) {
@@ -142,7 +142,7 @@ bool ShowRecycleSetupIfNeeded(ArgsManager& args, bool recycling_enabled,
     if (state != RecycleDirectoryState::NEW) {
         // The folder remains authoritative after GUI settings are reset. Explicit
         // command-line/config mismatches are left for the core to reject.
-        if (!configured_mode && state != RecycleDirectoryState::INVALID) {
+        if (!configured_mode && (state == RecycleDirectoryState::INDEX || state == RecycleDirectoryState::BLOCK)) {
             args.ForceSetArg("-recyclemode", state == RecycleDirectoryState::BLOCK ? "block" : "index");
         }
         return true;

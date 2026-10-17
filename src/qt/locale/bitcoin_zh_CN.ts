@@ -4899,8 +4899,8 @@ Please try running the latest software version.
 <context>
     <name>RecycleSetupDialog</name>
     <message>
-        <source>Set up your ReSatoshi node</source>
-        <translation>设置您的 ReSatoshi 节点</translation>
+        <source>Set up your Resatoshi node</source>
+        <translation>设置您的 Resatoshi 节点</translation>
     </message>
     <message>
         <source>Choose how this node finds coins that have reached their expiry height. Both methods follow the same network rules and work with the wallet.</source>

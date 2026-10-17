@@ -2159,11 +2159,8 @@ static RPCHelpMan getblockstats()
     const auto& consensus{chainman.GetParams().GetConsensus()};
     if ((do_all || SetHasKeys(stats, "utxo_increase_actual", "utxo_size_inc_actual", "expired_outputs")) &&
         node::recycle::ExpectsStateUndo(pindex.nHeight, consensus)) {
-        // Expiry removes coins without transaction inputs. The extra undo entry
-        // records only coins actually recycled, not those spent in this block.
-        CHECK_NONFATAL(blockUndo.vtxundo.size() == block.vtx.size());
-        std::vector<std::pair<COutPoint, Coin>> expired;
-        CHECK_NONFATAL(node::recycle::ReadExpiredCoins(blockUndo.vtxundo.back(), expired));
+        CHECK_NONFATAL(node::recycle::HasExpectedUndo(blockUndo, pindex.nHeight, block.vtx.size(), consensus));
+        const auto& expired{blockUndo.recycle.expired};
         expired_outputs = expired.size();
         if (do_all || stats.contains("utxo_size_inc_actual")) {
             for (const auto& [outpoint, coin] : expired) {
@@ -3096,9 +3093,8 @@ static RPCHelpMan getdescriptoractivity()
         // Expiry is a state transition after the block's transactions. It has no
         // spending transaction, so never synthesize a spend_txid for these events.
         if (self.Arg<bool>("include_expired") && node::recycle::ExpectsStateUndo(blockindex->nHeight, chainman.GetConsensus())) {
-            CHECK_NONFATAL(block_undo.vtxundo.size() == block.vtx.size());
-            std::vector<std::pair<COutPoint, Coin>> expired;
-            CHECK_NONFATAL(node::recycle::ReadExpiredCoins(block_undo.vtxundo.back(), expired));
+            CHECK_NONFATAL(node::recycle::HasExpectedUndo(block_undo, blockindex->nHeight, block.vtx.size(), chainman.GetConsensus()));
+            const auto& expired{block_undo.recycle.expired};
             for (const auto& [outpoint, coin] : expired) {
                 if (!scripts_to_watch.contains(coin.out.scriptPubKey)) continue;
                 UniValue event{UniValue::VOBJ};
@@ -3504,7 +3500,7 @@ UniValue WriteUTXOSnapshot(
         tip->nHeight, tip->GetBlockHash().ToString(),
         fs::PathToString(path), fs::PathToString(temppath)));
 
-    SnapshotMetadata metadata{chainstate.m_chainman.GetParams().MessageStart(), tip->GetBlockHash(), maybe_stats->coins_count};
+    SnapshotMetadata metadata{chainstate.m_chainman.GetParams().MessageStart(), tip->GetBlockHash(), maybe_stats->coins_count, pcursor->GetRecyclePool()};
 
     afile << metadata;
 

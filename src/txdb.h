@@ -94,6 +94,7 @@ public:
     std::optional<Coin> GetCoin(const COutPoint& outpoint) const override;
     bool HaveCoin(const COutPoint &outpoint) const override;
     std::set<COutPoint> GetCoinsByHeight(uint32_t height) const override;
+    CAmount GetRecyclePool() const override;
     uint256 GetBestBlock() const override;
     std::vector<uint256> GetHeadBlocks() const override;
     void BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashBlock) override;
@@ -102,8 +103,8 @@ public:
     //! Whether an unsupported database format is used.
     bool NeedsUpgrade();
     bool RecycleStateReady() const;
-    /** Rebuild from UTXOs, discard legacy schedules, and resume safely after interruption. */
-    bool UpgradeRecycleIndex(const std::function<bool()>& interrupted);
+    /** Rebuild the derived index from current-format UTXOs after detected damage. */
+    bool RebuildRecycleIndex(const std::function<bool()>& interrupted);
     //! Capture only after a complete flush. Returns null if a check is already leased.
     std::unique_ptr<RecycleIndexSnapshot> GetRecycleIndexSnapshot() EXCLUSIVE_LOCKS_REQUIRED(cs_main);
     size_t EstimateSize() const override;

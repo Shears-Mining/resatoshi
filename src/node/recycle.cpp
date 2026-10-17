@@ -3,84 +3,21 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <node/recycle.h>
-#include <node/recycle_serialization.h>
 
 #include <coins.h>
 #include <consensus/params.h>
 #include <consensus/validation.h>
 #include <primitives/block.h>
 #include <script/script.h>
-#include <streams.h>
 #include <undo.h>
 
 #include <algorithm>
-#include <limits>
 #include <set>
 #include <utility>
 #include <vector>
 
 namespace node::recycle {
 namespace {
-
-const Txid& ReservedTxid()
-{
-    static const Txid txid{};
-    return txid;
-}
-
-COutPoint PoolOutpoint()
-{
-    return COutPoint{ReservedTxid(), std::numeric_limits<uint32_t>::max()};
-}
-
-struct UndoData {
-    CAmount pool_before{0};
-    // Preserve the old undo wire format so pre-upgrade blocks can disconnect.
-    // New undo records carry only this constant-size placeholder.
-    Coin schedule{CTxOut{0, CScript{OP_RETURN}}, 0, false};
-    std::vector<std::pair<COutPoint, Coin>> expired;
-
-    SERIALIZE_METHODS(UndoData, obj) { READWRITE(obj.pool_before, Using<StateCoinFormatter>(obj.schedule), obj.expired); }
-};
-
-CScript Encode(const auto& value)
-{
-    DataStream stream{};
-    stream << value;
-    CScript script{OP_RETURN};
-    script.insert(script.end(), UCharCast(stream.data()), UCharCast(stream.data() + stream.size()));
-    return script;
-}
-
-template <typename T>
-bool Decode(const CScript& script, T& value)
-{
-    if (script.empty() || script[0] != OP_RETURN) return false;
-    try {
-        DataStream stream{std::span{script}.subspan(1)};
-        stream >> value;
-        return stream.empty();
-    } catch (const std::exception&) {
-        return false;
-    }
-}
-
-bool DecodeUndo(const CTxUndo* undo, UndoData& data)
-{
-    return undo && undo->vprevout.size() == 1 && Decode(undo->vprevout[0].out.scriptPubKey, data);
-}
-
-Coin StateCoin(CAmount amount, CScript script, int height)
-{
-    return Coin{CTxOut{amount, std::move(script)}, height, false};
-}
-
-void PutStateCoin(CCoinsViewCache& view, const COutPoint& outpoint, Coin coin)
-{
-    view.SpendCoin(outpoint);
-    view.AddCoin(outpoint, std::move(coin), /*possible_overwrite=*/false,
-                 /*allow_unspendable=*/true);
-}
 
 std::set<COutPoint> ExpiryCandidates(const CCoinsViewCache& view, int origin, const CBlock* origin_block)
 {
@@ -120,99 +57,68 @@ CAmount ExpiringValue(const CCoinsViewCache& view, const CBlock& block, int heig
 
 CAmount PoolBalance(const CCoinsViewCache& view)
 {
-    const Coin& coin{view.AccessCoin(PoolOutpoint())};
-    return coin.IsSpent() ? 0 : coin.out.nValue;
+    return view.GetRecyclePool();
 }
 
-CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int height, int expiry_blocks, const CBlock* origin_block)
+CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int height,
+                        const Consensus::Params& consensus, const CBlock* origin_block)
 {
-    return std::min(MAX_REWARD, PoolBalance(view) + ExpiringValue(view, block, height, expiry_blocks, origin_block));
+    return std::min(MAX_REWARD, PoolBalance(view) + ExpiringValue(view, block, height, consensus.recycle_expiry_blocks, origin_block));
 }
 
 Error ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
-                   CTxUndo& undo, std::vector<COutPoint>* expired_outpoints, int expiry_blocks, const CBlock* origin_block)
+                   CRecycleUndo& undo, const Consensus::Params& consensus,
+                   std::vector<COutPoint>* expired_outpoints, const CBlock* origin_block)
 {
-    const int origin{height - expiry_blocks};
+    const int origin{height - consensus.recycle_expiry_blocks};
+    undo = {};
     if (origin < 1) {
-        if (block.vtx[0]->GetValueOut() > base_reward) {
-            return Error::PREMATURE_REWARD;
-        }
-        return Error::NONE;
+        return block.vtx[0]->GetValueOut() > base_reward ? Error::PREMATURE_REWARD : Error::NONE;
     }
 
-    UndoData undo_data;
-    undo_data.pool_before = PoolBalance(view);
+    undo.active = true;
+    undo.pool_before = PoolBalance(view);
     CAmount expired_value{0};
-    {
-        const auto outputs{ExpiryCandidates(view, origin, origin_block)};
-        for (const auto& outpoint : outputs) {
-            const Coin& coin{view.AccessCoin(outpoint)};
-            if (!coin.IsSpent() && coin.nHeight == origin) {
-                Coin expired;
-                if (!view.SpendCoin(outpoint, &expired)) {
-                    return Error::SPEND_FAILED;
-                }
-                expired_value += expired.out.nValue;
-                if (expired_outpoints) expired_outpoints->push_back(outpoint);
-                undo_data.expired.emplace_back(outpoint, std::move(expired));
-            }
+    for (const auto& outpoint : ExpiryCandidates(view, origin, origin_block)) {
+        const Coin& coin{view.AccessCoin(outpoint)};
+        if (!coin.IsSpent() && coin.nHeight == origin) {
+            Coin expired;
+            if (!view.SpendCoin(outpoint, &expired)) return Error::SPEND_FAILED;
+            expired_value += expired.out.nValue;
+            if (expired_outpoints) expired_outpoints->push_back(outpoint);
+            undo.expired.emplace_back(outpoint, std::move(expired));
         }
     }
-
-    const CAmount available{undo_data.pool_before + expired_value};
+    const CAmount available{undo.pool_before + expired_value};
     const CAmount claimed{std::max<CAmount>(0, block.vtx[0]->GetValueOut() - base_reward)};
-    if (claimed > std::min(MAX_REWARD, available)) {
-        return Error::EXCESSIVE_REWARD;
-    }
-
-    PutStateCoin(view, PoolOutpoint(), StateCoin(available - claimed, CScript{OP_RETURN}, height));
-
-    undo.vprevout.emplace_back(StateCoin(0, Encode(undo_data), height));
+    if (claimed > std::min(MAX_REWARD, available)) return Error::EXCESSIVE_REWARD;
+    view.SetRecyclePool(available - claimed);
     return Error::NONE;
 }
 
-bool DisconnectBlock(CCoinsViewCache& view, int height, CTxUndo* undo, int expiry_blocks)
+bool DisconnectBlock(CCoinsViewCache& view, int height, const CRecycleUndo* undo, const Consensus::Params& consensus)
 {
-    if (height - expiry_blocks < 1) return true;
-    UndoData data;
-    if (!DecodeUndo(undo, data)) return false;
-
-    if (height - expiry_blocks == 1) {
-        view.SpendCoin(PoolOutpoint());
-    } else {
-        PutStateCoin(view, PoolOutpoint(), StateCoin(data.pool_before, CScript{OP_RETURN}, height - 1));
-    }
-    for (auto& [outpoint, coin] : data.expired) view.AddCoin(outpoint, std::move(coin), false);
+    if (height <= consensus.recycle_expiry_blocks) return !undo || !undo->active;
+    if (!undo || !undo->active || !MoneyRange(undo->pool_before)) return false;
+    view.SetRecyclePool(undo->pool_before);
+    for (const auto& [outpoint, coin] : undo->expired) view.AddCoin(outpoint, Coin{coin}, false);
     return true;
 }
 
 bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
-                      const CTxUndo* undo, int expiry_blocks)
+                      const CRecycleUndo* undo, const Consensus::Params& consensus)
 {
-    const int origin{height - expiry_blocks};
-    if (origin < 1) {
-        return block.vtx[0]->GetValueOut() <= base_reward;
+    if (height <= consensus.recycle_expiry_blocks) return block.vtx[0]->GetValueOut() <= base_reward;
+    if (!undo || !undo->active || !MoneyRange(undo->pool_before)) return false;
+    CAmount available{undo->pool_before};
+    for (const auto& [outpoint, coin] : undo->expired) {
+        if (!MoneyRange(coin.out.nValue) || coin.out.nValue > MAX_MONEY - available) return false;
+        available += coin.out.nValue;
     }
-
-    UndoData data;
-    if (!DecodeUndo(undo, data)) return false;
-    CAmount expired_value{0};
-    for (const auto& [outpoint, coin] : data.expired) expired_value += coin.out.nValue;
-
-    const CAmount available{data.pool_before + expired_value};
     const CAmount claimed{std::max<CAmount>(0, block.vtx[0]->GetValueOut() - base_reward)};
     if (claimed > std::min(MAX_REWARD, available)) return false;
-
-    for (const auto& [outpoint, coin] : data.expired) view.SpendCoin(outpoint);
-    PutStateCoin(view, PoolOutpoint(), StateCoin(available - claimed, CScript{OP_RETURN}, height));
-    return true;
-}
-
-bool ReadExpiredCoins(const CTxUndo& undo, std::vector<std::pair<COutPoint, Coin>>& expired)
-{
-    UndoData data;
-    if (!DecodeUndo(&undo, data)) return false;
-    expired = std::move(data.expired);
+    for (const auto& [outpoint, coin] : undo->expired) view.SpendCoin(outpoint);
+    view.SetRecyclePool(available - claimed);
     return true;
 }
 
@@ -221,16 +127,23 @@ bool ExpectsStateUndo(int height, const Consensus::Params& consensus)
     return consensus.recycle_enabled && height > consensus.recycle_expiry_blocks;
 }
 
-bool HasExpectedUndoCount(const CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus)
+bool HasExpectedUndo(const CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus)
 {
-    if (transaction_count == 0) return false;
-    return undo.vtxundo.size() == transaction_count - 1 + size_t{ExpectsStateUndo(height, consensus)};
-}
-
-bool RemoveStateUndo(CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus)
-{
-    if (!HasExpectedUndoCount(undo, height, transaction_count, consensus)) return false;
-    if (ExpectsStateUndo(height, consensus)) undo.vtxundo.pop_back();
+    if (transaction_count == 0 || undo.vtxundo.size() != transaction_count - 1) return false;
+    if (undo.recycle.active != ExpectsStateUndo(height, consensus)) return false;
+    if (!undo.recycle.active) return undo.recycle.pool_before == 0 && undo.recycle.expired.empty();
+    if (!MoneyRange(undo.recycle.pool_before)) return false;
+    CAmount available{undo.recycle.pool_before};
+    // Expiry candidates are ordered; strict order also rejects duplicates
+    // without allocating another index while reading large undo records.
+    const COutPoint* previous{nullptr};
+    for (const auto& [outpoint, coin] : undo.recycle.expired) {
+        if (coin.IsSpent() || coin.out.scriptPubKey.IsUnspendable() ||
+            coin.nHeight != height - consensus.recycle_expiry_blocks || (previous && !(*previous < outpoint)) ||
+            !MoneyRange(coin.out.nValue) || coin.out.nValue > MAX_MONEY - available) return false;
+        available += coin.out.nValue;
+        previous = &outpoint;
+    }
     return true;
 }
 

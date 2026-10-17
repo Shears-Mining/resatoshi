@@ -108,14 +108,13 @@ static ChainstateLoadResult CompleteChainstateInitialization(
         // This is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
         if (chainstate->CoinsDB().NeedsUpgrade()) {
             return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, _("Unsupported chainstate database format found. "
-                                                                     "Please restart with -reindex-chainstate. This will "
-                                                                     "rebuild the chainstate database.")};
+                                                                     "Synchronize a fresh data directory. This version does not migrate "
+                                                                     "existing chainstate or undo files.")};
         }
 
-        // Build the derived index before replay/verification. This also works
-        // on partially flushed legacy databases: replay updates both keys.
-        if (chainman.GetConsensus().recycle_enabled && !chainman.m_options.recycle_from_block &&
-            !chainstate->CoinsDB().UpgradeRecycleIndex([&] { return bool{chainman.m_interrupt}; })) {
+        // Resume an interrupted rebuild of the current-format derived index.
+        if (chainman.GetConsensus().recycle_enabled && !chainman.m_options.recycle_from_block && !chainstate->CoinsDB().RecycleStateReady() &&
+            !chainstate->CoinsDB().RebuildRecycleIndex([&] { return bool{chainman.m_interrupt}; })) {
             return {ChainstateLoadStatus::FAILURE, _("Interrupted while rebuilding recycle index")};
         }
 

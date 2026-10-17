@@ -640,9 +640,9 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";
         if (chain == ChainType::MAIN)
-            optionFile << "Name=ReSatoshi\n";
+            optionFile << "Name=Resatoshi\n";
         else
-            optionFile << strprintf("Name=ReSatoshi (%s)\n", ChainTypeToString(chain));
+            optionFile << strprintf("Name=Resatoshi (%s)\n", ChainTypeToString(chain));
         optionFile << "Exec=" << pszExePath << strprintf(" -min -chain=%s\n", ChainTypeToString(chain));
         optionFile << "Terminal=false\n";
         optionFile << "Hidden=false\n";

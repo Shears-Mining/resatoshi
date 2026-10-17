@@ -1,4 +1,4 @@
-# ReSatoshi upstream maintenance
+# Resatoshi upstream maintenance
 
 ## Source baseline
 
@@ -78,8 +78,7 @@ part of these backports. No hosted CI is enabled by this procedure.
 
 ### Chainstate compaction
 
-The paired 31.1 database changes preserve ReSatoshi's recycle-state codec,
-metadata readers, and marker. Compaction changes LevelDB's physical layout,
+The paired 31.1 database changes preserve Resatoshi's current-format state and format checks. Compaction changes LevelDB's physical layout,
 not expiry heights, pool accounting, ASERT, or other consensus rules. After a
 completed full flush outside initial block download, a 1/320 random trigger
 starts a one-shot background compaction unless shutdown is requested. This is
@@ -89,7 +88,7 @@ database destruction waits for outstanding compaction work.
 The LevelDB files come from the recorded 31.1 release archive. Keep LevelDB in
 the subtree checks and record its reviewed snapshot; do not copy upstream's
 release-branch lint exclusion. The recycle compaction regression test checks
-large schedule records, pool balances, all coin records, the codec marker,
+typed expiry undo, pool balances, all coin records, the codec marker,
 cache resizing, shutdown/reopen, recovery replay, and disconnection.
 
 ## Local stream compatibility fix
@@ -128,9 +127,9 @@ handles. Reconcile this small local fix with upstream during future updates.
 - Preserve expiry height boundaries, recycle-pool accounting, reward limits,
   and connect/disconnect/replay recovery. Check wallet, mempool, mining,
   statistics, indexes, snapshots and filters when their input assumptions change.
-- Recycle undo appends an internal entry to `CBlockUndo::vtxundo`. Consumers must
-  distinguish this from actual non-coinbase transactions. Do not assume that
-  its size always equals the number of non-coinbase transactions.
+- Recycle undo is an explicit `CBlockUndo::recycle` field. `vtxundo` contains
+  transaction inputs only. Pool changes must propagate through caches, final
+  flush batches, recovery replay, snapshots and snapshot commitments.
 - Preserve wallet expiry handling, including explicit-input sendall, manual
   coin selection, persistent locks, restart and reorg behavior.
 - Keep the ReSatoshi display release, upstream base and source revision distinct.
@@ -165,11 +164,8 @@ Before distributing GUI binaries, build Qt and run the Qt tests; exercise
 Windows/macOS installation, coexistence and removal on their target platforms.
 Node tests do not substitute for these checks.
 
-The optional libbitcoinkernel spent-output reader removes the internal recycle
-undo entry from its private copy before exposing transaction inputs. Preserve
-this distinction during upstream updates. Validate builds with
-`-DBUILD_KERNEL_LIB=ON -DBUILD_KERNEL_TEST=ON` and run `test_kernel` as well as
-the recycle unit tests; node-only tests do not cover the public library API.
+The optional libbitcoinkernel spent-output reader exposes transaction undo directly.
+Validate with `-DBUILD_KERNEL_LIB=ON -DBUILD_KERNEL_TEST=ON` and `test_kernel`.
 
 The kernel suite includes `btck_recycle_spent_outputs_disk_tests`, processing
 real regtest fixtures across expiry, reading transaction inputs, retaining

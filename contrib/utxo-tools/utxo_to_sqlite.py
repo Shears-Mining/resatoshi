@@ -10,9 +10,8 @@ $ bitcoin-cli dumptxoutset ~/utxos.dat latest
 The created database contains a table `utxos` with the following schema:
 (txid TEXT, vout INT, value INT, coinbase INT, height INT, scriptpubkey TEXT)
 
-Resatoshi's internal state records are preserved in a separate recycle_state
-table with the same schema. They are not spendable outputs and are excluded
-from utxos. Their scriptpubkey column contains the opaque state encoding.
+The explicit recycle pool balance is stored in recycle_pool(balance INT).
+The utxos table contains only transaction outputs.
 
 If --txid=raw or --txid=rawle is specified, txid will be BLOB instead;
 if --spk=raw, then scriptpubkey will be BLOB instead.
@@ -25,7 +24,7 @@ import time
 
 
 UTXO_DUMP_MAGIC = b'utxo\xff'
-UTXO_DUMP_VERSION = 2
+UTXO_DUMP_VERSION = 3
 NET_MAGIC_BYTES = {
     b"\x47\xd9\x24\x34": "Resatoshi Mainnet",
     b"\xf9\xbe\xb4\xd9": "Mainnet",
@@ -80,11 +79,9 @@ def decompress_amount(x):
     return n
 
 
-def decompress_script(f, *, metadata=False):
+def decompress_script(f):
     """Equivalent of `DecompressScript()` (see compressor module)."""
     size = read_varint(f)  # sizes 0-5 encode compressed script types
-    if metadata and size < 6:
-        raise ValueError("recycle metadata cannot use a compressed payment script")
     if size == 0:  # P2PKH
         return bytes([0x76, 0xa9, 20]) + f.read(20) + bytes([0x88, 0xac])
     elif size == 1:  # P2SH
@@ -96,14 +93,12 @@ def decompress_script(f, *, metadata=False):
         return bytes([65]) + decompress_pubkey(compressed_pubkey) + bytes([0xac])
     else:  # others (bare multisig, segwit etc.)
         size -= 6
-        limit = 32 * 1024 * 1024 if metadata else 10000
+        limit = 10000
         if size > limit:
-            raise ValueError(f"too long {'metadata' if metadata else 'script'} with size {size}")
+            raise ValueError(f"too long script with size {size}")
         script = f.read(size)
         if len(script) != size:
             raise ValueError("truncated script or metadata")
-        if metadata and not script.startswith(b'\x6a'):
-            raise ValueError("recycle metadata must start with OP_RETURN")
         return script
 
 
@@ -150,7 +145,7 @@ def main():
     spk_fmt = "TEXT" if spk_hex else "BLOB"
     con = sqlite3.connect(args.outfile)
     con.execute(f"CREATE TABLE utxos(txid {txid_fmt}, vout INT, value INT, coinbase INT, height INT, scriptpubkey {spk_fmt})")
-    con.execute(f"CREATE TABLE recycle_state(txid {txid_fmt}, vout INT, value INT, coinbase INT, height INT, scriptpubkey {spk_fmt})")
+    con.execute("CREATE TABLE recycle_pool(balance INT)")
 
     # read metadata (magic bytes, version, network magic, block hash, UTXO count)
     f = open(args.infile, 'rb')
@@ -159,6 +154,11 @@ def main():
     network_magic = f.read(4)
     block_hash = f.read(32)
     num_utxos = int.from_bytes(f.read(8), 'little')
+    pool_bytes = f.read(8)
+    pool = int.from_bytes(pool_bytes, 'little', signed=True)
+    if len(pool_bytes) != 8 or not 0 <= pool <= 21_000_000 * 100_000_000:
+        raise ValueError('invalid recycle pool balance')
+    con.execute('INSERT INTO recycle_pool VALUES(?)', (pool,))
     if magic_bytes != UTXO_DUMP_MAGIC:
         print(f"Error: provided input file '{args.infile}' is not an UTXO dump.")
         sys.exit(1)
@@ -172,8 +172,6 @@ def main():
 
     start_time = time.time()
     write_batch = []
-    state_batch = []
-    state_count = 0
     write_batch_bytes = 0
     coins_per_hash_left = 0
     prevout_hash = None
@@ -190,22 +188,14 @@ def main():
         height = code >> 1
         is_coinbase = code & 1
         amount = decompress_amount(read_varint(f))
-        # Match the node's reserved outpoint namespace, only on networks
-        # where Resatoshi recycling is supported (including test=recycle).
-        is_state = (network_magic in (b'\x47\xd9\x24\x34', b'\xfa\xbf\xb5\xda')
-                    and prevout_hash == bytes(32) and prevout_index >= 1_000_001)
-        scriptpubkey = decompress_script(f, metadata=is_state)
+        scriptpubkey = decompress_script(f)
 
         scriptpubkey_write = scriptpubkey.hex() if spk_hex else scriptpubkey
         txid_write = prevout_hash[::-1] if txid_reverse else prevout_hash
         txid_write = txid_write.hex() if txid_hex else txid_write
         row = (txid_write, prevout_index, amount, is_coinbase, height, scriptpubkey_write)
         write_batch_bytes += len(scriptpubkey_write)
-        if is_state:
-            state_batch.append(row)
-            state_count += 1
-        else:
-            write_batch.append(row)
+        write_batch.append(row)
         if height > max_height:
             max_height = height
         coins_per_hash_left -= 1
@@ -219,19 +209,18 @@ def main():
         if coin_idx % (16*1024) == 0 or write_batch_bytes >= 8 * 1024 * 1024 or coin_idx == num_utxos:
             # write utxo batch to database
             con.executemany("INSERT INTO utxos VALUES(?, ?, ?, ?, ?, ?)", write_batch)
-            con.executemany("INSERT INTO recycle_state VALUES(?, ?, ?, ?, ?, ?)", state_batch)
             con.commit()
             write_batch.clear()
-            state_batch.clear()
             write_batch_bytes = 0
 
         if coin_idx % (1024*1024) == 0:
             elapsed = time.time() - start_time
             print(f"{coin_idx} coins converted [{coin_idx/num_utxos*100:.2f}%], " +
                   f"{elapsed:.3f}s passed since start")
+    con.commit()
     con.close()
 
-    print(f"TOTAL: {num_utxos - state_count} coins and {state_count} recycle state records "
+    print(f"TOTAL: {num_utxos} coins, pool balance {pool} satoshis "
           f"written to {args.outfile}, snapshot height is {max_height}.")
     if f.read(1) != b'':  # EOF should be reached by now
         print(f"WARNING: input file {args.infile} has not reached EOF yet!")

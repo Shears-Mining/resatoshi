@@ -8,7 +8,6 @@
 #include <coins.h>
 #include <dbwrapper.h>
 #include <logging/timer.h>
-#include <node/recycle_serialization.h>
 #include <primitives/transaction.h>
 #include <random.h>
 #include <serialize.h>
@@ -34,13 +33,14 @@ static constexpr uint8_t DB_BEST_BLOCK{'B'};
 static constexpr uint8_t DB_HEAD_BLOCKS{'H'};
 // Keys used in previous version that might still be found in the DB:
 static constexpr uint8_t DB_COINS{'c'};
-// Codec-aware older ReSatoshi binaries reject versions other than 1.
-static constexpr uint8_t DB_RECYCLE_CODEC{'r'};
+// This format has an explicit pool key and typed block undo. Old chainstate
+// and undo data must be replaced by a fresh synchronization, never migrated.
+static constexpr uint8_t DB_RECYCLE_FORMAT{'r'};
+static constexpr uint8_t DB_RECYCLE_MODE{'m'};
+static constexpr uint8_t DB_RECYCLE_POOL{'P'};
 static constexpr uint8_t DB_RECYCLE_HEIGHT{'E'};
-static constexpr int RECYCLE_INDEX_VERSION{2};
-static constexpr int RECYCLE_INDEX_BUILDING{3};
-// Older binaries must not silently enable indexing on a block-mode chainstate.
-static constexpr int RECYCLE_BLOCK_VERSION{4};
+static constexpr uint8_t DB_RECYCLE_BUILDING{'e'};
+static constexpr int RECYCLE_FORMAT_VERSION{5};
 
 // Threshold for warning when writing this many dirty cache entries to disk.
 static constexpr size_t WARN_FLUSH_COINS_COUNT{10'000'000};
@@ -53,16 +53,17 @@ bool CCoinsViewDB::NeedsUpgrade()
     cursor->Seek(std::make_pair(DB_COINS, uint256{}));
     uint8_t key{0};
     if (cursor->Valid() && cursor->GetKey(key) && key == DB_COINS) return true;
-    int version{0};
-    return m_db->Exists(DB_RECYCLE_CODEC) && (!m_db->Read(DB_RECYCLE_CODEC, version) ||
-        (m_options.recycle_mode == RecycleMode::BLOCK ? version != RECYCLE_BLOCK_VERSION :
-         (version != 1 && version != RECYCLE_INDEX_VERSION && version != RECYCLE_INDEX_BUILDING)));
+    int version{0}, mode{-1};
+    return !m_db->Read(DB_RECYCLE_FORMAT, version) || version != RECYCLE_FORMAT_VERSION ||
+        !m_db->Read(DB_RECYCLE_MODE, mode) || mode != static_cast<int>(m_options.recycle_mode);
 }
 
 bool CCoinsViewDB::RecycleStateReady() const
 {
-    int version{0};
-    return m_db->Read(DB_RECYCLE_CODEC, version) && version == RECYCLE_INDEX_VERSION;
+    int version{0}, mode{-1};
+    return m_db->Read(DB_RECYCLE_FORMAT, version) && version == RECYCLE_FORMAT_VERSION &&
+        m_db->Read(DB_RECYCLE_MODE, mode) && mode == static_cast<int>(RecycleMode::INDEX) &&
+        !m_db->Exists(DB_RECYCLE_BUILDING);
 }
 
 namespace {
@@ -119,9 +120,10 @@ bool RecycleIndexCheckResult::Valid() const
 RecycleIndexSnapshot::RecycleIndexSnapshot(std::shared_ptr<CDBWrapper> db, std::shared_ptr<RecycleIndexScanControl> control)
     : m_impl{std::make_unique<Impl>(std::move(db), std::move(control))}
 {
-    int version{0};
-    if (!m_impl->snapshot->Read(DB_RECYCLE_CODEC, version) || version != RECYCLE_INDEX_VERSION ||
-        m_impl->snapshot->Exists(DB_HEAD_BLOCKS) || GetBestBlock().IsNull()) {
+    int version{0}, mode{-1};
+    if (!m_impl->snapshot->Read(DB_RECYCLE_FORMAT, version) || version != RECYCLE_FORMAT_VERSION ||
+        !m_impl->snapshot->Read(DB_RECYCLE_MODE, mode) || mode != static_cast<int>(RecycleMode::INDEX) ||
+        m_impl->snapshot->Exists(DB_RECYCLE_BUILDING) || m_impl->snapshot->Exists(DB_HEAD_BLOCKS) || GetBestBlock().IsNull()) {
         throw std::runtime_error("Recycle index check requires a ready, fully flushed chainstate");
     }
 }
@@ -156,15 +158,13 @@ RecycleIndexCheckResult RecycleIndexSnapshot::Check(
         COutPoint outpoint;
         CoinEntry key{&outpoint};
         Coin coin;
-        // The metadata formatter preserves oversized internal scripts and also
-        // rejects oversized non-metadata scripts rather than silently truncating.
-        auto formatted{Using<node::recycle::StateCoinFormatter>(coin)};
-        if (!cursor->GetKey(key, true) || !cursor->GetValue(formatted, true) || coin.IsSpent()) {
+
+        if (!cursor->GetKey(key, true) || !cursor->GetValue(coin, true) || coin.IsSpent()) {
             ++result.malformed_coins;
             issue("malformed_coin");
             continue;
         }
-        if (node::recycle::IsStateOutpoint(outpoint) || coin.out.scriptPubKey.IsUnspendable()) continue;
+        if (coin.out.scriptPubKey.IsUnspendable()) continue;
         ++result.indexed_coins;
         if (!snapshot.Exists(HeightEntry{DB_RECYCLE_HEIGHT, coin.nHeight, outpoint})) {
             ++result.missing;
@@ -186,15 +186,14 @@ RecycleIndexCheckResult RecycleIndexSnapshot::Check(
         }
         const CoinEntry key{&entry.outpoint};
         Coin coin;
-        auto formatted{Using<node::recycle::StateCoinFormatter>(coin)};
-        const auto read{snapshot.ReadStatus(key, formatted)};
+        const auto read{snapshot.ReadStatus(key, coin)};
         if (read == CDBSnapshot::ReadResult::NOT_FOUND) {
             ++result.orphaned;
             issue("orphaned", entry.outpoint, entry.height);
             continue;
         }
         if (read != CDBSnapshot::ReadResult::OK || coin.IsSpent()) continue; // Counted by the coin pass.
-        if (node::recycle::IsStateOutpoint(entry.outpoint) || coin.out.scriptPubKey.IsUnspendable()) {
+        if (coin.out.scriptPubKey.IsUnspendable()) {
             ++result.unexpected;
             issue("unexpected", entry.outpoint, entry.height, uint32_t{coin.nHeight});
         } else if (coin.nHeight != entry.height) {
@@ -228,12 +227,11 @@ void CCoinsViewDB::CancelRecycleIndexCheck()
     }
 }
 
-bool CCoinsViewDB::UpgradeRecycleIndex(const std::function<bool()>& interrupted)
+bool CCoinsViewDB::RebuildRecycleIndex(const std::function<bool()>& interrupted)
 {
-    if (m_options.recycle_mode != RecycleMode::INDEX || RecycleStateReady()) return true;
-    // Mark before the first mutation. Legacy binaries that know the codec
-    // marker must not open a partially migrated database.
-    m_db->Write(DB_RECYCLE_CODEC, RECYCLE_INDEX_BUILDING, /*fSync=*/true);
+    if (m_options.recycle_mode != RecycleMode::INDEX) return true;
+    if (NeedsUpgrade()) throw std::runtime_error("Unsupported chainstate format; synchronize a fresh data directory");
+    m_db->Write(DB_RECYCLE_BUILDING, true, /*fSync=*/true);
     CDBBatch batch{*m_db};
     auto flush = [&] {
         if (batch.ApproximateSize() > m_options.batch_write_bytes) {
@@ -265,22 +263,17 @@ bool CCoinsViewDB::UpgradeRecycleIndex(const std::function<bool()>& interrupted)
         COutPoint outpoint;
         CoinEntry entry{&outpoint};
         if (!cursor->GetKey(entry)) throw std::runtime_error("Corrupt coin key");
-        if (node::recycle::IsStateOutpoint(outpoint) && outpoint.n != std::numeric_limits<uint32_t>::max()) {
-            // No need to deserialize legacy schedules, even truncated ones.
-            batch.Erase(entry);
-        } else {
-            Coin coin;
-            if (!cursor->GetValue(coin)) throw std::runtime_error("Corrupt coin during recycle index rebuild");
-            if (!coin.out.scriptPubKey.IsUnspendable()) {
-                batch.Write(HeightEntry{DB_RECYCLE_HEIGHT, coin.nHeight, outpoint}, uint8_t{0});
-            }
+        Coin coin;
+        if (!cursor->GetValue(coin)) throw std::runtime_error("Corrupt coin during recycle index rebuild");
+        if (!coin.out.scriptPubKey.IsUnspendable()) {
+            batch.Write(HeightEntry{DB_RECYCLE_HEIGHT, coin.nHeight, outpoint}, uint8_t{0});
         }
         flush();
     }
     cursor->CheckStatus();
-    batch.Write(DB_RECYCLE_CODEC, RECYCLE_INDEX_VERSION);
+    batch.Erase(DB_RECYCLE_BUILDING);
     m_db->WriteBatch(batch, /*fSync=*/true);
-    LogInfo("Rebuilt recycle height index from current UTXOs; removed legacy schedules");
+    LogInfo("Rebuilt recycle height index from current UTXOs");
     return true;
 }
 
@@ -309,8 +302,19 @@ CCoinsViewDB::CCoinsViewDB(DBParams db_params, CoinsViewOptions options) :
     m_options{std::move(options)},
     m_db{std::make_shared<CDBWrapper>(m_db_params)}
 {
-    if (m_options.recycle_mode == RecycleMode::BLOCK && !m_db->Exists(DB_RECYCLE_CODEC)) {
-        m_db->Write(DB_RECYCLE_CODEC, RECYCLE_BLOCK_VERSION, /*fSync=*/true);
+    if (!m_db->Exists(DB_RECYCLE_FORMAT)) {
+        auto cursor{std::unique_ptr<CDBIterator>{m_db->NewIterator()}};
+        cursor->SeekToFirst();
+        std::string key;
+        if (cursor->Valid() && cursor->GetKey(key, true) && key == std::string{"\000obfuscate_key", 14}) cursor->Next();
+        cursor->CheckStatus();
+        if (!cursor->Valid()) {
+            CDBBatch batch{*m_db};
+            batch.Write(DB_RECYCLE_FORMAT, RECYCLE_FORMAT_VERSION);
+            batch.Write(DB_RECYCLE_MODE, static_cast<int>(m_options.recycle_mode));
+            batch.Write(DB_RECYCLE_POOL, CAmount{0});
+            m_db->WriteBatch(batch, /*fSync=*/true);
+        }
     }
 }
 
@@ -344,10 +348,7 @@ void CCoinsViewDB::ResizeCache(size_t new_cache_size)
 std::optional<Coin> CCoinsViewDB::GetCoin(const COutPoint& outpoint) const
 {
     Coin coin;
-    auto metadata = Using<node::recycle::StateCoinFormatter>(coin);
-    const bool found{node::recycle::IsStateOutpoint(outpoint)
-        ? m_db->Read(CoinEntry(&outpoint), metadata)
-        : m_db->Read(CoinEntry(&outpoint), coin)};
+    const bool found{m_db->Read(CoinEntry(&outpoint), coin)};
     if (found) {
         Assert(!coin.IsSpent()); // The UTXO database should never contain spent coins
         return coin;
@@ -357,6 +358,15 @@ std::optional<Coin> CCoinsViewDB::GetCoin(const COutPoint& outpoint) const
 
 bool CCoinsViewDB::HaveCoin(const COutPoint &outpoint) const {
     return m_db->Exists(CoinEntry(&outpoint));
+}
+
+CAmount CCoinsViewDB::GetRecyclePool() const
+{
+    CAmount pool{0};
+    if (!m_db->Read(DB_RECYCLE_POOL, pool) || !MoneyRange(pool)) {
+        throw std::runtime_error("Missing or invalid recycle pool balance");
+    }
+    return pool;
 }
 
 uint256 CCoinsViewDB::GetBestBlock() const {
@@ -445,6 +455,9 @@ void CCoinsViewDB::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashB
     // In the last batch, mark the database as consistent with hashBlock again.
     batch.Erase(DB_HEAD_BLOCKS);
     batch.Write(DB_BEST_BLOCK, hashBlock);
+    // Publish the pool with the final tip marker. Partial coin batches remain
+    // covered by DB_HEAD_BLOCKS and idempotent undo replay after a crash.
+    if (const auto pool{cursor.GetRecyclePool()}) batch.Write(DB_RECYCLE_POOL, *pool);
 
     LogDebug(BCLog::COINDB, "Writing final batch of %.2f MiB\n", batch.ApproximateSize() * (1.0 / 1048576.0));
     m_db->WriteBatch(batch);
@@ -487,10 +500,11 @@ class CCoinsViewDBCursor: public CCoinsViewCursor
 public:
     // Prefer using CCoinsViewDB::Cursor() since we want to perform some
     // cache warmup on instantiation.
-    CCoinsViewDBCursor(CDBIterator* pcursorIn, const uint256&hashBlockIn):
-        CCoinsViewCursor(hashBlockIn), pcursor(pcursorIn) {}
+    CCoinsViewDBCursor(CDBIterator* pcursorIn, const uint256&hashBlockIn, CAmount pool):
+        CCoinsViewCursor(hashBlockIn), pcursor(pcursorIn), m_recycle_pool(pool) {}
     ~CCoinsViewDBCursor() = default;
 
+    CAmount GetRecyclePool() const override { return m_recycle_pool; }
     bool GetKey(COutPoint &key) const override;
     bool GetValue(Coin &coin) const override;
 
@@ -499,6 +513,7 @@ public:
 
 private:
     std::unique_ptr<CDBIterator> pcursor;
+    CAmount m_recycle_pool;
     std::pair<char, COutPoint> keyTmp;
 
     friend class CCoinsViewDB;
@@ -507,7 +522,7 @@ private:
 std::unique_ptr<CCoinsViewCursor> CCoinsViewDB::Cursor() const
 {
     auto i = std::make_unique<CCoinsViewDBCursor>(
-        const_cast<CDBWrapper&>(*m_db).NewIterator(), GetBestBlock());
+        const_cast<CDBWrapper&>(*m_db).NewIterator(), GetBestBlock(), GetRecyclePool());
     /* It seems that there are no "const iterators" for LevelDB.  Since we
        only need read operations on it, use a const-cast to get around
        that restriction.  */
@@ -535,10 +550,6 @@ bool CCoinsViewDBCursor::GetKey(COutPoint &key) const
 
 bool CCoinsViewDBCursor::GetValue(Coin &coin) const
 {
-    if (node::recycle::IsStateOutpoint(keyTmp.second)) {
-        auto formatted = Using<node::recycle::StateCoinFormatter>(coin);
-        return pcursor->GetValue(formatted);
-    }
     return pcursor->GetValue(coin);
 }
 

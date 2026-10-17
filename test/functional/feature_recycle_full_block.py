@@ -35,7 +35,7 @@ class RecycleFullBlockTest(BitcoinTestFramework):
         self.extra_args = [['-test=recycle', '-coinstatsindex', '-checklevel=4', '-checkblocks=0'] for _ in range(2)]
 
     def add_options(self, parser):
-        parser.add_argument('--legacy-bitcoind')
+        parser.add_argument('--reference-bitcoind')
         parser.add_argument('--full-block-results')
         parser.add_argument('--small-cache', action='store_true')
         parser.add_argument('--crash-expiry', action='store_true')
@@ -44,9 +44,8 @@ class RecycleFullBlockTest(BitcoinTestFramework):
         if self.options.small_cache:
             self.extra_args = [args + ['-dbcache=4', '-dbbatchsize=512', '-checklevel=2'] for args in self.extra_args]
         self.add_nodes(2, extra_args=self.extra_args)
-        self.current_binary = self.nodes[1].args[0]
-        if self.options.legacy_bitcoind:
-            self.nodes[1].args[0] = str(Path(self.options.legacy_bitcoind).resolve())
+        if self.options.reference_bitcoind:
+            self.nodes[1].args[0] = str(Path(self.options.reference_bitcoind).resolve())
         self.start_nodes()
 
     def transition(self, txs):
@@ -306,16 +305,12 @@ class RecycleFullBlockTest(BitcoinTestFramework):
             self.extra_args = [[arg for arg in args if arg not in ('-dbcache=4', '-dbbatchsize=512', '-checklevel=2')] for args in self.extra_args]
             for i, node in enumerate(self.nodes):
                 node.extra_args = self.extra_args[i]
-        self.log.info('Restart, verify all blocks, rebuild old chainstate, then migrate to new binary')
+        self.log.info('Restart, verify all blocks, and rebuild chainstate independently')
         for i in range(2):
             self.restart_node(i)
             assert self.nodes[i].verifychain(4, 0)
         self.check()
         self.restart_node(1, extra_args=self.extra_args[1] + ['-reindex-chainstate'])
-        self.check()
-        self.stop_node(1)
-        self.nodes[1].args[0] = self.current_binary
-        self.start_node(1)
         self.check()
         for node in self.nodes:
             node.invalidateblock(expiry.hash_hex)
@@ -332,7 +327,7 @@ class RecycleFullBlockTest(BitcoinTestFramework):
         assert_equal(self.pool, 0)
         self.restart_node(0, extra_args=self.extra_args[0] + ['-reindex-chainstate'])
         self.check()
-        result = dict(legacy=self.options.legacy_bitcoind, small_cache=self.options.small_cache,
+        result = dict(reference=self.options.reference_bitcoind, small_cache=self.options.small_cache,
                       crash_expiry=self.options.crash_expiry, accepted_blocks=self.accepted,
                       rejected_blocks=self.rejected, checkpoints=self.checkpoints, exact_utxo_checks=self.exact_utxo_checks, profiles=self.profiles,
                       final_height=self.height, final_utxos=len(self.coins), final_pool=self.pool)

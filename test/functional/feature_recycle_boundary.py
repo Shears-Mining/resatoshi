@@ -2,7 +2,7 @@
 # Copyright (c) 2026 The ReSatoshi developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-"""Compare expiry boundaries against an independent ledger and optional legacy node."""
+"""Compare expiry boundaries against an independent ledger and optional reference node."""
 
 from decimal import Decimal
 import http.client
@@ -31,7 +31,8 @@ class RecycleBoundaryTest(BitcoinTestFramework):
         self.extra_args = [['-test=recycle', '-coinstatsindex', '-checklevel=4', '-checkblocks=0'] for _ in range(2)]
 
     def add_options(self, parser):
-        parser.add_argument('--legacy-bitcoind')
+        parser.add_argument('--reference-bitcoind')
+        parser.add_argument('--expiry-mode', choices=('index', 'block'), default='index')
         parser.add_argument('--boundary-seed', type=int, default=17)
         parser.add_argument('--boundary-results')
         parser.add_argument('--small-cache', action='store_true')
@@ -42,10 +43,10 @@ class RecycleBoundaryTest(BitcoinTestFramework):
         # or transient branch selection can hide a disagreement in acceptance.
         if self.options.small_cache:
             self.extra_args = [args + ['-dbcache=4', '-dbbatchsize=512'] for args in self.extra_args]
+        self.extra_args[0].append(f'-recyclemode={self.options.expiry_mode}')
         self.add_nodes(2, extra_args=self.extra_args)
-        self.current_binary = self.nodes[1].args[0]
-        if self.options.legacy_bitcoind:
-            self.nodes[1].args[0] = str(Path(self.options.legacy_bitcoind).resolve())
+        if self.options.reference_bitcoind:
+            self.nodes[1].args[0] = str(Path(self.options.reference_bitcoind).resolve())
         self.start_nodes()
 
     def mark(self, label):
@@ -120,7 +121,7 @@ class RecycleBoundaryTest(BitcoinTestFramework):
         self.history[self.tip] = (self.height, self.pool, self.coins.copy())
         self.accepted += 1
         if crash:
-            self.mark(f'Interrupted index flush at height {height}, then recover against legacy state')
+            self.mark(f'Interrupted index flush at height {height}, then recover against reference state')
             node = self.nodes[0]
             with node.assert_debug_log(['Simulating a crash. Goodbye.']):
                 try:
@@ -321,17 +322,13 @@ class RecycleBoundaryTest(BitcoinTestFramework):
                 self.restart_node(0)
                 self.check()
         self.check()
-        self.mark('Restart, old-node reindex, and migration with historical expiry undo')
+        self.mark('Independent restart/reindex and historical expiry undo')
         for i in range(2):
             self.restart_node(i)
         self.check()
         for node in self.nodes:
             assert node.verifychain(4, 0)
         self.restart_node(1, extra_args=self.extra_args[1] + ['-reindex-chainstate'])
-        self.check()
-        self.stop_node(1)
-        self.nodes[1].args[0] = self.current_binary
-        self.start_node(1)
         self.check()
         final_tip = self.tip
         for node in self.nodes:
@@ -344,7 +341,7 @@ class RecycleBoundaryTest(BitcoinTestFramework):
             assert node.verifychain(4, 0)
         assert self.crashed == (self.options.crash_height is not None)
         result = {'crash_height': self.options.crash_height, 'seed': self.options.boundary_seed, 'small_cache': self.options.small_cache,
-                  'legacy': self.options.legacy_bitcoind, 'accepted_blocks': self.accepted,
+                  'reference': self.options.reference_bitcoind, 'expiry_mode': self.options.expiry_mode, 'accepted_blocks': self.accepted,
                   'rejected_blocks': self.rejected, 'state_checkpoints': self.checkpoints,
                   'final_height': self.height, 'utxos': len(self.coins), 'pool_satoshis': self.pool,
                   'cases': self.cases}

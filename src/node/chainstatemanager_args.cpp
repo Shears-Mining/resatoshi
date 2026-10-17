@@ -35,7 +35,7 @@ RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir)
         return RecycleDirectoryState::INVALID;
     }
     if (fs::exists(datadir / "chainstate" / "CURRENT") || fs::exists(datadir / "blocks" / "index" / "CURRENT")) {
-        return RecycleDirectoryState::LEGACY_INDEX;
+        return RecycleDirectoryState::EXISTING_UNMARKED;
     }
     return RecycleDirectoryState::NEW;
 }

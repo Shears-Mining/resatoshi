@@ -34,13 +34,13 @@ class RecycleMiningLoadTest(BitcoinTestFramework):
         self.extra_args = [['-test=recycle', '-coinstatsindex', '-acceptnonstdtxn=0', '-checkmempool=1000', '-checklevel=4', '-checkblocks=0'] for _ in range(2)]
 
     def add_options(self, parser):
-        parser.add_argument('--legacy-bitcoind')
+        parser.add_argument('--reference-bitcoind')
         parser.add_argument('--mining-results')
 
     def setup_network(self):
         self.add_nodes(2, extra_args=self.extra_args)
-        if self.options.legacy_bitcoind:
-            self.nodes[1].args[0] = str(Path(self.options.legacy_bitcoind).resolve())
+        if self.options.reference_bitcoind:
+            self.nodes[1].args[0] = str(Path(self.options.reference_bitcoind).resolve())
         self.start_nodes()
         for node in self.nodes:
             node.add_p2p_connection(P2PInterface())
@@ -172,7 +172,7 @@ class RecycleMiningLoadTest(BitcoinTestFramework):
         for node in self.nodes:
             assert_equal(node.getblockstats(renewal.hash_hex)['expired_outputs'], len(selected))
         self.states(count=0, value=0, pool=pool)
-        result = dict(legacy=self.options.legacy_bitcoind, mempool_transactions=COUNT, selected_transactions=len(selected),
+        result = dict(reference=self.options.reference_bitcoind, mempool_transactions=COUNT, selected_transactions=len(selected),
                       expired_at_full_block=expired, block_weight=block.get_weight(), block_bytes=len(block.serialize()),
                       proposal_validations=6, checkpoints=self.checkpoints, final_height=401, final_utxos=0,
                       final_pool_satoshis=pool, standard_relay_required=True, mempool_consistency_interval=1000)

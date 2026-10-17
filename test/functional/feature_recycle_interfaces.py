@@ -16,7 +16,7 @@ import sys
 import urllib.parse
 
 from test_framework.blocktools import create_block, create_coinbase
-from test_framework.messages import COIN, CTxOut, MAGIC_BYTES, deser_block_spent_outputs, hash256, ser_compact_size, ser_varint
+from test_framework.messages import COIN, CTxOut, MAGIC_BYTES, deser_block_spent_outputs, hash256, ser_varint
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, assert_raises, assert_raises_rpc_error, util_xor
 from test_framework.wallet import MiniWallet
@@ -77,9 +77,9 @@ class RecycleInterfacesTest(BitcoinTestFramework):
         start = matches[0] + 8
         # A valid checksum with no transaction/state undo records: readable,
         # but inconsistent with this post-expiry block. Keep other offsets intact.
-        payload = b'\x00'
+        payload = b'\x00\x00'
         data[start - 4:start] = len(payload).to_bytes(4, 'little')
-        data[start:start + 33] = payload + hash256(previous + payload)
+        data[start:start + len(payload) + 32] = payload + hash256(previous + payload)
         try:
             path.write_bytes(util_xor(data, key, offset=0))
             self.start_node(0, extra_args=self.extra_args[0] + ['-checklevel=0'])
@@ -119,46 +119,17 @@ class RecycleInterfacesTest(BitcoinTestFramework):
             subprocess.run([sys.executable, str(tool), snapshot['path'], str(database), f'--spk={fmt}', f'--txid={fmt}'], check=True, capture_output=True, text=True)
             with sqlite3.connect(database) as con:
                 assert_equal(con.execute('SELECT COUNT(*), SUM(value) FROM utxos').fetchone(), (278, 278 * COIN // 10))
-                states = con.execute('SELECT txid, vout, scriptpubkey FROM recycle_state').fetchall()
-                assert_equal(len(states), snapshot['coins_written'] - 278)
-                assert_equal(len(states), 0)
+                assert_equal(snapshot['coins_written'], 278)
+                assert_equal(con.execute('SELECT balance FROM recycle_pool').fetchall(), [(0,)])
 
-        # Keep a legacy oversized metadata fixture to test old snapshot tools.
-        spk = b'\x6a' + ser_compact_size(278) + b''.join(
-            coinbase.txid_int.to_bytes(32, 'little') + n.to_bytes(4, 'little') for n in range(278))
         spec = importlib.util.spec_from_file_location('utxo_converter', tool)
         converter = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(converter)
-        # Large state is valid, but must not relax ordinary script bounds.
-        encoded = ser_varint(len(spk) + 6) + spk
-        assert_equal(converter.decompress_script(io.BytesIO(encoded), metadata=True), spk)
-        assert_raises(ValueError, converter.decompress_script, io.BytesIO(encoded))
-        assert_raises(ValueError, converter.decompress_script, io.BytesIO(encoded[:-1]), metadata=True)
-
-        assert_raises(ValueError, converter.decompress_script, io.BytesIO(ser_varint(32 * 1024 * 1024 + 7)), metadata=True)
-        assert_raises(ValueError, converter.decompress_script, io.BytesIO(ser_varint(7) + b'\x51'), metadata=True)
-        assert_raises(ValueError, converter.decompress_script, io.BytesIO(b'\x00'), metadata=True)
-
-        # The record encoding is shared; exercise mainnet's distinct header
-        # magic and ensure Bitcoin's namespace does not admit oversized state.
-        fixture = bytearray(Path(snapshot['path']).read_bytes())
-        main_snapshot = Path(self.options.tmpdir) / 'main-header.dat'
-        # Inject one historical schedule into the new snapshot's coin stream.
-        fixture[43:51] = (279).to_bytes(8, 'little')
-        legacy_record = (bytes(32) + ser_compact_size(1) + ser_compact_size(1_000_001)
-                         + ser_varint(2) + ser_varint(0) + encoded)
-        fixture[51:51] = legacy_record
-        fixture[7:11] = bytes.fromhex('47d92434')
-        main_snapshot.write_bytes(fixture)
-        main_db = Path(self.options.tmpdir) / 'main-header.sqlite'
-        subprocess.run([sys.executable, str(tool), str(main_snapshot), str(main_db), '--txid=rawle'], check=True, capture_output=True, text=True)
-        with sqlite3.connect(main_db) as con:
-            assert_equal(con.execute('SELECT COUNT(*) FROM recycle_state').fetchone(), (1,))
-        fixture[7:11] = bytes.fromhex('f9beb4d9')
-        main_snapshot.write_bytes(fixture)
-        rejected = subprocess.run([sys.executable, str(tool), str(main_snapshot), str(Path(self.options.tmpdir) / 'bitcoin-header.sqlite')], capture_output=True, text=True)
-        assert rejected.returncode != 0
-        assert 'too long script' in rejected.stderr
+        oversized = ser_varint(10007) + b'\x51' * 10001
+        assert_raises(ValueError, converter.decompress_script, io.BytesIO(oversized))
+        fixture = Path(snapshot['path']).read_bytes()
+        assert_equal(int.from_bytes(fixture[5:7], 'little'), 3)
+        assert_equal(int.from_bytes(fixture[51:59], 'little'), 0)
 
         self.generatetodescriptor(node, 200, 'raw(6a)')
         self.wait_until(lambda: node.getindexinfo()['basic block filter index']['synced'])
@@ -201,8 +172,8 @@ class RecycleInterfacesTest(BitcoinTestFramework):
         subprocess.run([sys.executable, str(tool), pool_snapshot['path'], str(pool_db)], check=True, capture_output=True, text=True)
         with sqlite3.connect(pool_db) as con:
             assert_equal(con.execute('SELECT COUNT(*) FROM utxos').fetchone(), (0,))
-            assert_equal(con.execute('SELECT COUNT(*) FROM recycle_state').fetchone(), (pool_snapshot['coins_written'],))
-            assert con.execute('SELECT SUM(value) FROM recycle_state').fetchone()[0] > 0
+            assert_equal(pool_snapshot['coins_written'], 0)
+            assert_equal(con.execute('SELECT balance FROM recycle_pool').fetchone(), (2_680_000_000,))
         assert_equal(node.scanblocks('start', [desc], 201, 201)['relevant_blocks'], [])
         node.invalidateblock(expiry)
         assert_equal(node.getblockchaininfo(True)['recycling']['pool_balance'], 0)

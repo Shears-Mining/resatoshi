@@ -53,11 +53,12 @@ bool ReadUndoForStats(const interfaces::BlockInfo& block, std::vector<std::pair<
     if (!block.data) return false;
     if (block.height == 0) return true;
     const auto& consensus{Params().GetConsensus()};
-    if (!block.undo_data || !node::recycle::HasExpectedUndoCount(*block.undo_data, block.height, block.data->vtx.size(), consensus)) return false;
+    if (!block.undo_data || !node::recycle::HasExpectedUndo(*block.undo_data, block.height, block.data->vtx.size(), consensus)) return false;
     for (size_t i{1}; i < block.data->vtx.size(); ++i) {
         if (block.undo_data->vtxundo[i - 1].vprevout.size() != block.data->vtx[i]->vin.size()) return false;
     }
-    return !node::recycle::ExpectsStateUndo(block.height, consensus) || node::recycle::ReadExpiredCoins(block.undo_data->vtxundo.back(), expired);
+    expired = block.undo_data->recycle.expired;
+    return true;
 }
 
 struct DBVal {

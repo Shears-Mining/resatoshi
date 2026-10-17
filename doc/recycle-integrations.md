@@ -81,27 +81,20 @@ transaction update, rescan or wallet reload.
 
 ## UTXO snapshot conversion
 
-`contrib/utxo-tools/utxo_to_sqlite.py` recognizes Resatoshi mainnet snapshots and
-recycling regtest snapshots. It writes ordinary coins to `utxos` and reserved
-internal state to a separate `recycle_state` table with the same columns.
+Snapshot version 3 contains only real transaction outputs. Its header adds the
+explicit recycle pool balance after the coin count. The count excludes the pool.
+`hash_serialized_3` binds a nonzero pool with a domain-separated suffix; MuHash
+remains a commitment to spendable UTXOs. Old snapshot commitments and bytes must
+not be reused for this format. No mainnet AssumeUTXO snapshot is configured.
 
-State records use a zero transaction hash and output indices at or above
-1,000,001. Their `scriptpubkey` contains opaque state bytes, not a payment script.
-Do not count them as spendable coins or display them as user transactions. The
-snapshot header's record count includes both tables. Keep the state table when
-archiving a complete conversion; it is not a replacement for a validated node's
-snapshot importer.
+`contrib/utxo-tools/utxo_to_sqlite.py` converts this version to `utxos` and a
+single-row `recycle_pool(balance)` table, in satoshis. There is no reserved output
+namespace or oversized internal script exception. Ordinary script bounds apply.
 
-Ordinary scripts retain their 10,000-byte bound. Internal metadata permits up
-to 32 MiB per record, matching the node's serialization limit, and must start
-with OP_RETURN. Writes are flushed by both record count and encoded byte size
-to avoid accumulating many large records in a single batch. Existing `--txid`
-and `--spk` encodings apply to both tables.
+## Kernel and REST consumers
 
-## Kernel consumers
-
-The optional kernel library's spent-output API returns one entry per
-non-coinbase transaction. Internal recycle undo is excluded from that API and
-retained on disk for state recovery. An expiry-only block consequently has no
-transaction spent-output entries. This API does not expose expiry events;
-consumers needing them can use the opt-in descriptor RPC above.
+The kernel spent-output API and REST spent-output results contain transaction
+inputs only. `CBlockUndo::vtxundo` no longer needs stripping or interpretation of
+a synthetic final entry. The separate expiry payload remains available to local
+recovery and expiry-aware RPC consumers. An expiry-only block has no non-coinbase
+transaction undo entries; expiry events remain available through descriptor RPC.

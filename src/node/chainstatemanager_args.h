@@ -15,8 +15,8 @@ class ArgsManager;
 static constexpr int DEFAULT_SCRIPTCHECK_THREADS{0};
 
 namespace node {
-/** Recorded expiry mode, or index-mode legacy data without a mode record. */
-enum class RecycleDirectoryState { NEW, LEGACY_INDEX, INDEX, BLOCK, INVALID };
+/** Recorded expiry mode, or an existing directory missing its mode record. */
+enum class RecycleDirectoryState { NEW, EXISTING_UNMARKED, INDEX, BLOCK, INVALID };
 RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir);
 
 [[nodiscard]] util::Result<void> ApplyArgsManOptions(const ArgsManager& args, ChainstateManager::Options& opts);

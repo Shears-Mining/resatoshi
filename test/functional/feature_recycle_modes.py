@@ -77,15 +77,25 @@ class RecycleModesTest(BitcoinTestFramework):
         self.connect_nodes(1, 2)
         self.check_equal()
 
-        self.log.info("Legacy folders remain index mode")
+        self.log.info("Missing format or mode records require a fresh directory")
         self.stop_node(0)
-        (indexed.chain_path / "recycle-mode").unlink()
+        mode_path = indexed.chain_path / "recycle-mode"
+        format_path = indexed.chain_path / "recycle-format"
+        mode = mode_path.read_bytes()
+        storage_format = format_path.read_bytes()
+        format_path.unlink()
+        indexed.assert_start_raises_init_error(
+            extra_args=["-test=recycle"],
+            expected_msg="Error: Unsupported recycle storage format. Synchronize a fresh data directory.",
+        )
+        format_path.write_bytes(storage_format)
+        mode_path.unlink()
         indexed.assert_start_raises_init_error(
             extra_args=["-test=recycle", "-recyclemode=block"],
-            expected_msg="Error: Existing data directory uses index mode. Block mode requires a fresh data directory.",
+            expected_msg="Error: Recycle mode differs from the data directory. Use its recorded mode, or synchronize a fresh data directory.",
         )
-        with indexed.assert_debug_log(["Automatic recycle index check:"]):
-            self.start_node(0)
+        mode_path.write_bytes(mode)
+        self.start_node(0)
         self.connect_nodes(0, 1)
         self.check_equal()
 

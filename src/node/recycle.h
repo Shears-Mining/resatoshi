@@ -17,13 +17,12 @@ class CBlock;
 class CBlockUndo;
 class Coin;
 class CCoinsViewCache;
-class CTxUndo;
+struct CRecycleUndo;
 
 namespace Consensus { struct Params; }
 
 namespace node::recycle {
 
-inline constexpr int EXPIRY_BLOCKS{5'256'000};
 inline constexpr CAmount MAX_REWARD{COIN};
 
 enum class Error {
@@ -36,37 +35,25 @@ enum class Error {
 /** Return the recycle pool recorded in the supplied chainstate view. */
 CAmount PoolBalance(const CCoinsViewCache& view);
 
-/** Return the maximum recycle reward a candidate block may claim. */
-CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int height, int expiry_blocks = EXPIRY_BLOCKS, const CBlock* origin_block = nullptr);
+/** Maximum claim after candidate transactions and expiry. */
+CAmount AvailableReward(const CCoinsViewCache& view, const CBlock& block, int height,
+                        const Consensus::Params& consensus, const CBlock* origin_block = nullptr);
 
-/** Apply UTXO expiry and pool accounting, returning Error::NONE on success.
- * A supplied origin block replaces height-index lookup.
- */
+/** Apply expiry using the height index, or the supplied origin block. */
 Error ConnectBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
-                   CTxUndo& undo, std::vector<COutPoint>* expired = nullptr, int expiry_blocks = EXPIRY_BLOCKS, const CBlock* origin_block = nullptr);
+                   CRecycleUndo& undo, const Consensus::Params& consensus,
+                   std::vector<COutPoint>* expired = nullptr, const CBlock* origin_block = nullptr);
 
-/** Undo ConnectBlock. */
-bool DisconnectBlock(CCoinsViewCache& view, int height, CTxUndo* undo, int expiry_blocks = EXPIRY_BLOCKS);
+bool DisconnectBlock(CCoinsViewCache& view, int height, const CRecycleUndo* undo, const Consensus::Params& consensus);
 
-/** Reapply the state transition while recovering an interrupted chainstate flush. */
+/** Idempotent replay of an interrupted, possibly partial chainstate flush. */
 bool RollforwardBlock(CCoinsViewCache& view, const CBlock& block, int height, CAmount base_reward,
-                      const CTxUndo* undo, int expiry_blocks = EXPIRY_BLOCKS);
+                      const CRecycleUndo* undo, const Consensus::Params& consensus);
 
-/** Read expired coins from the existing undo payload without changing its format. */
-bool ReadExpiredCoins(const CTxUndo& undo, std::vector<std::pair<COutPoint, Coin>>& expired);
-
-/** Whether the network rules require an internal state undo entry at this height.
- * Does not inspect or modify undo data.
- */
 bool ExpectsStateUndo(int height, const Consensus::Params& consensus);
 
-/** Check the exact transaction/state undo count without modifying the records. */
-bool HasExpectedUndoCount(const CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus);
-
-/** Remove internal state from a copy of block undo before exposing transaction inputs.
- * Returns false, without modifying undo, if its entry count is inconsistent.
- */
-bool RemoveStateUndo(CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus);
+/** Validate transaction count and the separate expiry payload before mutation. */
+bool HasExpectedUndo(const CBlockUndo& undo, int height, size_t transaction_count, const Consensus::Params& consensus);
 
 } // namespace node::recycle
 

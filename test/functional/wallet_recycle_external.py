@@ -4,7 +4,6 @@
 # file COPYING or https://opensource.org/license/mit/.
 """External input evidence survives reload, rescans and changes of its confirming block."""
 from decimal import Decimal
-from pathlib import Path
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal, assert_raises_rpc_error
@@ -14,19 +13,12 @@ class ExternalExpiryTest(BitcoinTestFramework):
     def set_test_params(self):
         self.num_nodes = 1
         self.setup_clean_chain = True
+        self.wallet_names = []
         self.extra_args = [["-test=recycle", "-blockfilterindex=basic", "-blockmintxfee=1"]]
 
     def add_options(self, parser):
         parser.add_argument("--reorg", action="store_true")
         parser.add_argument("--orphan", action="store_true")
-        parser.add_argument("--legacy-bitcoind")
-
-    def setup_nodes(self):
-        self.add_nodes(1, extra_args=self.extra_args)
-        self.current_binary = self.nodes[0].args[0]
-        if self.options.legacy_bitcoind:
-            self.nodes[0].args[0] = str(Path(self.options.legacy_bitcoind).resolve())
-        self.start_nodes()
 
     def skip_test_if_missing_module(self):
         self.skip_if_no_wallet()
@@ -101,15 +93,10 @@ class ExternalExpiryTest(BitcoinTestFramework):
             owner.gettransaction(child)
             expiry = self.generateblock(n, "raw(6a)", [])["hash"]
             self.stop_node(0)
-            n.args[0] = self.current_binary
             self.start_node(0)
             n.loadwallet("owner")
             owner = n.get_wallet_rpc("owner")
-            # Old wallets without evidence stay conservative until a full rescan.
-            if self.options.legacy_bitcoind:
-                assert_equal(owner.getbalance(), Decimal("0"))
-            else:
-                assert_equal(owner.getbalance(), Decimal("100"))
+            assert_equal(owner.getbalance(), Decimal("100"))
             owner.rescanblockchain()
             assert_equal(owner.getbalance(), Decimal("100"))
             assert available(b) and available(c)

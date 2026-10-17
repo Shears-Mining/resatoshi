@@ -348,7 +348,7 @@ static bool rest_spent_txouts(const std::any& context, HTTPRequest* req, const s
     }
     // Read after the undo is available; block receipt can update nTx under cs_main.
     const auto transaction_count{WITH_LOCK(cs_main, return pblockindex->nTx)};
-    if (!node::recycle::RemoveStateUndo(block_undo, pblockindex->nHeight, transaction_count, chainman->GetConsensus())) {
+    if (!node::recycle::HasExpectedUndo(block_undo, pblockindex->nHeight, transaction_count, chainman->GetConsensus())) {
         return RESTERR(req, HTTP_INTERNAL_SERVER_ERROR, hashStr + " undo data inconsistent with block");
     }
 

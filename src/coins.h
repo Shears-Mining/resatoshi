@@ -242,6 +242,7 @@ public:
 
     //! Get best block at the time this cursor was created
     const uint256 &GetBestBlock() const { return hashBlock; }
+    virtual CAmount GetRecyclePool() const { return 0; }
 private:
     uint256 hashBlock;
 };
@@ -271,8 +272,8 @@ struct CoinsViewCacheCursor
     CoinsViewCacheCursor(size_t& dirty_count LIFETIMEBOUND,
                          CoinsCachePair& sentinel LIFETIMEBOUND,
                          CCoinsMap& map LIFETIMEBOUND,
-                         bool will_erase) noexcept
-        : m_dirty_count(dirty_count), m_sentinel(sentinel), m_map(map), m_will_erase(will_erase) {}
+                         bool will_erase, std::optional<CAmount> recycle_pool = std::nullopt) noexcept
+        : m_dirty_count(dirty_count), m_sentinel(sentinel), m_map(map), m_will_erase(will_erase), m_recycle_pool(recycle_pool) {}
 
     inline CoinsCachePair* Begin() const noexcept { return m_sentinel.second.Next(); }
     inline CoinsCachePair* End() const noexcept { return &m_sentinel; }
@@ -296,6 +297,7 @@ struct CoinsViewCacheCursor
     }
 
     inline bool WillErase(CoinsCachePair& current) const noexcept { return m_will_erase || current.second.coin.IsSpent(); }
+    std::optional<CAmount> GetRecyclePool() const noexcept { return m_recycle_pool; }
     size_t GetDirtyCount() const noexcept { return m_dirty_count; }
     size_t GetTotalCount() const noexcept { return m_map.size(); }
 private:
@@ -303,6 +305,7 @@ private:
     CoinsCachePair& m_sentinel;
     CCoinsMap& m_map;
     bool m_will_erase;
+    std::optional<CAmount> m_recycle_pool;
 };
 
 /** Abstract view on the open txout dataset. */
@@ -323,6 +326,9 @@ public:
 
     /** Spendable outpoints created at height, including unflushed changes. */
     virtual std::set<COutPoint> GetCoinsByHeight(uint32_t height) const;
+
+    //! Internal balance, outside the transaction output namespace.
+    virtual CAmount GetRecyclePool() const;
 
     //! Retrieve the block hash whose state this CCoinsView currently represents
     virtual uint256 GetBestBlock() const;
@@ -360,6 +366,7 @@ public:
     std::optional<Coin> PeekCoin(const COutPoint& outpoint) const override;
     bool HaveCoin(const COutPoint &outpoint) const override;
     std::set<COutPoint> GetCoinsByHeight(uint32_t height) const override;
+    CAmount GetRecyclePool() const override;
     uint256 GetBestBlock() const override;
     std::vector<uint256> GetHeadBlocks() const override;
     void SetBackend(CCoinsView &viewIn);
@@ -386,6 +393,8 @@ protected:
      * declared as "const".
      */
     mutable uint256 hashBlock;
+    mutable std::optional<CAmount> m_recycle_pool;
+    bool m_recycle_pool_dirty{false};
     mutable CCoinsMapMemoryResource m_cache_coins_memory_resource{};
     /* The starting sentinel of the flagged entry circular doubly linked list. */
     mutable CoinsCachePair m_sentinel;
@@ -418,8 +427,10 @@ public:
     std::optional<Coin> PeekCoin(const COutPoint& outpoint) const override;
     bool HaveCoin(const COutPoint &outpoint) const override;
     std::set<COutPoint> GetCoinsByHeight(uint32_t height) const override;
+    CAmount GetRecyclePool() const override;
     uint256 GetBestBlock() const override;
     void SetBestBlock(const uint256 &hashBlock);
+    void SetRecyclePool(CAmount amount);
     void BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashBlock) override;
     std::unique_ptr<CCoinsViewCursor> Cursor() const override {
         throw std::logic_error("CCoinsViewCache cursor iteration not supported.");
@@ -448,8 +459,7 @@ public:
      * Add a coin. Set possible_overwrite to true if an unspent version may
      * already exist in the cache.
      */
-    void AddCoin(const COutPoint& outpoint, Coin&& coin, bool possible_overwrite,
-                 bool allow_unspendable = false);
+    void AddCoin(const COutPoint& outpoint, Coin&& coin, bool possible_overwrite);
 
     /**
      * Emplace a coin into cacheCoins without performing any checks, marking
@@ -593,6 +603,7 @@ public:
     std::optional<Coin> GetCoin(const COutPoint& outpoint) const override;
     bool HaveCoin(const COutPoint &outpoint) const override;
     std::set<COutPoint> GetCoinsByHeight(uint32_t height) const override;
+    CAmount GetRecyclePool() const override;
     std::optional<Coin> PeekCoin(const COutPoint& outpoint) const override;
 
 private:

@@ -5154,8 +5154,8 @@ Essayez d’utiliser la version la plus récente du logiciel.
 <context>
     <name>RecycleSetupDialog</name>
     <message>
-        <source>Set up your ReSatoshi node</source>
-        <translation>Configurer votre nœud ReSatoshi</translation>
+        <source>Set up your Resatoshi node</source>
+        <translation>Configurer votre nœud Resatoshi</translation>
     </message>
     <message>
         <source>Choose how this node finds coins that have reached their expiry height. Both methods follow the same network rules and work with the wallet.</source>

@@ -1360,18 +1360,30 @@ static ChainstateLoadResult InitAndLoadChainstate(
         const auto mode_path{args.GetDataDirNet() / "recycle-mode"};
         const std::string requested{chainman_opts.recycle_from_block ? "block" : "index"};
         const auto directory_state{node::GetRecycleDirectoryState(args.GetDataDirNet())};
-        if (directory_state != node::RecycleDirectoryState::NEW && directory_state != node::RecycleDirectoryState::LEGACY_INDEX) {
+        const auto format_path{args.GetDataDirNet() / "recycle-format"};
+        if (fs::exists(format_path)) {
+            std::ifstream stream{format_path.std_path()};
+            std::string format;
+            std::getline(stream, format);
+            if (!stream || format != "1") {
+                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Unsupported recycle storage format. Synchronize a fresh data directory.")};
+            }
+        } else {
+            if (directory_state != node::RecycleDirectoryState::NEW) {
+                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Unsupported recycle storage format. Synchronize a fresh data directory.")};
+            }
+            FILE* format_file{fsbridge::fopen(format_path, "wb")};
+            if (!format_file) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot record recycle storage format")};
+            const bool written{std::fwrite("1\n", 1, 2, format_file) == 2 && FileCommit(format_file)};
+            const bool closed{std::fclose(format_file) == 0};
+            if (!written || !closed) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot persist recycle storage format")};
+        }
+        if (directory_state != node::RecycleDirectoryState::NEW) {
             const auto expected{chainman_opts.recycle_from_block ? node::RecycleDirectoryState::BLOCK : node::RecycleDirectoryState::INDEX};
             if (directory_state != expected) {
                 return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Recycle mode differs from the data directory. Use its recorded mode, or synchronize a fresh data directory.")};
             }
         } else {
-            // Legacy directories are index mode, even when -reindex was requested.
-            const bool legacy{directory_state == node::RecycleDirectoryState::LEGACY_INDEX};
-            chainman_opts.recycle_check_startup = legacy;
-            if (legacy && chainman_opts.recycle_from_block) {
-                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Existing data directory uses index mode. Block mode requires a fresh data directory.")};
-            }
             const auto temporary{args.GetDataDirNet() / "recycle-mode.tmp"};
             FILE* file{fsbridge::fopen(temporary, "wb")};
             if (!file) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot record recycle mode")};

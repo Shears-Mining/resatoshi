@@ -5060,8 +5060,8 @@ Bitte mit der neuesten Softwareversion ausführen.
 <context>
     <name>RecycleSetupDialog</name>
     <message>
-        <source>Set up your ReSatoshi node</source>
-        <translation>ReSatoshi-Knoten einrichten</translation>
+        <source>Set up your Resatoshi node</source>
+        <translation>Resatoshi-Knoten einrichten</translation>
     </message>
     <message>
         <source>Choose how this node finds coins that have reached their expiry height. Both methods follow the same network rules and work with the wallet.</source>

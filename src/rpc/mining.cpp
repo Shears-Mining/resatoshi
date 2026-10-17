@@ -399,7 +399,7 @@ static RPCHelpMan generateblock()
             if (!chainman.ReadRecycleOrigin(origin_block, chainman.ActiveChain().Tip())) throw JSONRPCError(RPC_MISC_ERROR, "Cannot read recycle expiry origin block");
             CMutableTransaction coinbase{*block.vtx[0]};
             coinbase.vout[0].nValue = GetBlockSubsidy(height, consensus) +
-                node::recycle::AvailableReward(chainman.ActiveChainstate().CoinsTip(), block, height, consensus.recycle_expiry_blocks, chainman.m_options.recycle_from_block ? &origin_block : nullptr);
+                node::recycle::AvailableReward(chainman.ActiveChainstate().CoinsTip(), block, height, consensus, chainman.m_options.recycle_from_block ? &origin_block : nullptr);
             block.vtx[0] = MakeTransactionRef(std::move(coinbase));
         }
         RegenerateCommitments(block, chainman);

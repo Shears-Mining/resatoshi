@@ -2564,8 +2564,8 @@ If you are receiving this error you should request the merchant provide a BIP21 
 <context>
     <name>RecycleSetupDialog</name>
     <message>
-        <source>Set up your ReSatoshi node</source>
-        <translation>ตั้งค่าโหนด ReSatoshi ของคุณ</translation>
+        <source>Set up your Resatoshi node</source>
+        <translation>ตั้งค่าโหนด Resatoshi ของคุณ</translation>
     </message>
     <message>
         <source>Choose how this node finds coins that have reached their expiry height. Both methods follow the same network rules and work with the wallet.</source>

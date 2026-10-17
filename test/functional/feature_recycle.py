@@ -49,9 +49,9 @@ class RecycleTest(BitcoinTestFramework):
         start, end = matches[0]
         assert_equal(end + 32, offset)  # Only resize the last undo record.
         payload = decoded[start:end]
-        assert_equal(payload[0], 1)  # Coinbase-only expiry block: one state undo.
+        assert_equal(payload[:2], b'\x00\x01')  # No transaction undo; typed expiry is active.
         try:
-            for damaged in (b'\x00', b'\x02\x00' + payload[1:]):
+            for damaged in (b'\x00\x00', b'\x01\x00' + payload[1:]):
                 # Keep a valid checksum so recovery must check record counts,
                 # rather than reject an unreadable or truncated disk record.
                 replacement = len(damaged).to_bytes(4, 'little') + damaged + hash256(previous + damaged)

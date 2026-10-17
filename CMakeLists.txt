@@ -26,7 +26,7 @@ get_directory_property(precious_variables CACHE_VARIABLES)
 #=============================
 # Project / Package metadata
 #=============================
-set(CLIENT_NAME "ReSatoshi")
+set(CLIENT_NAME "Resatoshi")
 # Display release only; keep upstream numeric client/protocol versions unchanged.
 set(RESATOSHI_RELEASE "31.0.0-rsat.1")
 set(CLIENT_VERSION_MAJOR 31)
@@ -54,7 +54,7 @@ set(CMAKE_TRY_COMPILE_PLATFORM_VARIABLES
 
 project(BitcoinCore
   VERSION ${CLIENT_VERSION_MAJOR}.${CLIENT_VERSION_MINOR}.${CLIENT_VERSION_BUILD}
-  DESCRIPTION "ReSatoshi client software"
+  DESCRIPTION "Resatoshi client software"
   HOMEPAGE_URL "https://gitlab.com/rst-group4210239/RST-project"
   LANGUAGES NONE
 )

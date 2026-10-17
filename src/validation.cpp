@@ -31,7 +31,6 @@
 #include <logging/timer.h>
 #include <node/blockstorage.h>
 #include <node/recycle.h>
-#include <node/recycle_serialization.h>
 #include <node/utxo_snapshot.h>
 #include <policy/ephemeral_policy.h>
 #include <policy/policy.h>
@@ -811,16 +810,6 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     // Coinbase is only valid in a block, not as a loose transaction
     if (tx.IsCoinBase())
         return state.Invalid(TxValidationResult::TX_CONSENSUS, "coinbase");
-
-    // Policy only: reject internal metadata references before any coin lookup.
-    // Do not change block consensus or exclude ordinary zero-hash outpoints.
-    if (args.m_chainparams.GetConsensus().recycle_enabled) {
-        for (const auto& input : tx.vin) {
-            if (node::recycle::IsStateOutpoint(input.prevout)) {
-                return state.Invalid(TxValidationResult::TX_NOT_STANDARD, "recycle-state-input");
-            }
-        }
-    }
 
     // Rather not work on nonstandard transactions (unless -testnet/-regtest)
     std::string reason;
@@ -2210,8 +2199,7 @@ DisconnectResult Chainstate::DisconnectBlock(const CBlock& block, const CBlockIn
     }
 
     const bool recycle_enabled{m_chainman.GetConsensus().recycle_enabled};
-    const size_t recycle_undos{node::recycle::ExpectsStateUndo(pindex->nHeight, m_chainman.GetConsensus()) ? 1U : 0U};
-    if (!node::recycle::HasExpectedUndoCount(blockUndo, pindex->nHeight, block.vtx.size(), m_chainman.GetConsensus())) {
+    if (!node::recycle::HasExpectedUndo(blockUndo, pindex->nHeight, block.vtx.size(), m_chainman.GetConsensus())) {
         LogError("DisconnectBlock(): block and undo data inconsistent\n");
         return DISCONNECT_FAILED;
     }
@@ -2265,8 +2253,8 @@ DisconnectResult Chainstate::DisconnectBlock(const CBlock& block, const CBlockIn
         }
     }
 
-    CTxUndo* recycle_undo{recycle_undos ? &blockUndo.vtxundo.back() : nullptr};
-    if (recycle_enabled && !node::recycle::DisconnectBlock(view, pindex->nHeight, recycle_undo, m_chainman.GetConsensus().recycle_expiry_blocks)) {
+    const CRecycleUndo* recycle_undo{&blockUndo.recycle};
+    if (recycle_enabled && !node::recycle::DisconnectBlock(view, pindex->nHeight, recycle_undo, m_chainman.GetConsensus())) {
         LogError("DisconnectBlock(): invalid recycle undo data\n");
         return DISCONNECT_FAILED;
     }
@@ -2644,13 +2632,11 @@ bool Chainstate::ConnectBlock(const CBlock& block, BlockValidationState& state, 
             if (!m_chainman.ReadRecycleOrigin(origin_block, pindex->pprev)) {
                 return FatalError(m_chainman.GetNotifications(), state, Untranslated("Cannot read recycle expiry origin block; restore block data before continuing"));
             }
-            CTxUndo recycle_undo;
             const auto recycle_error{node::recycle::ConnectBlock(view, block, pindex->nHeight, blockReward,
-                recycle_undo, expired, params.GetConsensus().recycle_expiry_blocks,
+                blockundo.recycle, params.GetConsensus(), expired,
                 m_chainman.m_options.recycle_from_block ? &origin_block : nullptr)};
             switch (recycle_error) {
             case node::recycle::Error::NONE:
-                if (!recycle_undo.vprevout.empty()) blockundo.vtxundo.push_back(std::move(recycle_undo));
                 break;
             case node::recycle::Error::PREMATURE_REWARD:
                 state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-cb-amount", "coinbase claims recycle reward before any output can expire");
@@ -4883,7 +4869,7 @@ bool Chainstate::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& in
         LogError("ReplayBlock(): ReadBlockUndo failed at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
         return false;
     }
-    if (recycle_enabled && !node::recycle::HasExpectedUndoCount(block_undo, pindex->nHeight, block.vtx.size(), m_chainman.GetConsensus())) {
+    if (recycle_enabled && !node::recycle::HasExpectedUndo(block_undo, pindex->nHeight, block.vtx.size(), m_chainman.GetConsensus())) {
         LogError("ReplayBlock(): block and undo data inconsistent\n");
         return false;
     }
@@ -4906,11 +4892,10 @@ bool Chainstate::RollforwardBlock(const CBlockIndex* pindex, CCoinsViewCache& in
         AddCoins(inputs, *tx, pindex->nHeight, true);
     }
     if (!recycle_enabled) return true;
-    const bool has_recycle_undo{node::recycle::ExpectsStateUndo(pindex->nHeight, m_chainman.GetConsensus())};
-    const CTxUndo* recycle_undo{has_recycle_undo ? &block_undo.vtxundo.back() : nullptr};
+    const CRecycleUndo* recycle_undo{&block_undo.recycle};
     return node::recycle::RollforwardBlock(inputs, block, pindex->nHeight,
                                            fees + GetBlockSubsidy(pindex->nHeight, m_chainman.GetConsensus()),
-                                           recycle_undo, m_chainman.GetConsensus().recycle_expiry_blocks);
+                                           recycle_undo, m_chainman.GetConsensus());
 }
 
 bool Chainstate::ReplayBlocks()
@@ -5831,7 +5816,7 @@ util::Result<CBlockIndex*> ChainstateManager::ActivateSnapshot(
     };
 
     if (GetConsensus().recycle_enabled && !m_options.recycle_from_block &&
-        !snapshot_chainstate->CoinsDB().UpgradeRecycleIndex([&] { return bool{m_interrupt}; })) {
+        !snapshot_chainstate->CoinsDB().RecycleStateReady()) {
         LOCK(::cs_main);
         return cleanup_bad_snapshot(Untranslated("Interrupted while initializing snapshot recycle index"));
     }
@@ -5934,6 +5919,10 @@ util::Result<void> ChainstateManager::PopulateAndValidateSnapshot(
         return util::Error{Untranslated("Work does not exceed active chainstate")};
     }
 
+    if ((!GetConsensus().recycle_enabled || base_height <= GetConsensus().recycle_expiry_blocks) && metadata.m_recycle_pool != 0) {
+        return util::Error{Untranslated("Snapshot has a pool balance before recycling is active")};
+    }
+    coins_cache.SetRecyclePool(metadata.m_recycle_pool);
     const uint64_t coins_count = metadata.m_coins_count;
     uint64_t coins_left = metadata.m_coins_count;
 

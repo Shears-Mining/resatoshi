@@ -1214,12 +1214,10 @@ btck_BlockSpentOutputs* btck_block_spent_outputs_read(const btck_ChainstateManag
         LogError("Failed to read block spent outputs data.");
         return nullptr;
     }
-    // The on-disk undo may end in recycle metadata, which is not a
-    // transaction's spent outputs. Only normalize this API's private copy.
     const auto& index{btck_BlockTreeEntry::get(entry)};
     const auto& consensus{btck_ChainstateManager::get(chainman).m_chainman->GetConsensus()};
     const auto transaction_count{WITH_LOCK(cs_main, return index.nTx)};
-    if (!node::recycle::RemoveStateUndo(*block_undo, index.nHeight, transaction_count, consensus)) {
+    if (!node::recycle::HasExpectedUndo(*block_undo, index.nHeight, transaction_count, consensus)) {
         LogError("Block spent outputs count does not match its transactions.");
         return nullptr;
     }

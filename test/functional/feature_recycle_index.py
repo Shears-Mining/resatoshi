@@ -2,7 +2,7 @@
 # Copyright (c) 2026 The ReSatoshi developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
-"""Check indexed expiry, metadata policy, and optional legacy DB/undo migration."""
+"""Check indexed expiry, crash recovery, restart, and explicit pool snapshots."""
 
 import http.client
 from pathlib import Path
@@ -11,7 +11,6 @@ import time
 from test_framework.blocktools import create_block, create_coinbase
 from test_framework.messages import COutPoint, CTransaction, CTxIn, CTxOut
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.test_node import ErrorMatch
 from test_framework.util import assert_equal
 
 
@@ -22,15 +21,7 @@ class RecycleIndexTest(BitcoinTestFramework):
         self.extra_args = [['-test=recycle', '-coinstatsindex', '-checklevel=4', '-checkblocks=0'] for _ in range(2)]
 
     def add_options(self, parser):
-        parser.add_argument('--legacy-bitcoind', help='Optional codec-v1 ReSatoshi binary for migration coverage')
-        parser.add_argument('--crash-upgrade', action='store_true', help='Upgrade from a deliberately interrupted flush')
-
-    def setup_nodes(self):
-        self.add_nodes(self.num_nodes, extra_args=self.extra_args)
-        self.current_binary = self.nodes[1].args[0]
-        if self.options.legacy_bitcoind:
-            self.nodes[1].args[0] = str(Path(self.options.legacy_bitcoind).resolve())
-        self.start_nodes()
+        parser.add_argument('--crash-flush', action='store_true', help='Recover a deliberately interrupted flush')
 
     def stats(self, node):
         self.wait_until(lambda: node.getindexinfo()['coinstatsindex']['synced'])
@@ -42,7 +33,7 @@ class RecycleIndexTest(BitcoinTestFramework):
 
     def run_test(self):
         new, old = self.nodes
-        self.log.info('Mine identical blocks on current and optional legacy nodes')
+        self.log.info('Mine identical blocks on two independent nodes')
         tip = new.getblockheader(new.getbestblockhash())
         coinbase = create_coinbase(1)
         coinbase.vout = [CTxOut(100_000, b'\x51') for _ in range(300)]
@@ -63,7 +54,7 @@ class RecycleIndexTest(BitcoinTestFramework):
         self.sync_blocks()
         assert_equal(self.stats(new), self.stats(old))
         before = self.stats(new)
-        if self.options.crash_upgrade:
+        if self.options.crash_flush:
             self.restart_node(1, extra_args=self.extra_args[1] + ['-dbbatchsize=1', '-dbcrashratio=1'])
             self.connect_nodes(0, 1)
         self.generatetodescriptor(new, 1, 'raw(6a)')
@@ -71,7 +62,7 @@ class RecycleIndexTest(BitcoinTestFramework):
         expired_hash = new.getbestblockhash()
         assert_equal(new.getblockstats(expired_hash)['expired_outputs'], 50)
         after = self.stats(new)
-        if self.options.crash_upgrade:
+        if self.options.crash_flush:
             with old.assert_debug_log(['Simulating a crash. Goodbye.']):
                 try:
                     old.gettxoutsetinfo('muhash', use_index=False)
@@ -81,10 +72,9 @@ class RecycleIndexTest(BitcoinTestFramework):
         else:
             assert_equal(self.stats(old), after)
 
-        self.log.info('Upgrade persisted legacy DB, then disconnect legacy undo')
+        self.log.info('Restart persisted state, then disconnect typed expiry undo')
         if old.running:
             self.stop_node(1)
-        old.args[0] = self.current_binary
         self.start_node(1)
         self.connect_nodes(0, 1)
         assert_equal(self.stats(old), after)
@@ -99,32 +89,24 @@ class RecycleIndexTest(BitcoinTestFramework):
         assert_equal(self.stats(old), after)
         assert_equal(self.stats(new), after)
 
-        self.log.info('New snapshots contain no historical schedule records')
+        self.log.info('Snapshots contain transaction outputs and a separate pool header')
         snapshot = old.dumptxoutset(str(Path(self.options.tmpdir) / 'indexed.dat'), 'latest')
-        # Exactly one constant-size pool record remains beyond spendable UTXOs.
-        assert_equal(snapshot['coins_written'], old.gettxoutsetinfo()['txouts'] + 1)
+        # Pool state never contributes a fake output to the snapshot count.
+        assert_equal(snapshot['coins_written'], old.gettxoutsetinfo()['txouts'])
         self.restart_node(1, extra_args=self.extra_args[1] + ['-reindex-chainstate'])
         self.connect_nodes(0, 1)
         self.sync_blocks()
         assert_equal(self.stats(old), after)
 
-        self.log.info('Reject reserved metadata inputs before UTXO lookup, as policy only')
+        self.log.info('Former reserved outpoints follow ordinary missing-input policy')
         for n in (1_000_001, 1_005_000):
             tx = CTransaction()
             tx.vin = [CTxIn(COutPoint(0, n))]
-            tx.vout = [CTxOut(1, b'\x51')]
+            tx.vout = [CTxOut(1000, b'\x00\x14' + bytes(20))]
             result = new.testmempoolaccept([tx.serialize().hex()])[0]
             assert_equal(result['allowed'], False)
-            assert_equal(result['reject-reason'], 'recycle-state-input')
+            assert_equal(result['reject-reason'], 'missing-inputs')
 
-        if self.options.legacy_bitcoind:
-            self.log.info('Codec-v1 binary must refuse the migrated database')
-            self.stop_node(1)
-            old.args[0] = str(Path(self.options.legacy_bitcoind).resolve())
-            old.assert_start_raises_init_error(expected_msg='Unsupported chainstate database format found.', match=ErrorMatch.PARTIAL_REGEX)
-            old.args[0] = self.current_binary
-            self.start_node(1)
-            assert_equal(self.stats(old), after)
 
 
 if __name__ == '__main__':

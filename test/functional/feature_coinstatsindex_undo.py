@@ -22,7 +22,7 @@ class CoinStatsUndoTest(BitcoinTestFramework):
     def add_options(self, parser):
         parser.add_argument('--recycling', action='store_true')
 
-    def check_bad_undo(self, blockhash, previous_hash, damaged_payloads):
+    def check_bad_undo(self, blockhash, previous_hash, damaged_payloads, prefix=b'\x01\x01'):
         node = self.nodes[0]  # Stopped; only alter the final undo record.
         path = node.blocks_path / 'rev00000.dat'
         original = path.read_bytes()
@@ -42,7 +42,7 @@ class CoinStatsUndoTest(BitcoinTestFramework):
         start, end = matches[0]
         assert_equal(end + 32, offset)
         payload = decoded[start:end]
-        assert_equal(payload[:2], b'\x01\x01')
+        assert_equal(payload[:2], prefix)
         try:
             for damaged in damaged_payloads(payload):
                 # A valid checksum ensures the index must check the contents.
@@ -80,10 +80,10 @@ class CoinStatsUndoTest(BitcoinTestFramework):
 
         self.log.info('Reject missing/extra transaction and input undo records')
         self.check_bad_undo(blockhash, previous_hash, lambda payload: (
-            b'\x00',                         # Missing transaction undo.
+            b'\x00\x00',                     # Missing transaction undo.
             b'\x02' + payload[1:] + b'\x00',  # Extra transaction undo.
-            b'\x01\x00',                     # Missing input undo.
-            b'\x01\x02' + payload[2:] * 2,    # Extra input undo.
+            b'\x01\x00\x00',                 # Missing input undo.
+            b'\x01\x02' + payload[2:-1] * 2 + b'\x00',    # Extra input undo.
         ))
         self.check_valid_undo(expected)
 
@@ -95,13 +95,12 @@ class CoinStatsUndoTest(BitcoinTestFramework):
             blockhash = self.generate(wallet, 1)[0]
             expected = node.gettxoutsetinfo('muhash', use_index=False)
             self.stop_node(0)
-            self.log.info('Reject missing/extra state undo and malformed state payload')
+            self.log.info('Reject missing/extra typed expiry undo and invalid pool')
             self.check_bad_undo(blockhash, previous_hash, lambda payload: (
-                b'\x00',
-                b'\x02\x00' + payload[1:],
-                # One state coin with an OP_TRUE script instead of OP_RETURN.
-                b'\x01\x01\x00\x00\x07\x51',
-            ))
+                b'\x00\x00',  # Missing required expiry state.
+                b'\x01\x00' + payload[1:],  # Extra transaction undo.
+                payload[:2] + (-1).to_bytes(8, 'little', signed=True) + payload[10:],
+            ), prefix=b'\x00\x01')
             self.check_valid_undo(expected)
 
 

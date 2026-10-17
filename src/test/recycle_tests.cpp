@@ -6,7 +6,6 @@
 #include <consensus/params.h>
 #include <consensus/validation.h>
 #include <node/recycle.h>
-#include <node/recycle_serialization.h>
 #include <test/util/setup_common.h>
 #include <txdb.h>
 #include <primitives/block.h>
@@ -58,108 +57,123 @@ std::unique_ptr<RecycleIndexSnapshot> CheckSnapshot(CCoinsViewDB& db)
     return db.GetRecycleIndexSnapshot();
 }
 
+Consensus::Params RecycleParams(int lifetime = Consensus::Params{}.recycle_expiry_blocks)
+{
+    Consensus::Params params;
+    params.recycle_enabled = true;
+    params.recycle_expiry_blocks = lifetime;
+    return params;
+}
+
 bool ContinueCheck(const std::string&, const RecycleIndexCheckResult&) { return true; }
 
 } // namespace
 
 BOOST_AUTO_TEST_SUITE(recycle_tests)
 
-BOOST_AUTO_TEST_CASE(undo_count_boundaries)
+BOOST_AUTO_TEST_CASE(typed_undo_boundaries_and_transaction_separation)
 {
-    Consensus::Params consensus;
-    consensus.recycle_enabled = true;
-    consensus.recycle_expiry_blocks = 200;
+    const auto consensus{RecycleParams(200)};
     CBlockUndo undo;
-    // Coinbase-only blocks have no transaction undo; the first expiry adds
-    // exactly one state record. Ordinary transactions each add one record.
-    BOOST_CHECK(node::recycle::HasExpectedUndoCount(undo, 200, 1, consensus));
-    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 201, 1, consensus));
-    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 200, 2, consensus));
-    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 200, 0, consensus));
-    undo.vtxundo.resize(1);
-    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 200, 1, consensus));
-    BOOST_CHECK(node::recycle::HasExpectedUndoCount(undo, 201, 1, consensus));
-    BOOST_CHECK(node::recycle::HasExpectedUndoCount(undo, 200, 2, consensus));
-    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 201, 2, consensus));
-    undo.vtxundo.resize(2);
-    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 201, 1, consensus));
-    BOOST_CHECK(node::recycle::HasExpectedUndoCount(undo, 201, 2, consensus));
-    consensus.recycle_enabled = false;
-    BOOST_CHECK(!node::recycle::HasExpectedUndoCount(undo, 201, 2, consensus));
-    undo.vtxundo.resize(1);
-    BOOST_CHECK(node::recycle::HasExpectedUndoCount(undo, 201, 2, consensus));
-}
-
-BOOST_AUTO_TEST_CASE(transaction_undo_excludes_recycle_state)
-{
-    Consensus::Params consensus;
-    consensus.recycle_enabled = true;
-    consensus.recycle_expiry_blocks = 200;
+    BOOST_CHECK(node::recycle::HasExpectedUndo(undo, 200, 1, consensus));
+    BOOST_CHECK(!node::recycle::HasExpectedUndo(undo, 201, 1, consensus));
+    undo.recycle.active = true;
+    BOOST_CHECK(node::recycle::HasExpectedUndo(undo, 201, 1, consensus));
+    BOOST_CHECK(!node::recycle::HasExpectedUndo(undo, 200, 1, consensus));
     CCoinsView base;
     CCoinsViewCache view{&base};
-    CBlock origin{CoinbaseBlock(2 * COIN, 1)};
+    const auto origin{CoinbaseBlock(2 * COIN, 1)};
     AddCoins(view, *origin.vtx[0], 1);
-    CTxUndo early;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, 2 * COIN, early, nullptr, 200) == node::recycle::Error::NONE);
-
-    // Before expiry a coinbase-only block has no input records.
-    CBlockUndo before;
-    BOOST_REQUIRE(node::recycle::RemoveStateUndo(before, 200, 1, consensus));
-    BOOST_CHECK(before.vtxundo.empty());
-
-    CBlock expiry{CoinbaseBlock(COIN, 201)};
-    AddCoins(view, *expiry.vtx[0], 201);
-    CTxUndo state;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, 201, 0, state, nullptr, 200) == node::recycle::Error::NONE);
+    const auto expiry{CoinbaseBlock(COIN, 201)};
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, 201, 0, undo.recycle, consensus) == node::recycle::Error::NONE);
+    BOOST_CHECK(undo.vtxundo.empty());
+    undo.vtxundo.emplace_back().vprevout.emplace_back(origin.vtx[0]->vout[0], 1, true);
+    BOOST_CHECK(node::recycle::HasExpectedUndo(undo, 201, 2, consensus));
+    DataStream stream;
+    stream << undo;
     CBlockUndo disk;
-    disk.vtxundo.push_back(state);
-    CBlockUndo exposed{disk};
-    BOOST_REQUIRE(node::recycle::RemoveStateUndo(exposed, 201, 1, consensus));
-    BOOST_CHECK(exposed.vtxundo.empty());
-
-    // Keep every field of a real input record, even when its transaction
-    // follows the coinbase and precedes the internal state entry.
-    CTxUndo transaction;
-    transaction.vprevout.emplace_back(origin.vtx[0]->vout[0], 1, true);
-    disk.vtxundo.insert(disk.vtxundo.begin(), transaction);
-    exposed = disk;
-    BOOST_REQUIRE(node::recycle::RemoveStateUndo(exposed, 201, 2, consensus));
-    BOOST_REQUIRE_EQUAL(exposed.vtxundo.size(), 1U);
-    BOOST_REQUIRE_EQUAL(exposed.vtxundo[0].vprevout.size(), 1U);
-    const auto& input{exposed.vtxundo[0].vprevout[0]};
-    BOOST_CHECK(input.out == origin.vtx[0]->vout[0]);
-    BOOST_CHECK_EQUAL(input.nHeight, 1U);
-    BOOST_CHECK(input.fCoinBase);
-
-    // No mutation on inconsistent input, and no stripping on other networks.
-    BOOST_CHECK(!node::recycle::RemoveStateUndo(exposed, 201, 2, consensus));
-    BOOST_CHECK(!node::recycle::RemoveStateUndo(exposed, 201, 0, consensus));
-    BOOST_CHECK_EQUAL(exposed.vtxundo.size(), 1U);
-    consensus.recycle_enabled = false;
-    BOOST_REQUIRE(node::recycle::RemoveStateUndo(exposed, 201, 2, consensus));
-    BOOST_CHECK_EQUAL(exposed.vtxundo.size(), 1U);
-
-    // Stripping the API copy must leave on-disk recovery information intact.
-    std::vector<std::pair<COutPoint, Coin>> expired;
-    BOOST_REQUIRE(node::recycle::ReadExpiredCoins(disk.vtxundo.back(), expired));
-    BOOST_CHECK_EQUAL(expired.size(), 1U);
-    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, 201, &disk.vtxundo.back(), 200));
+    stream >> disk;
+    BOOST_CHECK(stream.empty());
+    BOOST_CHECK_EQUAL(disk.vtxundo.size(), 1U);
+    BOOST_CHECK_EQUAL(disk.vtxundo[0].vprevout.size(), 1U);
+    BOOST_CHECK_EQUAL(disk.recycle.expired.size(), 1U);
+    BOOST_CHECK(node::recycle::HasExpectedUndo(disk, 201, 2, consensus));
+    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, 201, &disk.recycle, consensus));
     BOOST_CHECK(view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));
+    disk.recycle.expired.push_back(disk.recycle.expired[0]);
+    BOOST_CHECK(!node::recycle::HasExpectedUndo(disk, 201, 2, consensus));
+}
+
+BOOST_FIXTURE_TEST_CASE(pool_cache_rollback_flush_and_reopen, BasicTestingSetup)
+{
+    const auto path{m_path_root / "pool-cache"};
+    {
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX, .batch_write_bytes = 1}};
+        CCoinsViewCache parent{&db};
+        parent.SetBestBlock(uint256{1});
+        parent.SetRecyclePool(3 * COIN);
+        {
+            CCoinsViewCache discarded{&parent};
+            BOOST_CHECK_EQUAL(discarded.GetRecyclePool(), 3 * COIN);
+            discarded.SetRecyclePool(7 * COIN);
+        }
+        BOOST_CHECK_EQUAL(parent.GetRecyclePool(), 3 * COIN);
+        CCoinsViewCache child{&parent};
+        child.SetBestBlock(uint256{2});
+        child.SetRecyclePool(5 * COIN);
+        child.Sync();
+        BOOST_CHECK_EQUAL(parent.GetRecyclePool(), 5 * COIN);
+        BOOST_CHECK_EQUAL(db.GetRecyclePool(), 0);
+        parent.Flush();
+        BOOST_CHECK_EQUAL(db.GetRecyclePool(), 5 * COIN);
+        BOOST_CHECK(!db.Cursor()->Valid());
+        BOOST_CHECK_EQUAL(db.Cursor()->GetRecyclePool(), 5 * COIN);
+        child.SetRecyclePool(0);
+        child.Flush();
+        parent.Sync();
+        BOOST_CHECK_EQUAL(db.GetRecyclePool(), 0);
+        parent.SetRecyclePool(9 * COIN);
+        parent.Sync();
+    }
+    CCoinsViewDB reopened{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
+    BOOST_CHECK_EQUAL(reopened.GetRecyclePool(), 9 * COIN);
+    BOOST_CHECK(reopened.GetBestBlock() == uint256{2});
+    BOOST_CHECK(!reopened.Cursor()->Valid());
+}
+
+BOOST_FIXTURE_TEST_CASE(missing_or_corrupt_pool_fails_closed, BasicTestingSetup)
+{
+    for (int damage : {0, 1, 2, 3}) {
+        const auto path{m_path_root / fs::PathFromString(strprintf("pool-damage-%d", damage))};
+        {
+            CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
+            BOOST_CHECK_EQUAL(db.GetRecyclePool(), 0);
+        }
+        {
+            CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
+            if (damage == 0) raw.Erase(uint8_t{'P'});
+            if (damage == 1) raw.Write(uint8_t{'P'}, uint8_t{0});
+            if (damage == 2) raw.Write(uint8_t{'P'}, CAmount{-1});
+            if (damage == 3) raw.Write(uint8_t{'P'}, CAmount{MAX_MONEY + 1});
+        }
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
+        BOOST_CHECK_THROW(db.GetRecyclePool(), std::runtime_error);
+    }
 }
 
 BOOST_AUTO_TEST_CASE(rewards_before_first_expiry)
 {
     constexpr CAmount BASE_REWARD{50 * COIN};
-    for (const int height : {1, node::recycle::EXPIRY_BLOCKS}) {
+    for (const int height : {1, RecycleParams().recycle_expiry_blocks}) {
         CCoinsView base;
         CCoinsViewCache view{&base};
-        CTxUndo undo;
+        CRecycleUndo undo;
         const auto excessive{CoinbaseBlock(BASE_REWARD + 1, height)};
-        BOOST_CHECK(node::recycle::ConnectBlock(view, excessive, height, BASE_REWARD, undo) == node::recycle::Error::PREMATURE_REWARD);
-        BOOST_CHECK(undo.vprevout.empty());
+        BOOST_CHECK(node::recycle::ConnectBlock(view, excessive, height, BASE_REWARD, undo, RecycleParams()) == node::recycle::Error::PREMATURE_REWARD);
+        BOOST_CHECK(!undo.active);
         const auto valid{CoinbaseBlock(BASE_REWARD, height)};
-        BOOST_CHECK(node::recycle::ConnectBlock(view, valid, height, BASE_REWARD, undo) == node::recycle::Error::NONE);
-        BOOST_CHECK(undo.vprevout.empty());
+        BOOST_CHECK(node::recycle::ConnectBlock(view, valid, height, BASE_REWARD, undo, RecycleParams()) == node::recycle::Error::NONE);
+        BOOST_CHECK(!undo.active);
         BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 0);
     }
 }
@@ -173,25 +187,24 @@ BOOST_AUTO_TEST_CASE(expiry_reward_and_disconnect)
 
     CBlock origin{CoinbaseBlock(EXPIRED_VALUE, 1)};
     AddCoins(view, *origin.vtx[0], /*nHeight=*/1);
-    CTxUndo early_undo;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, EXPIRED_VALUE, early_undo) == node::recycle::Error::NONE);
+    CRecycleUndo early_undo;
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, EXPIRED_VALUE, early_undo, RecycleParams()) == node::recycle::Error::NONE);
     BOOST_CHECK(!view.HaveCoin(COutPoint{Txid{}, 1}));
-    BOOST_CHECK(early_undo.vprevout.empty());
+    BOOST_CHECK(!early_undo.active);
 
-    const int expiry_height{1 + node::recycle::EXPIRY_BLOCKS};
+    const int expiry_height{1 + RecycleParams().recycle_expiry_blocks};
     CBlock expiry{CoinbaseBlock(BASE_REWARD + EXPIRED_VALUE, 2)};
-    BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, expiry_height), EXPIRED_VALUE);
+    BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, expiry_height, RecycleParams()), EXPIRED_VALUE);
     AddCoins(view, *expiry.vtx[0], expiry_height);
 
-    CTxUndo recycle_undo;
+    CRecycleUndo recycle_undo;
     std::vector<COutPoint> expired;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD,
-                                               recycle_undo, &expired) == node::recycle::Error::NONE);
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD, recycle_undo, RecycleParams(), &expired) == node::recycle::Error::NONE);
     BOOST_CHECK_EQUAL(expired.size(), 1U);
     BOOST_CHECK(!view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 0);
 
-    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &recycle_undo));
+    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &recycle_undo, RecycleParams()));
     BOOST_CHECK(view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 0);
 }
@@ -204,16 +217,15 @@ BOOST_AUTO_TEST_CASE(unclaimed_value_stays_in_pool_and_reward_is_capped)
 
     CBlock origin{CoinbaseBlock(2 * COIN, 3)};
     AddCoins(view, *origin.vtx[0], /*nHeight=*/1);
-    CTxUndo unused;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, 2 * COIN, unused) == node::recycle::Error::NONE);
+    CRecycleUndo unused;
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, 2 * COIN, unused, RecycleParams()) == node::recycle::Error::NONE);
 
-    const int expiry_height{1 + node::recycle::EXPIRY_BLOCKS};
+    const int expiry_height{1 + RecycleParams().recycle_expiry_blocks};
     CBlock expiry{CoinbaseBlock(BASE_REWARD, 4)};
-    BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, expiry_height), COIN);
+    BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, expiry_height, RecycleParams()), COIN);
     AddCoins(view, *expiry.vtx[0], expiry_height);
-    CTxUndo recycle_undo;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD,
-                                               recycle_undo) == node::recycle::Error::NONE);
+    CRecycleUndo recycle_undo;
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD, recycle_undo, RecycleParams()) == node::recycle::Error::NONE);
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 2 * COIN);
 }
 
@@ -226,17 +238,17 @@ BOOST_AUTO_TEST_CASE(reward_boundaries_and_excess_claim)
     CCoinsViewCache view{&base};
     CBlock origin{CoinbaseBlock(REMAINDER, 10)};
     AddCoins(view, *origin.vtx[0], /*nHeight=*/1);
-    CTxUndo unused;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, REMAINDER, unused) == node::recycle::Error::NONE);
+    CRecycleUndo unused;
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, REMAINDER, unused, RecycleParams()) == node::recycle::Error::NONE);
 
-    const int expiry_height{1 + node::recycle::EXPIRY_BLOCKS};
+    const int expiry_height{1 + RecycleParams().recycle_expiry_blocks};
     CBlock exact{CoinbaseBlock(BASE_REWARD + REMAINDER, 11)};
-    BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, exact, expiry_height), REMAINDER);
+    BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, exact, expiry_height, RecycleParams()), REMAINDER);
 
     CBlock excessive{CoinbaseBlock(BASE_REWARD + REMAINDER + 1, 12)};
     AddCoins(view, *excessive.vtx[0], expiry_height);
-    CTxUndo undo;
-    BOOST_CHECK(node::recycle::ConnectBlock(view, excessive, expiry_height, BASE_REWARD, undo) == node::recycle::Error::EXCESSIVE_REWARD);
+    CRecycleUndo undo;
+    BOOST_CHECK(node::recycle::ConnectBlock(view, excessive, expiry_height, BASE_REWARD, undo, RecycleParams()) == node::recycle::Error::EXCESSIVE_REWARD);
 }
 
 BOOST_AUTO_TEST_CASE(pool_accounting_stress)
@@ -251,17 +263,17 @@ BOOST_AUTO_TEST_CASE(pool_accounting_stress)
         const CAmount expiring{(1 + iteration % 4) * (COIN / 2)};
         CBlock origin{CoinbaseBlock(expiring, 1'000 + iteration)};
         AddCoins(view, *origin.vtx[0], origin_height);
-        CTxUndo unused;
-        BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, origin_height, expiring, unused) == node::recycle::Error::NONE);
+        CRecycleUndo unused;
+        BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, origin_height, expiring, unused, RecycleParams()) == node::recycle::Error::NONE);
 
-        const int expiry_height{origin_height + node::recycle::EXPIRY_BLOCKS};
+        const int expiry_height{origin_height + RecycleParams().recycle_expiry_blocks};
         const CAmount available{expected_pool + expiring};
         const CAmount claimed{std::min(node::recycle::MAX_REWARD, available)};
         CBlock expiry{CoinbaseBlock(BASE_REWARD + claimed, 10'000 + iteration)};
-        BOOST_REQUIRE_EQUAL(node::recycle::AvailableReward(view, expiry, expiry_height), claimed);
+        BOOST_REQUIRE_EQUAL(node::recycle::AvailableReward(view, expiry, expiry_height, RecycleParams()), claimed);
         AddCoins(view, *expiry.vtx[0], expiry_height);
-        CTxUndo undo;
-        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD, undo) == node::recycle::Error::NONE);
+        CRecycleUndo undo;
+        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD, undo, RecycleParams()) == node::recycle::Error::NONE);
         expected_pool = available - claimed;
         BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), expected_pool);
         BOOST_REQUIRE(expected_pool >= 0);
@@ -279,33 +291,30 @@ BOOST_AUTO_TEST_CASE(partial_reward_fee_separation_and_reorg)
     CCoinsViewCache view{&base};
     CBlock origin{CoinbaseBlock(EXPIRED, 20'000)};
     AddCoins(view, *origin.vtx[0], /*nHeight=*/1);
-    CTxUndo unused;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, EXPIRED, unused) == node::recycle::Error::NONE);
+    CRecycleUndo unused;
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, EXPIRED, unused, RecycleParams()) == node::recycle::Error::NONE);
 
-    const int expiry_height{1 + node::recycle::EXPIRY_BLOCKS};
+    const int expiry_height{1 + RecycleParams().recycle_expiry_blocks};
     CBlock expiry{CoinbaseBlock(SUBSIDY + FEES + PARTIAL_REWARD, 20'001)};
     AddCoins(view, *expiry.vtx[0], expiry_height);
-    CTxUndo expiry_undo;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, SUBSIDY + FEES,
-                                               expiry_undo) == node::recycle::Error::NONE);
+    CRecycleUndo expiry_undo;
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, SUBSIDY + FEES, expiry_undo, RecycleParams()) == node::recycle::Error::NONE);
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), EXPIRED - PARTIAL_REWARD);
 
     // Crash recovery may replay a transition whose UTXO and recycle changes
     // were already written. Reapplying it must be idempotent.
-    BOOST_REQUIRE(node::recycle::RollforwardBlock(view, expiry, expiry_height,
-                                                   SUBSIDY + FEES, &expiry_undo));
+    BOOST_REQUIRE(node::recycle::RollforwardBlock(view, expiry, expiry_height, SUBSIDY + FEES, &expiry_undo, RecycleParams()));
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), EXPIRED - PARTIAL_REWARD);
 
     // Reorg the partially rewarded expiry block out and replace it with a block
     // that claims no recycle reward. The expiry must be applied exactly once.
-    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &expiry_undo));
+    BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &expiry_undo, RecycleParams()));
     BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), 0);
     BOOST_REQUIRE(view.HaveCoin(COutPoint{origin.vtx[0]->GetHash(), 0}));
     CBlock alternate{CoinbaseBlock(SUBSIDY + FEES, 20'002)};
     AddCoins(view, *alternate.vtx[0], expiry_height);
-    CTxUndo alternate_undo;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, alternate, expiry_height, SUBSIDY + FEES,
-                                               alternate_undo) == node::recycle::Error::NONE);
+    CRecycleUndo alternate_undo;
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, alternate, expiry_height, SUBSIDY + FEES, alternate_undo, RecycleParams()) == node::recycle::Error::NONE);
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), EXPIRED);
 }
 
@@ -319,27 +328,26 @@ BOOST_AUTO_TEST_CASE(spent_in_expiry_block_is_not_recycled)
     CBlock origin{CoinbaseBlock(VALUE, 30'000)};
     const COutPoint origin_out{origin.vtx[0]->GetHash(), 0};
     AddCoins(view, *origin.vtx[0], /*nHeight=*/1);
-    CTxUndo unused;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, VALUE, unused) == node::recycle::Error::NONE);
+    CRecycleUndo unused;
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, /*height=*/1, VALUE, unused, RecycleParams()) == node::recycle::Error::NONE);
 
     CMutableTransaction spend;
     spend.vin.emplace_back(origin_out);
     spend.vout.emplace_back(VALUE, CScript{} << OP_TRUE);
-    const int expiry_height{1 + node::recycle::EXPIRY_BLOCKS};
+    const int expiry_height{1 + RecycleParams().recycle_expiry_blocks};
     CBlock expiry{CoinbaseBlock(BASE_REWARD, 30'001)};
     expiry.vtx.push_back(MakeTransactionRef(std::move(spend)));
 
     // Template accounting must exclude an output spent by the candidate block.
-    BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, expiry_height), 0);
+    BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, expiry_height, RecycleParams()), 0);
 
     // ConnectBlock calls recycle accounting after normal transaction updates.
     Coin spent;
     BOOST_REQUIRE(view.SpendCoin(origin_out, &spent));
     AddCoins(view, *expiry.vtx[0], expiry_height);
     AddCoins(view, *expiry.vtx[1], expiry_height);
-    CTxUndo recycle_undo;
-    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD,
-                                               recycle_undo) == node::recycle::Error::NONE);
+    CRecycleUndo recycle_undo;
+    BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, BASE_REWARD, recycle_undo, RecycleParams()) == node::recycle::Error::NONE);
     BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 0);
 }
 
@@ -355,34 +363,31 @@ BOOST_FIXTURE_TEST_CASE(large_state_disk_and_undo_roundtrip, BasicTestingSetup)
         const COutPoint schedule_key{Txid{}, 1'000'001};
         {
             CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
-            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             CCoinsViewCache view{&db};
             AddCoins(view, *origin.vtx[0], 1);
-            CTxUndo unused;
-            BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, count, unused) == node::recycle::Error::NONE);
+            CRecycleUndo unused;
+            BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, count, unused, RecycleParams()) == node::recycle::Error::NONE);
             view.SetBestBlock(uint256{1});
             view.Flush();
         }
         {
             CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
-            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             CCoinsViewCache view{&db};
             BOOST_CHECK(!view.HaveCoin(schedule_key));
             BOOST_CHECK_EQUAL(view.GetCoinsByHeight(1).size(), count);
-            const int height{1 + node::recycle::EXPIRY_BLOCKS};
+            const int height{1 + RecycleParams().recycle_expiry_blocks};
             CBlock expiry{CoinbaseBlock(50 * COIN + count, count + 1)};
-            BOOST_REQUIRE_EQUAL(node::recycle::AvailableReward(view, expiry, height), count);
+            BOOST_REQUIRE_EQUAL(node::recycle::AvailableReward(view, expiry, height, RecycleParams()), count);
             AddCoins(view, *expiry.vtx[0], height);
             CBlockUndo block_undo;
-            block_undo.vtxundo.emplace_back();
-            BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, height, 50 * COIN, block_undo.vtxundo.back()) == node::recycle::Error::NONE);
+            BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, height, 50 * COIN, block_undo.recycle, RecycleParams()) == node::recycle::Error::NONE);
             DataStream bytes;
             bytes << block_undo;
             CBlockUndo restored;
             bytes >> restored;
-            if (count == 1000) BOOST_REQUIRE(restored.vtxundo.back().vprevout[0].out.scriptPubKey.size() > MAX_SCRIPT_SIZE);
-            BOOST_REQUIRE(node::recycle::RollforwardBlock(view, expiry, height, 50 * COIN, &restored.vtxundo.back()));
-            BOOST_REQUIRE(node::recycle::DisconnectBlock(view, height, &restored.vtxundo.back()));
+            BOOST_REQUIRE_EQUAL(restored.recycle.expired.size(), count);
+            BOOST_REQUIRE(node::recycle::RollforwardBlock(view, expiry, height, 50 * COIN, &restored.recycle, RecycleParams()));
+            BOOST_REQUIRE(node::recycle::DisconnectBlock(view, height, &restored.recycle, RecycleParams()));
             BOOST_CHECK(!view.HaveCoin(schedule_key));
             BOOST_CHECK_EQUAL(view.GetCoinsByHeight(1).size(), count);
             BOOST_CHECK(!view.HaveCoin(COutPoint{Txid{}, std::numeric_limits<uint32_t>::max()}));
@@ -400,9 +405,9 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
     CMutableTransaction tx{*origin.vtx[0]};
     tx.vout.assign(COUNT, CTxOut{VALUE / COUNT, CScript{} << OP_TRUE});
     origin.vtx[0] = MakeTransactionRef(std::move(tx));
-    const int expiry_height{1 + node::recycle::EXPIRY_BLOCKS};
+    const int expiry_height{1 + RecycleParams().recycle_expiry_blocks};
     const CBlock expiry{CoinbaseBlock(50 * COIN, 40'001)};
-    CTxUndo expiry_undo;
+    CRecycleUndo expiry_undo;
 
     using Records = std::vector<std::pair<COutPoint, Coin>>;
     const auto same_records = [](const Records& a, const Records& b) {
@@ -442,11 +447,11 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
     std::shared_future<void> pending_shutdown;
     {
         CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
-        BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+        BOOST_REQUIRE(db.RebuildRecycleIndex([] { return false; }));
         CCoinsViewCache view{&db};
         AddCoins(view, *origin.vtx[0], 1);
-        CTxUndo unused;
-        BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, VALUE, unused) == node::recycle::Error::NONE);
+        CRecycleUndo unused;
+        BOOST_REQUIRE(node::recycle::ConnectBlock(view, origin, 1, VALUE, unused, RecycleParams()) == node::recycle::Error::NONE);
         BOOST_CHECK_EQUAL(view.GetCoinsByHeight(1).size(), COUNT);
         view.SetBestBlock(uint256{1});
         view.Flush();
@@ -454,7 +459,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
         compact_and_resize(db);
 
         AddCoins(view, *expiry.vtx[0], expiry_height);
-        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, 50 * COIN, expiry_undo) == node::recycle::Error::NONE);
+        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, expiry_height, 50 * COIN, expiry_undo, RecycleParams()) == node::recycle::Error::NONE);
         BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), VALUE);
         view.SetBestBlock(uint256{2});
         view.Flush();
@@ -471,17 +476,17 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
         BOOST_CHECK(same_records(snapshot(db), expired_records));
         BOOST_CHECK(db.GetBestBlock() == uint256{2});
         BOOST_REQUIRE(db.RecycleStateReady());
-        BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+        BOOST_REQUIRE(db.RebuildRecycleIndex([] { return false; }));
         CCoinsViewCache view{&db};
         BOOST_REQUIRE(view.GetBestBlock() == uint256{2});
         BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), VALUE);
 
         // Recovery replay after compaction must not recycle the value twice.
-        BOOST_REQUIRE(node::recycle::RollforwardBlock(view, expiry, expiry_height, 50 * COIN, &expiry_undo));
+        BOOST_REQUIRE(node::recycle::RollforwardBlock(view, expiry, expiry_height, 50 * COIN, &expiry_undo, RecycleParams()));
         view.Flush();
         BOOST_CHECK(same_records(snapshot(db), expired_records));
 
-        BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &expiry_undo));
+        BOOST_REQUIRE(node::recycle::DisconnectBlock(view, expiry_height, &expiry_undo, RecycleParams()));
         BOOST_REQUIRE(view.SpendCoin(COutPoint{expiry.vtx[0]->GetHash(), 0}));
         BOOST_CHECK_EQUAL(view.GetCoinsByHeight(1).size(), COUNT);
         BOOST_REQUIRE_EQUAL(node::recycle::PoolBalance(view), 0);
@@ -498,73 +503,18 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
     }
 }
 
-BOOST_AUTO_TEST_CASE(metadata_reader_bounds_and_truncation)
+BOOST_FIXTURE_TEST_CASE(old_chainstate_requires_fresh_sync, BasicTestingSetup)
 {
-    CScript decoded;
-    DataStream oversized;
-    const uint32_t size{static_cast<uint32_t>(MAX_SIZE) + 1 + ScriptCompression::nSpecialScripts};
-    oversized << VARINT(size);
-    BOOST_CHECK_THROW((oversized >> Using<node::recycle::MetadataScriptCompression>(decoded)), std::ios_base::failure);
-
-    // The long-script exception applies only to internal OP_RETURN records.
-    CScript non_metadata;
-    non_metadata.resize(MAX_SCRIPT_SIZE + 1);
-    non_metadata.front() = OP_TRUE;
-    DataStream non_metadata_stream;
-    non_metadata_stream << Using<ScriptCompression>(non_metadata);
-    BOOST_CHECK_THROW((non_metadata_stream >> Using<node::recycle::MetadataScriptCompression>(decoded)), std::ios_base::failure);
-
-    DataStream truncated;
-    const uint32_t missing_payload{100 + ScriptCompression::nSpecialScripts};
-    truncated << VARINT(missing_payload);
-    BOOST_CHECK_THROW((truncated >> Using<node::recycle::MetadataScriptCompression>(decoded)), std::ios_base::failure);
-}
-
-BOOST_FIXTURE_TEST_CASE(index_migration_and_interruption, BasicTestingSetup)
-{
-    const auto path{m_path_root / "legacy-index"};
-    CBlock block{CoinbaseBlock(COIN, 101)};
-    CMutableTransaction transaction{*block.vtx[0]};
-    transaction.vout.push_back(transaction.vout[0]);
-    block.vtx[0] = MakeTransactionRef(std::move(transaction));
-    const COutPoint output{block.vtx[0]->GetHash(), 0};
-    const COutPoint schedule{Txid{}, 1'000'001};
-    const COutPoint pool{Txid{}, std::numeric_limits<uint32_t>::max()};
-    {
-        // Legacy DB: UTXO, truncated schedule, and an existing pool balance.
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {}};
-        CCoinsViewCache view{&db};
-        AddCoins(view, *block.vtx[0], 1);
-        view.AddCoin(schedule, Coin{CTxOut{0, CScript{OP_RETURN}}, 1, false}, false, true);
-        view.AddCoin(pool, Coin{CTxOut{7 * COIN, CScript{OP_RETURN}}, 201, false}, false, true);
-        view.SetBestBlock(uint256{42});
-        view.Flush();
-    }
-    {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX, .batch_write_bytes = 1}};
-        BOOST_CHECK_THROW(db.GetCoinsByHeight(1), std::runtime_error);
-        int calls{0};
-        BOOST_CHECK(!db.UpgradeRecycleIndex([&] { return ++calls == 4; }));
-        BOOST_CHECK(!db.RecycleStateReady());
-        BOOST_CHECK(!db.HaveCoin(schedule));
-    }
-    {
-        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX, .batch_write_bytes = 1}};
-        BOOST_CHECK(!db.NeedsUpgrade());
-        BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
-        BOOST_CHECK(db.RecycleStateReady());
-        BOOST_CHECK(!db.HaveCoin(schedule));
-        BOOST_CHECK(db.GetBestBlock() == uint256{42});
-        const std::set<COutPoint> expected{output, COutPoint{block.vtx[0]->GetHash(), 1}};
-        BOOST_CHECK(db.GetCoinsByHeight(1) == expected);
-        CCoinsViewCache view{&db};
-        BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), 7 * COIN);
-        BOOST_REQUIRE(view.GetBestBlock() == uint256{42});
-        for (const auto& outpoint : expected) BOOST_REQUIRE(view.SpendCoin(outpoint));
-        view.Flush();
-        BOOST_CHECK(db.GetCoinsByHeight(1).empty());
-        BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
-        BOOST_CHECK(db.GetCoinsByHeight(1).empty());
+    for (int codec : {1, 2, 3, 4}) {
+        const auto path{m_path_root / fs::PathFromString(strprintf("old-%d", codec))};
+        {
+            CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
+            raw.Write(uint8_t{'r'}, codec);
+            raw.Write(uint8_t{'B'}, uint256{42});
+        }
+        CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
+        BOOST_CHECK(db.NeedsUpgrade());
+        BOOST_CHECK_THROW(db.RebuildRecycleIndex([] { return false; }), std::runtime_error);
     }
 }
 
@@ -597,7 +547,10 @@ BOOST_FIXTURE_TEST_CASE(index_iterator_io_error_and_restart, BasicTestingSetup)
             BOOST_REQUIRE(!table.empty());
             if (phase != 1) raw.Write(TestCoinEntry{'C', output}, coin, true);
             raw.Write(uint8_t{'B'}, uint256{42}, true);
-            raw.Write(uint8_t{'r'}, phase == 2 ? 2 : 1, true);
+            raw.Write(uint8_t{'r'}, 5, true);
+            raw.Write(uint8_t{'m'}, static_cast<int>(RecycleMode::INDEX), true);
+            raw.Write(uint8_t{'P'}, CAmount{0}, true);
+            if (phase != 2) raw.Write(uint8_t{'e'}, true, true);
         }
         {
             CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX, .batch_write_bytes = 1}};
@@ -610,7 +563,7 @@ BOOST_FIXTURE_TEST_CASE(index_iterator_io_error_and_restart, BasicTestingSetup)
             if (phase == 2) {
                 BOOST_CHECK_EXCEPTION(db.GetCoinsByHeight(1), dbwrapper_error, io_error);
             } else {
-                BOOST_CHECK_EXCEPTION(db.UpgradeRecycleIndex([] { return false; }), dbwrapper_error, io_error);
+                BOOST_CHECK_EXCEPTION(db.RebuildRecycleIndex([] { return false; }), dbwrapper_error, io_error);
                 BOOST_CHECK(!db.RecycleStateReady());
             }
             fs::remove(table);
@@ -620,7 +573,7 @@ BOOST_FIXTURE_TEST_CASE(index_iterator_io_error_and_restart, BasicTestingSetup)
         {
             CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX, .batch_write_bytes = 1}};
             if (phase != 2) BOOST_CHECK(!db.RecycleStateReady());
-            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+            BOOST_REQUIRE(db.RebuildRecycleIndex([] { return false; }));
             BOOST_CHECK(db.RecycleStateReady());
             const std::set<COutPoint> expected{output};
             BOOST_CHECK(db.GetCoinsByHeight(1) == expected);
@@ -647,7 +600,6 @@ BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
         const std::set<COutPoint> expected{output};
         {
             CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
-            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             CCoinsViewCache view{&db};
             AddCoins(view, *origin.vtx[0], 1);
             view.SetBestBlock(uint256{1});
@@ -669,7 +621,6 @@ BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
             CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
             // The ready marker certifies migration completion, not completeness.
             BOOST_REQUIRE(db.RecycleStateReady());
-            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             BOOST_CHECK(db.GetCoinsByHeight(1) != expected);
             const auto coin{db.GetCoin(output)};
             BOOST_REQUIRE(coin);
@@ -686,23 +637,23 @@ BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
             snapshot.reset();
             CCoinsViewCache view{&db};
             const CBlock expiry{CoinbaseBlock(0, 201)};
-            BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, 200), damage == 1 ? COIN : 0);
+            BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, RecycleParams(200)), damage == 1 ? COIN : 0);
         }
         {
             // Test-only injection of an interrupted migration. This is not a
             // supported repair procedure for an already corrupted chainstate.
             CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
-            raw.Write(uint8_t{'r'}, 3, true);
+            raw.Write(uint8_t{'e'}, true, true);
         }
         {
             CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX, .batch_write_bytes = 1}};
-            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+            BOOST_REQUIRE(db.RebuildRecycleIndex([] { return false; }));
             BOOST_CHECK(db.GetCoinsByHeight(1) == expected);
             BOOST_CHECK(db.GetCoinsByHeight(2).empty());
             BOOST_CHECK(db.GetBestBlock() == uint256{1});
             CCoinsViewCache view{&db};
             const CBlock expiry{CoinbaseBlock(0, 201)};
-            BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, 200), COIN);
+            BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, RecycleParams(200)), COIN);
             auto snapshot{CheckSnapshot(db)};
             BOOST_REQUIRE(snapshot);
             BOOST_CHECK(snapshot->Check(ContinueCheck).Valid());
@@ -713,7 +664,7 @@ BOOST_FIXTURE_TEST_CASE(index_corruption_and_rebuild, BasicTestingSetup)
 BOOST_FIXTURE_TEST_CASE(index_check_snapshot_and_cancellation, BasicTestingSetup)
 {
     CCoinsViewDB db{{.path = m_path_root / "check-snapshot", .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
-    BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+    BOOST_REQUIRE(db.RebuildRecycleIndex([] { return false; }));
     CCoinsViewCache view{&db};
     const auto block{CoinbaseBlock(COIN, 1)};
     AddCoins(view, *block.vtx[0], 1);
@@ -761,26 +712,27 @@ BOOST_FIXTURE_TEST_CASE(index_check_malformed_records_and_bounded_examples, Basi
     const auto path{m_path_root / "malformed-check"};
     const auto block{CoinbaseBlock(COIN, 1)};
     const COutPoint output{block.vtx[0]->GetHash(), 0};
-    const COutPoint pool{Txid{}, std::numeric_limits<uint32_t>::max()};
     {
         CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
-        BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+        BOOST_REQUIRE(db.RebuildRecycleIndex([] { return false; }));
         CCoinsViewCache view{&db};
         AddCoins(view, *block.vtx[0], 1);
-        view.AddCoin(pool, Coin{CTxOut{7 * COIN, CScript{OP_RETURN}}, 201, false}, false, true);
+        view.SetRecyclePool(7 * COIN);
         view.SetBestBlock(uint256{1});
         view.Flush();
         auto snapshot{CheckSnapshot(db)};
         auto checked{snapshot->Check(ContinueCheck)};
         BOOST_CHECK(checked.Valid());
-        BOOST_CHECK_EQUAL(checked.coins_scanned, 2U);
+        BOOST_CHECK_EQUAL(checked.coins_scanned, 1U);
         BOOST_CHECK_EQUAL(checked.indexed_coins, 1U);
     }
     {
         CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
         raw.Write(TestHeightEntry{'E', 1, output}, uint8_t{1}); // Invalid placeholder.
         raw.Write(std::pair{TestHeightEntry{'E', 1, output}, uint8_t{0}}, uint8_t{0}); // Trailing key bytes.
-        raw.Write(TestHeightEntry{'E', 201, pool}, uint8_t{0}); // Internal state must not be indexed.
+        const COutPoint unspendable{Txid::FromUint256(uint256{98}), 0};
+        raw.Write(TestCoinEntry{'C', unspendable}, Coin{CTxOut{0, CScript{OP_RETURN}}, 201, false});
+        raw.Write(TestHeightEntry{'E', 201, unspendable}, uint8_t{0}); // Unspendable outputs must not be indexed.
         raw.Write(TestCoinEntry{'C', COutPoint{Txid::FromUint256(uint256{99}), 0}}, uint8_t{0});
         for (uint32_t i{100}; i < 130; ++i) {
             raw.Write(TestHeightEntry{'E', 1, COutPoint{Txid::FromUint256(uint256{static_cast<uint8_t>(i)}), 0}}, uint8_t{0});
@@ -804,7 +756,7 @@ BOOST_FIXTURE_TEST_CASE(index_check_malformed_records_and_bounded_examples, Basi
 BOOST_FIXTURE_TEST_CASE(index_cache_overlays_and_overwrites, BasicTestingSetup)
 {
     CCoinsViewDB db{{.path = m_path_root / "index-cache", .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
-    BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
+    BOOST_REQUIRE(db.RebuildRecycleIndex([] { return false; }));
     CCoinsViewCache parent{&db};
     const CBlock block{CoinbaseBlock(COIN, 102)};
     const COutPoint output{block.vtx[0]->GetHash(), 0};
@@ -851,17 +803,16 @@ BOOST_FIXTURE_TEST_CASE(index_cache_overlays_and_overwrites, BasicTestingSetup)
 
 BOOST_FIXTURE_TEST_CASE(database_mode_codecs_and_indexing, BasicTestingSetup)
 {
-    struct Case { const char* name; RecycleMode mode; int codec; };
-    const Case cases[]{{"disabled", RecycleMode::DISABLED, 0},
-                       {"index", RecycleMode::INDEX, 2},
-                       {"block", RecycleMode::BLOCK, 4}};
+    struct Case { const char* name; RecycleMode mode; };
+    const Case cases[]{{"disabled", RecycleMode::DISABLED},
+                       {"index", RecycleMode::INDEX},
+                       {"block", RecycleMode::BLOCK}};
     const auto origin{CoinbaseBlock(COIN, 1)};
     const COutPoint output{origin.vtx[0]->GetHash(), 0};
     for (const auto& test : cases) {
         const auto path{m_path_root / test.name};
         {
             CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = test.mode}};
-            BOOST_REQUIRE(db.UpgradeRecycleIndex([] { return false; }));
             CCoinsViewCache view{&db};
             AddCoins(view, *origin.vtx[0], 1);
             view.SetBestBlock(uint256{1});
@@ -874,13 +825,11 @@ BOOST_FIXTURE_TEST_CASE(database_mode_codecs_and_indexing, BasicTestingSetup)
             }
         }
         CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
-        if (test.codec == 0) {
-            BOOST_CHECK(!raw.Exists(uint8_t{'r'}));
-        } else {
-            int codec{0};
-            BOOST_REQUIRE(raw.Read(uint8_t{'r'}, codec));
-            BOOST_CHECK_EQUAL(codec, test.codec);
-        }
+        int version{0}, mode{-1};
+        BOOST_REQUIRE(raw.Read(uint8_t{'r'}, version));
+        BOOST_REQUIRE(raw.Read(uint8_t{'m'}, mode));
+        BOOST_CHECK_EQUAL(version, 5);
+        BOOST_CHECK_EQUAL(mode, static_cast<int>(test.mode));
         BOOST_CHECK_EQUAL(raw.Exists(TestHeightEntry{'E', 1, output}), test.mode == RecycleMode::INDEX);
     }
 }
@@ -899,38 +848,38 @@ BOOST_FIXTURE_TEST_CASE(block_source_without_height_index, BasicTestingSetup)
         view.SetBestBlock(uint256{1});
         view.Flush();
         CBlock expiry{CoinbaseBlock(COIN, 201)};
-        BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, 200, &origin), COIN);
+        BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, RecycleParams(200), &origin), COIN);
         // A spend in the candidate block excludes the output from template rewards.
         CMutableTransaction spend;
         spend.vin.emplace_back(output);
         spend.vout.emplace_back(COIN, CScript{OP_TRUE});
         expiry.vtx.push_back(MakeTransactionRef(spend));
-        BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, 200, &origin), 0);
+        BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, RecycleParams(200), &origin), 0);
         expiry.vtx.pop_back();
-        CTxUndo undo;
-        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, 201, 0, undo, nullptr, 200, &origin) == node::recycle::Error::NONE);
+        CRecycleUndo undo;
+        BOOST_REQUIRE(node::recycle::ConnectBlock(view, expiry, 201, 0, undo, RecycleParams(200), nullptr, &origin) == node::recycle::Error::NONE);
         BOOST_CHECK(view.AccessCoin(output).IsSpent());
         BOOST_CHECK_EQUAL(node::recycle::PoolBalance(view), COIN);
-        BOOST_REQUIRE(node::recycle::DisconnectBlock(view, 201, &undo, 200));
+        BOOST_REQUIRE(node::recycle::DisconnectBlock(view, 201, &undo, RecycleParams(200)));
         BOOST_CHECK(!view.AccessCoin(output).IsSpent());
         // A stale outpoint at a different creation height must not expire.
         view.SpendCoin(output);
         view.AddCoin(output, Coin{origin.vtx[0]->vout[0], 2, true}, false);
-        BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, 200, &origin), 0);
+        BOOST_CHECK_EQUAL(node::recycle::AvailableReward(view, expiry, 201, RecycleParams(200), &origin), 0);
         view.Flush();
     }
     {
         CDBWrapper raw{{.path = path, .cache_bytes = 1 << 20}};
         int codec{0};
         BOOST_REQUIRE(raw.Read(uint8_t{'r'}, codec));
-        BOOST_CHECK_EQUAL(codec, 4);
+        BOOST_CHECK_EQUAL(codec, 5);
         std::unique_ptr<CDBIterator> cursor{raw.NewIterator()};
         cursor->Seek(uint8_t{'E'});
         uint8_t prefix{0};
         BOOST_CHECK(!cursor->Valid() || !cursor->GetKey(prefix) || prefix != 'E');
         cursor->CheckStatus();
     }
-    // Older/index-mode code must reject the block-mode codec.
+    // The persisted mode must prevent opening block state as an indexed database.
     CCoinsViewDB indexed{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
     BOOST_CHECK(indexed.NeedsUpgrade());
 }

@@ -9,7 +9,6 @@
 #include <coins.h>
 #include <compressor.h>
 #include <consensus/consensus.h>
-#include <node/recycle_serialization.h>
 #include <primitives/transaction.h>
 #include <serialize.h>
 
@@ -45,10 +44,7 @@ struct TxInUndoFormatter
             unsigned int nVersionDummy;
             ::Unserialize(s, VARINT(nVersionDummy));
         }
-        ::Unserialize(s, Using<AmountCompression>(txout.out.nValue));
-        // A recycle undo is an internal OP_RETURN record, not a spendable
-        // script. Preserve it, including legacy files already on disk.
-        ::Unserialize(s, Using<node::recycle::MetadataScriptCompression>(txout.out.scriptPubKey));
+        ::Unserialize(s, Using<TxOutCompression>(txout.out));
     }
 };
 
@@ -62,13 +58,30 @@ public:
     SERIALIZE_METHODS(CTxUndo, obj) { READWRITE(Using<VectorFormatter<TxInUndoFormatter>>(obj.vprevout)); }
 };
 
+/** Local expiry undo, separate from transaction input records. */
+struct CRecycleUndo
+{
+    bool active{false};
+    CAmount pool_before{0};
+    std::vector<std::pair<COutPoint, Coin>> expired;
+
+    SERIALIZE_METHODS(CRecycleUndo, obj)
+    {
+        READWRITE(obj.active);
+        if (obj.active) READWRITE(obj.pool_before, obj.expired);
+        SER_READ(obj, if (!obj.active) { obj.pool_before = 0; obj.expired.clear(); });
+    }
+};
+
 /** Undo information for a CBlock */
 class CBlockUndo
 {
 public:
     std::vector<CTxUndo> vtxundo; // for all but the coinbase
 
-    SERIALIZE_METHODS(CBlockUndo, obj) { READWRITE(obj.vtxundo); }
+    CRecycleUndo recycle;
+
+    SERIALIZE_METHODS(CBlockUndo, obj) { READWRITE(obj.vtxundo, obj.recycle); }
 };
 
 #endif // BITCOIN_UNDO_H

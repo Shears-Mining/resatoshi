@@ -23,6 +23,8 @@
 #include <map>
 #include <memory>
 #include <span>
+#include <string>
+#include <type_traits>
 #include <utility>
 #include <version>
 
@@ -152,6 +154,11 @@ static bool ComputeUTXOStats(CCoinsView* view, CCoinsStats& stats, T hash_obj, c
         ApplyHash(hash_obj, prevkey, outputs);
     }
 
+    // UTXO MuHash stays transaction-only. The snapshot commitment also binds
+    // the pool, which is no longer represented by an artificial output.
+    if constexpr (std::is_same_v<T, HashWriter>) {
+        if (pcursor->GetRecyclePool() != 0) hash_obj << std::string{"Resatoshi/recycle-pool/v1"} << pcursor->GetRecyclePool();
+    }
     FinalizeHash(hash_obj, stats);
 
     stats.nDiskSize = view->EstimateSize();

@@ -197,3 +197,28 @@ perf report -i /path/to/datadir/send-big-msgs.perf.data.xxxx --stdio | c++filt |
 - [Installing perf](https://askubuntu.com/q/50145)
 - [Perf examples](https://www.brendangregg.com/perf.html)
 - [Hotspot](https://github.com/KDAB/hotspot): a GUI for perf output analysis
+
+## Resatoshi recycling
+
+These tests use isolated regtest directories and `-test=recycle` (200-block lifetime).
+
+| Coverage | Tests |
+| --- | --- |
+| Expiry, rewards, spends, reorgs | `feature_recycle`, `feature_recycle_spend`, `feature_recycle_boundary` |
+| Index, restart, interrupted flush | `feature_recycle_index` (`--crash-flush`), `rpc_checkrecycleindex` |
+| Both modes, pruning, missing origins | `feature_recycle_modes`, `feature_recycle_recovery` |
+| Snapshots, REST, descriptor events | `feature_recycle_interfaces`, `tool_utxo_to_sqlite` |
+| Statistics | `rpc_getblockstats_recycle`, `feature_coinstatsindex_undo` |
+| Full blocks / mining load | `feature_recycle_full_block`, `feature_recycle_mining_load` |
+| Wallet expiry and rollback | `wallet_*recycle*`, `wallet_recycle_conflicts`, `wallet_recycle_external` |
+
+Boundary/full-block/mining-load tests accept `--reference-bitcoind=/path/to/main/bitcoind`
+for identical-block comparison using separate fresh node directories. Never switch
+a reference directory to the experimental binary: local formats intentionally differ.
+Boundary tests accept `--expiry-mode=block` to compare the new block path with
+the reference index path. They also accept `--small-cache --crash-height=200` (or 201/202), and
+`--boundary-results=PATH` records independent-ledger comparison results.
+
+Unit `recycle_tests` cover typed undo boundaries, pool cache rollback, disk/reopen,
+compaction, index damage and cancellation, and block-source equivalence. Kernel
+`btck_recycle_spent_outputs_disk_tests` covers transaction-input API lifetime and reopen.

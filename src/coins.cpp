@@ -16,6 +16,7 @@ TRACEPOINT_SEMAPHORE(utxocache, uncache);
 
 std::optional<Coin> CCoinsView::GetCoin(const COutPoint& outpoint) const { return std::nullopt; }
 std::optional<Coin> CCoinsView::PeekCoin(const COutPoint& outpoint) const { return GetCoin(outpoint); }
+CAmount CCoinsView::GetRecyclePool() const { return 0; }
 uint256 CCoinsView::GetBestBlock() const { return uint256(); }
 std::vector<uint256> CCoinsView::GetHeadBlocks() const { return std::vector<uint256>(); }
 void CCoinsView::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashBlock)
@@ -36,6 +37,7 @@ CCoinsViewBacked::CCoinsViewBacked(CCoinsView *viewIn) : base(viewIn) { }
 std::optional<Coin> CCoinsViewBacked::GetCoin(const COutPoint& outpoint) const { return base->GetCoin(outpoint); }
 std::optional<Coin> CCoinsViewBacked::PeekCoin(const COutPoint& outpoint) const { return base->PeekCoin(outpoint); }
 bool CCoinsViewBacked::HaveCoin(const COutPoint &outpoint) const { return base->HaveCoin(outpoint); }
+CAmount CCoinsViewBacked::GetRecyclePool() const { return base->GetRecyclePool(); }
 uint256 CCoinsViewBacked::GetBestBlock() const { return base->GetBestBlock(); }
 std::vector<uint256> CCoinsViewBacked::GetHeadBlocks() const { return base->GetHeadBlocks(); }
 void CCoinsViewBacked::SetBackend(CCoinsView &viewIn) { base = &viewIn; }
@@ -125,9 +127,9 @@ std::optional<Coin> CCoinsViewCache::GetCoin(const COutPoint& outpoint) const
     return std::nullopt;
 }
 
-void CCoinsViewCache::AddCoin(const COutPoint &outpoint, Coin&& coin, bool possible_overwrite, bool allow_unspendable) {
+void CCoinsViewCache::AddCoin(const COutPoint &outpoint, Coin&& coin, bool possible_overwrite) {
     assert(!coin.IsSpent());
-    if (!allow_unspendable && coin.out.scriptPubKey.IsUnspendable()) return;
+    if (coin.out.scriptPubKey.IsUnspendable()) return;
     CCoinsMap::iterator it;
     bool inserted;
     std::tie(it, inserted) = cacheCoins.emplace(std::piecewise_construct, std::forward_as_tuple(outpoint), std::tuple<>());
@@ -248,6 +250,19 @@ void CCoinsViewCache::SetBestBlock(const uint256 &hashBlockIn) {
     hashBlock = hashBlockIn;
 }
 
+CAmount CCoinsViewCache::GetRecyclePool() const
+{
+    if (!m_recycle_pool) m_recycle_pool = base->GetRecyclePool();
+    return *m_recycle_pool;
+}
+
+void CCoinsViewCache::SetRecyclePool(CAmount amount)
+{
+    if (!MoneyRange(amount)) throw std::logic_error("Invalid recycle pool balance");
+    m_recycle_pool = amount;
+    m_recycle_pool_dirty = true;
+}
+
 void CCoinsViewCache::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashBlockIn)
 {
     for (auto it{cursor.Begin()}; it != cursor.End(); it = cursor.NextAndMaybeErase(*it)) {
@@ -319,13 +334,15 @@ void CCoinsViewCache::BatchWrite(CoinsViewCacheCursor& cursor, const uint256& ha
             }
         }
     }
+    if (const auto pool{cursor.GetRecyclePool()}) SetRecyclePool(*pool);
     SetBestBlock(hashBlockIn);
 }
 
 void CCoinsViewCache::Flush(bool reallocate_cache)
 {
-    auto cursor{CoinsViewCacheCursor(m_dirty_count, m_sentinel, cacheCoins, /*will_erase=*/true)};
+    auto cursor{CoinsViewCacheCursor(m_dirty_count, m_sentinel, cacheCoins, /*will_erase=*/true, m_recycle_pool_dirty ? m_recycle_pool : std::nullopt)};
     base->BatchWrite(cursor, hashBlock);
+    m_recycle_pool_dirty = false;
     Assume(m_dirty_count == 0);
     cacheCoins.clear();
     m_height_index.reset();
@@ -337,8 +354,9 @@ void CCoinsViewCache::Flush(bool reallocate_cache)
 
 void CCoinsViewCache::Sync()
 {
-    auto cursor{CoinsViewCacheCursor(m_dirty_count, m_sentinel, cacheCoins, /*will_erase=*/false)};
+    auto cursor{CoinsViewCacheCursor(m_dirty_count, m_sentinel, cacheCoins, /*will_erase=*/false, m_recycle_pool_dirty ? m_recycle_pool : std::nullopt)};
     base->BatchWrite(cursor, hashBlock);
+    m_recycle_pool_dirty = false;
     Assume(m_dirty_count == 0);
     if (m_sentinel.second.Next() != &m_sentinel) {
         /* BatchWrite must clear flags of all entries */
@@ -352,6 +370,8 @@ void CCoinsViewCache::Reset() noexcept
     m_height_index.reset();
     cachedCoinsUsage = 0;
     m_dirty_count = 0;
+    m_recycle_pool.reset();
+    m_recycle_pool_dirty = false;
     SetBestBlock(uint256::ZERO);
 }
 
@@ -479,4 +499,9 @@ std::optional<Coin> CCoinsViewErrorCatcher::PeekCoin(const COutPoint& outpoint) 
 std::set<COutPoint> CCoinsViewErrorCatcher::GetCoinsByHeight(uint32_t height) const
 {
     return ExecuteBackedWrapper<std::set<COutPoint>>([&]() { return CCoinsViewBacked::GetCoinsByHeight(height); }, m_err_callbacks);
+}
+
+CAmount CCoinsViewErrorCatcher::GetRecyclePool() const
+{
+    return ExecuteBackedWrapper<CAmount>([&]() { return CCoinsViewBacked::GetRecyclePool(); }, m_err_callbacks);
 }
