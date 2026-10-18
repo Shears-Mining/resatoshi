@@ -59,7 +59,7 @@ RecycleSetupDialog::RecycleSetupDialog(const std::string& mode, bool mode_editab
     m_block->setEnabled(mode_editable);
     if (!mode_editable) add_text(mode_layout, tr("The expiry method is supplied by your startup configuration."));
     layout->addWidget(modes);
-    add_text(layout, tr("This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders."));
+    add_text(layout, tr("Changing methods requires a full reindex with complete block history, or synchronization in a new data folder. Back up your wallets first."));
 
     m_storage = new QGroupBox(tr("Block history"), this);
     m_storage->setObjectName("blockStorage");

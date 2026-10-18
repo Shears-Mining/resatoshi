@@ -5186,8 +5186,8 @@ Essayez d’utiliser la version la plus récente du logiciel.
         <translation>La méthode de traitement des expirations est définie par votre configuration de démarrage.</translation>
     </message>
     <message>
-        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
-        <translation>Ce choix est fixé pour ce dossier de données. Pour changer de méthode par la suite, il faut utiliser un nouveau dossier et effectuer une synchronisation. Sauvegardez vos portefeuilles avant de changer de dossier.</translation>
+        <source>Changing methods requires a full reindex with complete block history, or synchronization in a new data folder. Back up your wallets first.</source>
+        <translation>Pour changer de méthode, il faut une réindexation complète avec tout l’historique des blocs, ou une synchronisation dans un nouveau dossier de données. Sauvegardez d’abord vos portefeuilles.</translation>
     </message>
     <message>
         <source>Block history</source>

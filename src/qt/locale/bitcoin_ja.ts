@@ -5210,8 +5210,8 @@ Please try running the latest software version.
         <translation>有効期限の処理方式は起動設定で指定されています。</translation>
     </message>
     <message>
-        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
-        <translation>この選択はこのデータフォルダーに固定されます。後から方式を変更するには、新しいフォルダーで同期する必要があります。フォルダーを変更する前にウォレットをバックアップしてください。</translation>
+        <source>Changing methods requires a full reindex with complete block history, or synchronization in a new data folder. Back up your wallets first.</source>
+        <translation>方式を変更するには、完全なブロック履歴を使った全体の再インデックス、または新しいデータフォルダーでの同期が必要です。先にウォレットをバックアップしてください。</translation>
     </message>
     <message>
         <source>Block history</source>

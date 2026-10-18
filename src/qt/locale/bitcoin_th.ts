@@ -2596,8 +2596,8 @@ If you are receiving this error you should request the merchant provide a BIP21 
         <translation>วิธีจัดการเหรียญหมดอายุถูกระบุไว้ในการตั้งค่าเริ่มต้นของคุณ</translation>
     </message>
     <message>
-        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
-        <translation>ตัวเลือกนี้จะถูกกำหนดไว้สำหรับโฟลเดอร์ข้อมูลนี้ หากต้องการเปลี่ยนวิธีในภายหลัง ต้องใช้โฟลเดอร์ใหม่และซิงค์ข้อมูลอีกครั้ง โปรดสำรองกระเป๋าเงินก่อนเปลี่ยนโฟลเดอร์</translation>
+        <source>Changing methods requires a full reindex with complete block history, or synchronization in a new data folder. Back up your wallets first.</source>
+        <translation>การเปลี่ยนวิธีต้องสร้างดัชนีใหม่ทั้งหมดโดยใช้ประวัติบล็อกที่ครบถ้วน หรือซิงโครไนซ์ในโฟลเดอร์ข้อมูลใหม่ โปรดสำรองข้อมูลกระเป๋าเงินก่อน</translation>
     </message>
     <message>
         <source>Block history</source>

@@ -5124,8 +5124,8 @@ Intenta ejecutar la última versión del software.
         <translation>El método de procesamiento de caducidades está definido en su configuración de inicio.</translation>
     </message>
     <message>
-        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
-        <translation>Esta elección queda fijada para esta carpeta de datos. Para cambiar de método más adelante se requiere una carpeta nueva y una sincronización. Haga una copia de seguridad de sus monederos antes de cambiar de carpeta.</translation>
+        <source>Changing methods requires a full reindex with complete block history, or synchronization in a new data folder. Back up your wallets first.</source>
+        <translation>Para cambiar de método, se necesita una reindexación completa con todo el historial de bloques o sincronizar una nueva carpeta de datos. Primero haga una copia de seguridad de sus monederos.</translation>
     </message>
     <message>
         <source>Block history</source>

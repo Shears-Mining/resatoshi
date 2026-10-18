@@ -5092,8 +5092,8 @@ Bitte mit der neuesten Softwareversion ausführen.
         <translation>Die Methode zur Ablaufverarbeitung wird durch Ihre Startkonfiguration vorgegeben.</translation>
     </message>
     <message>
-        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
-        <translation>Diese Auswahl ist für diesen Datenordner festgelegt. Ein späterer Methodenwechsel erfordert einen neuen Ordner und eine Synchronisierung. Sichern Sie Ihre Wallets, bevor Sie den Ordner wechseln.</translation>
+        <source>Changing methods requires a full reindex with complete block history, or synchronization in a new data folder. Back up your wallets first.</source>
+        <translation>Ein Wechsel der Methode erfordert eine vollständige Neuindexierung mit der gesamten Blockhistorie oder eine Synchronisierung in einem neuen Datenordner. Sichern Sie zuerst Ihre Wallets.</translation>
     </message>
     <message>
         <source>Block history</source>

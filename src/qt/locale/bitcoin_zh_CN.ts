@@ -4931,8 +4931,8 @@ Please try running the latest software version.
         <translation>到期处理方式由您的启动配置指定。</translation>
     </message>
     <message>
-        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
-        <translation>此选择固定用于此数据文件夹。以后更改方式需要使用新文件夹并重新同步。更换文件夹前请备份钱包。</translation>
+        <source>Changing methods requires a full reindex with complete block history, or synchronization in a new data folder. Back up your wallets first.</source>
+        <translation>更改方式需要使用完整区块历史进行完整重新索引，或在新的数据文件夹中同步。请先备份钱包。</translation>
     </message>
     <message>
         <source>Block history</source>

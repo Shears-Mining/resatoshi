@@ -4777,8 +4777,8 @@ Please try running the latest software version.
         <translation>到期處理方式由您的啟動設定指定。</translation>
     </message>
     <message>
-        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
-        <translation>此選擇固定用於此資料資料夾。日後更改方式需要使用新資料夾並重新同步。更換資料夾前請備份錢包。</translation>
+        <source>Changing methods requires a full reindex with complete block history, or synchronization in a new data folder. Back up your wallets first.</source>
+        <translation>變更方式需要使用完整區塊歷史進行完整重新索引，或在新的資料夾中同步。請先備份錢包。</translation>
     </message>
     <message>
         <source>Block history</source>

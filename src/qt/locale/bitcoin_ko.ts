@@ -5130,8 +5130,8 @@ Please try running the latest software version.
         <translation>시작 설정에 지정된 만료 처리 방식을 사용합니다.</translation>
     </message>
     <message>
-        <source>This choice is fixed for this data folder. Changing the method later requires a new folder and synchronization. Back up your wallets before changing folders.</source>
-        <translation>선택한 방식은 이 데이터 폴더에 고정됩니다. 나중에 바꾸려면 새 폴더에서 다시 동기화해야 합니다. 폴더를 바꾸기 전에 지갑을 백업하세요.</translation>
+        <source>Changing methods requires a full reindex with complete block history, or synchronization in a new data folder. Back up your wallets first.</source>
+        <translation>방식을 바꾸려면 전체 블록 이력으로 전체 재색인을 하거나 새 데이터 폴더에서 동기화해야 합니다. 먼저 지갑을 백업하세요.</translation>
     </message>
     <message>
         <source>Block history</source>
