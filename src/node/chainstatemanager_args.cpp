@@ -45,8 +45,9 @@ bool HasExplicitStartupSetting(const ArgsManager& args, const std::string& name)
 std::string GetRecycleMode(const ArgsManager& args)
 {
     if (!HasExplicitStartupSetting(args, "recyclemode")) return args.GetArg("-recyclemode", "index");
-    // Unlike general GUI preferences, an explicit conf mode must also override
-    // saved mode preferences. Do not change precedence for unrelated options.
+    // Bitcoin Core's GetArg gives settings.json precedence over conf. For the
+    // recycle mode, explicit CLI/conf must override saved preferences instead.
+    // Keep the upstream precedence for unrelated options.
     std::string mode;
     const auto network{args.GetChainTypeString()};
     args.LockSettings([&](const common::Settings& settings) {

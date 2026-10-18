@@ -1418,6 +1418,24 @@ static ChainstateLoadResult InitAndLoadChainstate(
                     return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot verify the format of existing block history without chainstate metadata. Use -reindex, or synchronize a fresh data directory.")};
                 }
             }
+        } else if (chainparams.GetConsensus().recycle_enabled) {
+            // Best-effort warning only: unreadable metadata must not block full reindex.
+            const auto requested{chainman_opts.recycle_from_block ? RecycleMode::BLOCK : RecycleMode::INDEX};
+            for (const auto& name : {"chainstate", "chainstate_snapshot"}) {
+                const auto path{args.GetDataDirNet() / name};
+                if (!fs::exists(path / "CURRENT")) continue;
+                try {
+                    CDBWrapper previous{{.path = path, .cache_bytes = 1 << 20}};
+                    const auto mode{ReadRecycleMode(previous)};
+                    if (mode && *mode != RecycleMode::DISABLED && *mode != requested) {
+                        LogWarning("Rebuilding in %s mode; previous chainstate was %s mode (%s)",
+                            requested == RecycleMode::BLOCK ? "block" : "index",
+                            *mode == RecycleMode::BLOCK ? "block" : "index", fs::PathToString(path));
+                    }
+                } catch (const dbwrapper_error& e) {
+                    LogWarning("Cannot read previous recycle mode; continuing full reindex: %s", e.what());
+                }
+            }
         }
         if (chainparams.GetConsensus().recycle_enabled) {
             chainman_opts.recycle_check_startup |= fs::exists(args.GetDataDirNet() / "recycle-unclean");

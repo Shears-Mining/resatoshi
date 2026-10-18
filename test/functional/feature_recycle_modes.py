@@ -151,7 +151,10 @@ class RecycleModesTest(BitcoinTestFramework):
 
         self.log.info("Full reindex can change modes and regenerates usable undo")
         for mode in ("index", "block"):
-            self.start_node(1, extra_args=["-test=recycle", "-reindex", f"-recyclemode={mode}"])
+            previous_mode = "block" if mode == "index" else "index"
+            options = ["-nosettings"] if mode == "index" else ["-recyclemode=block"]
+            with archival.assert_debug_log([f"Rebuilding in {mode} mode; previous chainstate was {previous_mode} mode"]):
+                self.start_node(1, extra_args=["-test=recycle", "-reindex", *options])
             self.connect_nodes(0, 1)
             self.connect_nodes(1, 2)
             self.check_equal()
@@ -175,6 +178,15 @@ class RecycleModesTest(BitcoinTestFramework):
             )
             assert not database.exists()
         self.start_node(0, extra_args=["-test=recycle", "-reindex"])
+        self.connect_nodes(0, 1)
+        self.check_equal()
+        assert indexed.verifychain(4, 0)
+
+        self.log.info("Unreadable old metadata cannot prevent an explicit full reindex")
+        self.stop_node(0)
+        (database / "CURRENT").write_text("missing-manifest\n")
+        with indexed.assert_debug_log(["Cannot read previous recycle mode; continuing full reindex"]):
+            self.start_node(0, extra_args=["-test=recycle", "-reindex"])
         self.connect_nodes(0, 1)
         self.check_equal()
         assert indexed.verifychain(4, 0)
