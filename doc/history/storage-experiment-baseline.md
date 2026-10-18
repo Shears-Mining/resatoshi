@@ -1,4 +1,8 @@
-# Storage experiment baseline
+# Historical storage validation baseline
+
+The format-5 storage implementation is included in main. This page preserves
+pre-adoption validation context; current requirements are documented in
+[storage and recovery](../recycle-state-integrity.md).
 
 The comparison base is main commit `441d5e7`. The original checkout's available test binary passed 21 recycle cases and 16,795
 assertions before changes. Its embedded revision was older/dirty, so the exact

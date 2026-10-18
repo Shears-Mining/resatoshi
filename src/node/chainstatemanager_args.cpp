@@ -79,6 +79,41 @@ bool WriteRecycleMarker(const fs::path& path, std::string_view contents)
     return true;
 }
 
+util::Result<void> PrepareRecycleDirectory(const fs::path& datadir, bool from_block)
+{
+    const auto mode_path{datadir / "recycle-mode"};
+    const std::string requested{from_block ? "block" : "index"};
+    const auto directory_state{node::GetRecycleDirectoryState(datadir)};
+    const auto format_path{datadir / "recycle-format"};
+    if (fs::exists(format_path)) {
+        std::ifstream stream{format_path.std_path()};
+        std::string format;
+        std::getline(stream, format);
+        if (!stream || format != "1") {
+            return util::Error{Untranslated("Unsupported recycle storage format. Synchronize a fresh data directory.")};
+        }
+    } else {
+        if (directory_state != node::RecycleDirectoryState::NEW) {
+            return util::Error{Untranslated("Unsupported recycle storage format. Synchronize a fresh data directory.")};
+        }
+        if (!node::WriteRecycleMarker(format_path, "1\n")) {
+            return util::Error{Untranslated("Cannot persist recycle storage format")};
+        }
+    }
+    if (directory_state != node::RecycleDirectoryState::NEW) {
+        const auto expected{from_block ? node::RecycleDirectoryState::BLOCK : node::RecycleDirectoryState::INDEX};
+        if (directory_state != expected) {
+            return util::Error{Untranslated("Recycle mode differs from the data directory. Use its recorded mode, or synchronize a fresh data directory.")};
+        }
+    } else {
+        if (!node::WriteRecycleMarker(mode_path, requested + "\n")) {
+            return util::Error{Untranslated("Cannot persist recycle mode")};
+        }
+    }
+    DirectoryCommit(datadir);
+    return {};
+}
+
 util::Result<void> ApplyArgsManOptions(const ArgsManager& args, ChainstateManager::Options& opts)
 {
     const auto recycle_mode{GetRecycleMode(args)};

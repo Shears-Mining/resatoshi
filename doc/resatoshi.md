@@ -36,7 +36,7 @@ The expiry candidate source and local storage representation do not change these
 - BIP34, BIP65, BIP66 and CSV activate at height 1; SegWit and Taproot from genesis.
 
 Regtest recycling remains opt-in (`-regtest -test=recycle`) with a 200-block
-lifetime. Existing Bitcoin test-network parameters are unchanged by this experiment.
+lifetime. Existing Bitcoin test-network parameters are unchanged.
 
 Sources: [consensus parameters](../src/consensus/params.h),
 [chain parameters](../src/kernel/chainparams.cpp),

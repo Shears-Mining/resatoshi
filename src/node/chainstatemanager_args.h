@@ -28,6 +28,12 @@ std::string GetRecycleMode(const ArgsManager& args);
 /** Persist complete marker contents by committing a temporary file and renaming. */
 [[nodiscard]] bool WriteRecycleMarker(const fs::path& path, std::string_view contents);
 
+/** Validate directory identity before opening or rebuilding databases. Existing records
+ * are never repaired from a requested mode; only a new directory gets markers.
+ * The chainstate DB separately validates its own format and mode on open.
+ */
+[[nodiscard]] util::Result<void> PrepareRecycleDirectory(const fs::path& datadir, bool from_block);
+
 [[nodiscard]] util::Result<void> ApplyArgsManOptions(const ArgsManager& args, ChainstateManager::Options& opts);
 } // namespace node
 

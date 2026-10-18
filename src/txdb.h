@@ -100,8 +100,8 @@ public:
     void BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashBlock) override;
     std::unique_ptr<CCoinsViewCursor> Cursor() const override;
 
-    //! Whether an unsupported database format is used.
-    bool NeedsUpgrade();
+    //! Whether the database format or persisted mode differs from this view.
+    bool HasUnsupportedFormat();
     bool RecycleStateReady() const;
     /** Rebuild the derived index from current-format UTXOs after detected damage. */
     bool RebuildRecycleIndex(const std::function<bool()>& interrupted);

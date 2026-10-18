@@ -106,7 +106,7 @@ static ChainstateLoadResult CompleteChainstateInitialization(
 
         // Refuse to load unsupported database format.
         // This is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
-        if (chainstate->CoinsDB().NeedsUpgrade()) {
+        if (chainstate->CoinsDB().HasUnsupportedFormat()) {
             return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, _("Unsupported chainstate database format found. "
                                                                      "Synchronize a fresh data directory. This version does not migrate "
                                                                      "existing chainstate or undo files.")};

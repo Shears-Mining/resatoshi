@@ -1357,36 +1357,9 @@ static ChainstateLoadResult InitAndLoadChainstate(
     if (chainparams.GetConsensus().recycle_enabled) {
         chainman_opts.recycle_recovery = fs::exists(args.GetDataDirNet() / "recycle-corrupt");
         if (chainman_opts.recycle_recovery) LogWarning("Recycle corruption detected: rebuilding block index and chainstate from blocks before resuming\n");
-        const auto mode_path{args.GetDataDirNet() / "recycle-mode"};
-        const std::string requested{chainman_opts.recycle_from_block ? "block" : "index"};
-        const auto directory_state{node::GetRecycleDirectoryState(args.GetDataDirNet())};
-        const auto format_path{args.GetDataDirNet() / "recycle-format"};
-        if (fs::exists(format_path)) {
-            std::ifstream stream{format_path.std_path()};
-            std::string format;
-            std::getline(stream, format);
-            if (!stream || format != "1") {
-                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Unsupported recycle storage format. Synchronize a fresh data directory.")};
-            }
-        } else {
-            if (directory_state != node::RecycleDirectoryState::NEW) {
-                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Unsupported recycle storage format. Synchronize a fresh data directory.")};
-            }
-            if (!node::WriteRecycleMarker(format_path, "1\n")) {
-                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot persist recycle storage format")};
-            }
+        if (auto result{node::PrepareRecycleDirectory(args.GetDataDirNet(), chainman_opts.recycle_from_block)}; !result) {
+            return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, util::ErrorString(result)};
         }
-        if (directory_state != node::RecycleDirectoryState::NEW) {
-            const auto expected{chainman_opts.recycle_from_block ? node::RecycleDirectoryState::BLOCK : node::RecycleDirectoryState::INDEX};
-            if (directory_state != expected) {
-                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Recycle mode differs from the data directory. Use its recorded mode, or synchronize a fresh data directory.")};
-            }
-        } else {
-            if (!node::WriteRecycleMarker(mode_path, requested + "\n")) {
-                return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot persist recycle mode")};
-            }
-        }
-        DirectoryCommit(args.GetDataDirNet());
         chainman_opts.recycle_check_startup |= fs::exists(args.GetDataDirNet() / "recycle-unclean");
         FILE* file{fsbridge::fopen(args.GetDataDirNet() / "recycle-unclean", "wb")};
         if (!file) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot record recycle session")};

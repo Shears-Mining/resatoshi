@@ -214,18 +214,19 @@ These tests use isolated regtest directories and `-test=recycle` (200-block life
 
 Boundary/full-block/mining-load tests accept `--reference-bitcoind=/path/to/main/bitcoind`
 for identical-block comparison using separate fresh node directories. Never switch
-a reference directory to the experimental binary: local formats intentionally differ.
+a reference directory to the current binary: local formats intentionally differ.
 Boundary tests accept `--expiry-mode=block` to compare the new block path with
 the reference index path. They also accept `--small-cache --crash-height=200` (or 201/202), and
 `--boundary-results=PATH` records independent-ledger comparison results.
 
 Unit `recycle_tests` cover typed undo boundaries, pool cache rollback, disk/reopen,
 compaction, index damage and cancellation, explicit check outcomes, failed marker
-publication, and block-source equivalence. The modes test also checks daemon mode
+publication, interrupted directory setup, missing or unsupported directory records,
+and block-source equivalence. The modes test also checks daemon mode
 inheritance when restarting without `-recyclemode`. Kernel
 `btck_recycle_spent_outputs_disk_tests` covers transaction-input API lifetime and reopen.
 
-`feature_recycle_mixed_versions --reference-bitcoind=PATH` connects the experimental
+`feature_recycle_mixed_versions --reference-bitcoind=PATH` connects the current
 and reference nodes over P2P and mines blocks on both. It checks transaction relay
 in both directions, concurrent competing blocks at first expiry, reorganizations
 in both directions, renewed expiry and restart with an empty UTXO set and nonzero

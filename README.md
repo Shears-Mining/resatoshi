@@ -35,7 +35,7 @@ Index mode is the default and supports pruning. Block mode reads original origin
 blocks and retains the expiry window. Both enforce the same rules; see
 [storage and recovery](doc/recycle-state-integrity.md).
 
-This experimental branch requires a fresh data directory; old local formats
+This storage version requires a fresh data directory; old local formats
 are unsupported. Install the [platform build dependencies](doc/build-unix.md),
 and create the new data directory before starting. Build the node and CLI:
 

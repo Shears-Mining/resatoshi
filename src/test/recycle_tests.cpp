@@ -98,6 +98,32 @@ BOOST_FIXTURE_TEST_CASE(marker_failure_preserves_committed_value, BasicTestingSe
     BOOST_CHECK(!fs::exists(temporary));
 }
 
+BOOST_FIXTURE_TEST_CASE(directory_identity_survives_interrupted_setup, BasicTestingSetup)
+{
+    const auto directory{m_path_root / "recycle-directory"};
+    fs::create_directory(directory);
+    // A crash after publishing format but before mode leaves no database.
+    BOOST_REQUIRE(node::WriteRecycleMarker(directory / "recycle-format", "1\n"));
+    BOOST_REQUIRE(node::PrepareRecycleDirectory(directory, /*from_block=*/true));
+    BOOST_CHECK(node::GetRecycleDirectoryState(directory) == node::RecycleDirectoryState::BLOCK);
+    BOOST_CHECK(!node::PrepareRecycleDirectory(directory, /*from_block=*/false));
+    BOOST_CHECK(node::GetRecycleDirectoryState(directory) == node::RecycleDirectoryState::BLOCK);
+    BOOST_REQUIRE(node::PrepareRecycleDirectory(directory, /*from_block=*/true));
+
+    // Once a database exists, missing records cannot be recreated from arguments.
+    fs::create_directory(directory / "chainstate");
+    { std::ofstream current{(directory / "chainstate" / "CURRENT").std_path()}; }
+    fs::remove(directory / "recycle-mode");
+    BOOST_CHECK(!node::PrepareRecycleDirectory(directory, /*from_block=*/true));
+    BOOST_CHECK(!fs::exists(directory / "recycle-mode"));
+    BOOST_REQUIRE(node::WriteRecycleMarker(directory / "recycle-mode", "block\n"));
+    fs::remove(directory / "recycle-format");
+    BOOST_CHECK(!node::PrepareRecycleDirectory(directory, /*from_block=*/true));
+    BOOST_CHECK(!fs::exists(directory / "recycle-format"));
+    BOOST_REQUIRE(node::WriteRecycleMarker(directory / "recycle-format", "unknown\n"));
+    BOOST_CHECK(!node::PrepareRecycleDirectory(directory, /*from_block=*/true));
+}
+
 BOOST_AUTO_TEST_CASE(automatic_check_distinguishes_busy_and_shutdown)
 {
     TestingSetup setup{ChainType::REGTEST, {.extra_args = {"-test=recycle"}, .coins_db_in_memory = false}};
@@ -523,7 +549,7 @@ BOOST_FIXTURE_TEST_CASE(compaction_preserves_recycle_state_and_recovery, BasicTe
             BOOST_CHECK(same_records(snapshot(db), before));
             BOOST_CHECK(db.GetBestBlock() == tip);
             BOOST_CHECK(db.RecycleStateReady());
-            BOOST_CHECK(!db.NeedsUpgrade());
+            BOOST_CHECK(!db.HasUnsupportedFormat());
         }
     };
 
@@ -598,7 +624,7 @@ BOOST_FIXTURE_TEST_CASE(old_chainstate_requires_fresh_sync, BasicTestingSetup)
             raw.Write(uint8_t{'B'}, uint256{42});
         }
         CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
-        BOOST_CHECK(db.NeedsUpgrade());
+        BOOST_CHECK(db.HasUnsupportedFormat());
         BOOST_CHECK_THROW(db.RebuildRecycleIndex([] { return false; }), std::runtime_error);
     }
 }
@@ -902,7 +928,7 @@ BOOST_FIXTURE_TEST_CASE(database_mode_codecs_and_indexing, BasicTestingSetup)
             AddCoins(view, *origin.vtx[0], 1);
             view.SetBestBlock(uint256{1});
             view.Flush();
-            BOOST_CHECK(!db.NeedsUpgrade());
+            BOOST_CHECK(!db.HasUnsupportedFormat());
             if (test.mode == RecycleMode::INDEX) {
                 BOOST_CHECK(db.GetCoinsByHeight(1).contains(output));
             } else {
@@ -926,7 +952,7 @@ BOOST_FIXTURE_TEST_CASE(block_source_without_height_index, BasicTestingSetup)
     const COutPoint output{origin.vtx[0]->GetHash(), 0};
     {
         CCoinsViewDB db{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::BLOCK}};
-        BOOST_CHECK(!db.NeedsUpgrade());
+        BOOST_CHECK(!db.HasUnsupportedFormat());
         BOOST_CHECK(!db.RecycleStateReady());
         CCoinsViewCache view{&db};
         AddCoins(view, *origin.vtx[0], 1);
@@ -966,7 +992,7 @@ BOOST_FIXTURE_TEST_CASE(block_source_without_height_index, BasicTestingSetup)
     }
     // The persisted mode must prevent opening block state as an indexed database.
     CCoinsViewDB indexed{{.path = path, .cache_bytes = 1 << 20}, {.recycle_mode = RecycleMode::INDEX}};
-    BOOST_CHECK(indexed.NeedsUpgrade());
+    BOOST_CHECK(indexed.HasUnsupportedFormat());
 }
 
 BOOST_AUTO_TEST_CASE(automatic_and_manual_checks_stop_on_missing_entry)

@@ -1,6 +1,6 @@
 # Resatoshi node operations
 
-This experimental storage format requires a fresh network data directory.
+This storage format requires a fresh network data directory.
 Keep the existing node and wallet backups separate. See [storage and recovery](recycle-state-integrity.md)
 for format boundaries and [network rules](resatoshi.md) for consensus.
 
@@ -174,7 +174,7 @@ application names for each test network. It does not import the `Bitcoin` /
 `Bitcoin-Qt` settings used by earlier releases, since those may belong to
 Bitcoin Core. Existing Bitcoin settings and wallet files are left untouched.
 
-On first GUI startup with the new settings, select the existing ReSatoshi data
+On first GUI startup with the new settings, select the existing Resatoshi data
 directory in the directory chooser, even if it is already present. If you used
 a custom directory, choose that same directory to retain your wallets and chain
 data. An explicit `-datadir` continues to bypass this chooser. GUI preferences
@@ -184,7 +184,7 @@ BTC, mBTC, bits and sat units and their conversion factors remain unchanged.
 OS installation, autostart and payment-link registrations use Resatoshi-specific
 identifiers to coexist with Bitcoin Core. New payment links use `resatoshi:`;
 manually supplied legacy `bitcoin:` links remain accepted, with addresses checked
-against the selected network. ReSatoshi does not register the `bitcoin:` OS handler.
+against the selected network. Resatoshi does not register the `bitcoin:` OS handler.
 The executable names (`bitcoind`, `bitcoin-cli`, `bitcoin-qt`) remain unchanged.
 When installing from source alongside Bitcoin Core, use a separate installation
 prefix (for example `-DCMAKE_INSTALL_PREFIX=/opt/resatoshi`) so those executable

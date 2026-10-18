@@ -95,7 +95,19 @@ class RecycleModesTest(BitcoinTestFramework):
             extra_args=["-test=recycle"],
             expected_msg="Error: Unsupported recycle storage format. Synchronize a fresh data directory.",
         )
+        format_path.write_text("unknown\n")
+        indexed.assert_start_raises_init_error(
+            extra_args=["-test=recycle"],
+            expected_msg="Error: Unsupported recycle storage format. Synchronize a fresh data directory.",
+        )
+        assert_equal(format_path.read_text(), "unknown\n")
         format_path.write_bytes(storage_format)
+        mode_path.write_text("unknown\n")
+        indexed.assert_start_raises_init_error(
+            extra_args=["-test=recycle"],
+            expected_msg="Error: Recycle mode differs from the data directory. Use its recorded mode, or synchronize a fresh data directory.",
+        )
+        assert_equal(mode_path.read_text(), "unknown\n")
         mode_path.unlink()
         indexed.assert_start_raises_init_error(
             extra_args=["-test=recycle", "-recyclemode=block"],

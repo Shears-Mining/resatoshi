@@ -45,7 +45,7 @@ static constexpr int RECYCLE_FORMAT_VERSION{5};
 // Threshold for warning when writing this many dirty cache entries to disk.
 static constexpr size_t WARN_FLUSH_COINS_COUNT{10'000'000};
 
-bool CCoinsViewDB::NeedsUpgrade()
+bool CCoinsViewDB::HasUnsupportedFormat()
 {
     std::unique_ptr<CDBIterator> cursor{m_db->NewIterator()};
     // DB_COINS was deprecated in v0.15.0, commit
@@ -230,7 +230,7 @@ void CCoinsViewDB::CancelRecycleIndexCheck()
 bool CCoinsViewDB::RebuildRecycleIndex(const std::function<bool()>& interrupted)
 {
     if (m_options.recycle_mode != RecycleMode::INDEX) return true;
-    if (NeedsUpgrade()) throw std::runtime_error("Unsupported chainstate format; synchronize a fresh data directory");
+    if (HasUnsupportedFormat()) throw std::runtime_error("Unsupported chainstate format; synchronize a fresh data directory");
     m_db->Write(DB_RECYCLE_BUILDING, true, /*fSync=*/true);
     CDBBatch batch{*m_db};
     auto flush = [&] {

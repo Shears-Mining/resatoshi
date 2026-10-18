@@ -2,13 +2,23 @@
 
 ## Format boundary
 
-This experimental branch uses chainstate format 5, typed block undo, and snapshot
+Resatoshi uses chainstate format 5, typed block undo, and snapshot
 version 3. Start with a fresh network data directory and synchronize from blocks.
 Old chainstate, undo and snapshots are not migrated. Keep wallet backups and the
 original node's directory separate; changing a marker is not a conversion.
 A `recycle-format` file identifies directories created by this storage version.
 A single database format marker prevents codec-aware older binaries from opening
 new state. Software that ignores format checks must not share these directories.
+
+Directory markers describe the directory as a whole, including its block undo,
+while database keys `r` (format 5) and `m` (mode) describe each chainstate DB.
+The directory format value `1` is a separate identifier, not the DB format number.
+Directory records select the startup mode for both GUI and daemon; explicit
+configuration must agree. Each DB then independently rejects an unsupported format
+or a different mode before loading state. Conflicting or missing directory records
+are rejected rather than silently rewritten. Directory checks run before reindexing
+can discard DB metadata. A new directory interrupted between marker
+writes can complete its missing mode record on retry, before DB creation.
 
 ## Expiry modes
 
@@ -54,7 +64,8 @@ typed undo to restore the previous state and replay the transition idempotently.
 Expiry restoration checks whether each coin already exists before adding it, as
 transaction-input undo does. Overwrites are reported as unclean during normal
 disconnection and tolerated by interrupted-flush replay.
-Simply sharing one database is not sufficient to guarantee these recovery semantics.
+Because a flush can span multiple database batches, sharing a database alone does
+not make the entire flush atomic; the head markers and replay provide recovery.
 
 ## Index checks and recovery
 
