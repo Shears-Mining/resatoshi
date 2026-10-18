@@ -56,26 +56,21 @@ class RecycleRecoveryTest(BitcoinTestFramework):
             chainstate = node.chain_path / "chainstate"
             preserved_state = self.file_hashes(chainstate)
             preserved_blocks = self.file_hashes(blocks)
-            mode = (node.chain_path / "recycle-mode").read_bytes()
             if i == 1:
-                self.log.info("External blocks with a missing mode record are rejected without mutation")
-                mode_path = node.chain_path / "recycle-mode"
+                self.log.info("External blocks with missing chainstate metadata are rejected without mutation")
                 saved_chainstate = node.chain_path / "chainstate.saved"
-                mode_path.unlink()
                 chainstate.rename(saved_chainstate)
                 preserved_index = self.file_hashes(index)
                 try:
                     node.assert_start_raises_init_error(
                         extra_args=node.extra_args + ["-recyclemode=block"],
-                        expected_msg="Error: Recycle mode differs from the data directory. Use its recorded mode, or synchronize a fresh data directory.",
+                        expected_msg="Error: Cannot verify the format of existing block history without chainstate metadata. Use -reindex, or synchronize a fresh data directory.",
                     )
-                    assert not mode_path.exists()
                     assert not chainstate.exists()
                     assert_equal(self.file_hashes(index), preserved_index)
                     assert_equal(self.file_hashes(blocks), preserved_blocks)
                 finally:
                     saved_chainstate.rename(chainstate)
-                    mode_path.write_bytes(mode)
             marker = node.chain_path / "recycle-corrupt"
             marker.touch()
             try:
@@ -87,7 +82,6 @@ class RecycleRecoveryTest(BitcoinTestFramework):
                     assert marker.exists()
                     assert_equal(self.file_hashes(chainstate), preserved_state)
                     assert_equal(self.file_hashes(blocks), preserved_blocks)
-                    assert_equal((node.chain_path / "recycle-mode").read_bytes(), mode)
                     assert (index / "CURRENT").exists()
             finally:
                 # Only the recovery latch was injected; the original data is healthy.

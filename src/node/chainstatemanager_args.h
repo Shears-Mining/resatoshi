@@ -10,7 +10,6 @@
 #include <validation.h>
 
 #include <string>
-#include <string_view>
 
 class ArgsManager;
 
@@ -18,21 +17,13 @@ class ArgsManager;
 static constexpr int DEFAULT_SCRIPTCHECK_THREADS{0};
 
 namespace node {
-/** Recorded expiry mode, or an existing directory missing its mode record. */
-enum class RecycleDirectoryState { NEW, EXISTING_UNMARKED, INDEX, BLOCK, INVALID };
-RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir);
+/** Existing chainstate or block-index directories; used to skip first-run GUI setup. */
+bool HasChainstateData(const fs::path& datadir);
 /** Command-line/config settings, excluding saved GUI preferences. */
 bool HasExplicitStartupSetting(const ArgsManager& args, const std::string& name);
-/** Explicit configuration wins; otherwise an existing folder owns its mode. */
-std::string GetRecycleMode(const ArgsManager& args);
-/** Persist complete marker contents by committing a temporary file and renaming. */
-[[nodiscard]] bool WriteRecycleMarker(const fs::path& path, std::string_view contents);
 
-/** Validate directory identity before opening or rebuilding databases. Existing records
- * are never repaired from a requested mode; only a new directory gets markers.
- * The chainstate DB separately validates its own format and mode on open.
- */
-[[nodiscard]] util::Result<void> PrepareRecycleDirectory(const fs::path& datadir, bool from_block);
+/** Explicit CLI/config mode, then saved settings, then index. */
+std::string GetRecycleMode(const ArgsManager& args);
 
 [[nodiscard]] util::Result<void> ApplyArgsManOptions(const ArgsManager& args, ChainstateManager::Options& opts);
 } // namespace node

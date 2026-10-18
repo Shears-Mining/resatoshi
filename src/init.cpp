@@ -1357,16 +1357,6 @@ static ChainstateLoadResult InitAndLoadChainstate(
     if (chainparams.GetConsensus().recycle_enabled) {
         chainman_opts.recycle_recovery = fs::exists(args.GetDataDirNet() / "recycle-corrupt");
         if (chainman_opts.recycle_recovery) LogWarning("Recycle corruption detected: rebuilding block index and chainstate from blocks before resuming\n");
-        if (auto result{node::PrepareRecycleDirectory(args.GetDataDirNet(), chainman_opts.recycle_from_block)}; !result) {
-            return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, util::ErrorString(result)};
-        }
-        chainman_opts.recycle_check_startup |= fs::exists(args.GetDataDirNet() / "recycle-unclean");
-        FILE* file{fsbridge::fopen(args.GetDataDirNet() / "recycle-unclean", "wb")};
-        if (!file) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot record recycle session")};
-        const bool committed{FileCommit(file)};
-        const bool closed{std::fclose(file) == 0};
-        if (!committed || !closed) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot persist recycle session")};
-        DirectoryCommit(args.GetDataDirNet());
     }
 
     BlockManager::Options blockman_opts{
@@ -1396,6 +1386,47 @@ static ChainstateLoadResult InitAndLoadChainstate(
             if (pruned) {
                 return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Automatic recycle recovery needs all historical blocks, but this directory has pruned data. Synchronize a fresh data directory.")};
             }
+        }
+        // Check BEFORE either reindex path can erase metadata. A full reindex
+        // deliberately replaces the block index and all referenced undo records.
+        // Automatic recovery must still reject a mode change caused by lost settings.
+        if (chainparams.GetConsensus().recycle_enabled && !args.GetBoolArg("-reindex", false)) {
+            const auto requested{chainman_opts.recycle_from_block ? RecycleMode::BLOCK : RecycleMode::INDEX};
+            bool have_chainstate{false};
+            for (const auto& name : {"chainstate", "chainstate_snapshot"}) {
+                const auto path{args.GetDataDirNet() / name};
+                if (!fs::exists(path)) continue;
+                CDBWrapper previous{{.path = path, .cache_bytes = 1 << 20}};
+                const auto mode{ReadRecycleMode(previous)};
+                if (!mode || *mode == RecycleMode::DISABLED) {
+                    return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Unsupported chainstate format. Use -reindex to rebuild from complete block history, or synchronize a fresh data directory.")};
+                }
+                if (*mode != requested) {
+                    return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated(strprintf("This chainstate uses recycle mode %s. Start with -recyclemode=%s, or use -reindex to rebuild in another mode.", *mode == RecycleMode::BLOCK ? "block" : "index", *mode == RecycleMode::BLOCK ? "block" : "index"))};
+                }
+                have_chainstate = true;
+            }
+            if (!have_chainstate) {
+                bool have_history{fs::exists(blockman_opts.block_tree_db_params.path)};
+                if (fs::exists(args.GetBlocksDirPath())) {
+                    for (const auto& entry : fs::directory_iterator{args.GetBlocksDirPath()}) {
+                        const auto name{fs::PathToString(entry.path().filename())};
+                        have_history |= (name.starts_with("blk") || name.starts_with("rev")) && entry.path().extension() == ".dat";
+                    }
+                }
+                if (have_history) {
+                    return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot verify the format of existing block history without chainstate metadata. Use -reindex, or synchronize a fresh data directory.")};
+                }
+            }
+        }
+        if (chainparams.GetConsensus().recycle_enabled) {
+            chainman_opts.recycle_check_startup |= fs::exists(args.GetDataDirNet() / "recycle-unclean");
+            FILE* file{fsbridge::fopen(args.GetDataDirNet() / "recycle-unclean", "wb")};
+            if (!file) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot record recycle session")};
+            const bool committed{FileCommit(file)};
+            const bool closed{std::fclose(file) == 0};
+            if (!committed || !closed) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot persist recycle session")};
+            DirectoryCommit(args.GetDataDirNet());
         }
         node.chainman = std::make_unique<ChainstateManager>(*Assert(node.shutdown_signal), chainman_opts, blockman_opts);
     } catch (dbwrapper_error& e) {

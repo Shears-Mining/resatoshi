@@ -220,10 +220,10 @@ the reference index path. They also accept `--small-cache --crash-height=200` (o
 `--boundary-results=PATH` records independent-ledger comparison results.
 
 Unit `recycle_tests` cover typed undo boundaries, pool cache rollback, disk/reopen,
-compaction, index damage and cancellation, explicit check outcomes, failed marker
-publication, interrupted directory setup, missing or unsupported directory records,
-and block-source equivalence. The modes test also checks daemon mode
-inheritance when restarting without `-recyclemode`. Kernel
+compaction, index damage and cancellation, explicit check outcomes, missing or unsupported DB metadata,
+and block-source equivalence. The modes test also checks
+settings-based mode selection, disabled/lost settings, pre-wipe rejection and
+full reindexing with missing metadata. Kernel
 `btck_recycle_spent_outputs_disk_tests` covers transaction-input API lifetime and reopen.
 
 `feature_recycle_mixed_versions --reference-bitcoind=PATH` connects the current

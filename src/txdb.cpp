@@ -45,17 +45,23 @@ static constexpr int RECYCLE_FORMAT_VERSION{5};
 // Threshold for warning when writing this many dirty cache entries to disk.
 static constexpr size_t WARN_FLUSH_COINS_COUNT{10'000'000};
 
-bool CCoinsViewDB::HasUnsupportedFormat()
+std::optional<RecycleMode> ReadRecycleMode(CDBWrapper& db)
 {
-    std::unique_ptr<CDBIterator> cursor{m_db->NewIterator()};
-    // DB_COINS was deprecated in v0.15.0, commit
-    // 1088b02f0ccd7358d2b7076bb9e122d59d502d02
+    std::unique_ptr<CDBIterator> cursor{db.NewIterator()};
     cursor->Seek(std::make_pair(DB_COINS, uint256{}));
     uint8_t key{0};
-    if (cursor->Valid() && cursor->GetKey(key) && key == DB_COINS) return true;
+    if (cursor->Valid() && cursor->GetKey(key) && key == DB_COINS) return std::nullopt;
+    cursor->CheckStatus();
     int version{0}, mode{-1};
-    return !m_db->Read(DB_RECYCLE_FORMAT, version) || version != RECYCLE_FORMAT_VERSION ||
-        !m_db->Read(DB_RECYCLE_MODE, mode) || mode != static_cast<int>(m_options.recycle_mode);
+    if (!db.Read(DB_RECYCLE_FORMAT, version) || version != RECYCLE_FORMAT_VERSION ||
+        !db.Read(DB_RECYCLE_MODE, mode) || mode < static_cast<int>(RecycleMode::DISABLED) ||
+        mode > static_cast<int>(RecycleMode::BLOCK)) return std::nullopt;
+    return static_cast<RecycleMode>(mode);
+}
+
+bool CCoinsViewDB::HasUnsupportedFormat()
+{
+    return ReadRecycleMode(*m_db) != m_options.recycle_mode;
 }
 
 bool CCoinsViewDB::RecycleStateReady() const

@@ -19,7 +19,6 @@
 #include <algorithm>
 #include <chrono>
 #include <future>
-#include <fstream>
 #include <type_traits>
 #include <string>
 #include <thread>
@@ -78,50 +77,21 @@ static_assert(!std::is_constructible_v<node::recycle::ExpirySource, const CBlock
 
 BOOST_AUTO_TEST_SUITE(recycle_tests)
 
-BOOST_FIXTURE_TEST_CASE(marker_failure_preserves_committed_value, BasicTestingSetup)
+BOOST_FIXTURE_TEST_CASE(storage_metadata_requires_supported_format_and_mode, BasicTestingSetup)
 {
-    const auto marker{m_path_root / "recycle-format"};
-    const auto temporary{m_path_root / "recycle-format.tmp"};
-    BOOST_REQUIRE(node::WriteRecycleMarker(marker, "1\n"));
-    // A blocked temporary path models a failed write before publication.
-    fs::create_directory(temporary);
-    BOOST_CHECK(!node::WriteRecycleMarker(marker, "incomplete\n"));
-    std::ifstream stream{marker.std_path()};
-    std::string contents;
-    std::getline(stream, contents);
-    BOOST_CHECK_EQUAL(contents, "1");
-    stream.close();
-    fs::remove(temporary);
-    // An abandoned partial temporary file is replaced on retry.
-    { std::ofstream partial{temporary.std_path()}; partial << "partial"; }
-    BOOST_REQUIRE(node::WriteRecycleMarker(marker, "1\n"));
-    BOOST_CHECK(!fs::exists(temporary));
-}
-
-BOOST_FIXTURE_TEST_CASE(directory_identity_survives_interrupted_setup, BasicTestingSetup)
-{
-    const auto directory{m_path_root / "recycle-directory"};
-    fs::create_directory(directory);
-    // A crash after publishing format but before mode leaves no database.
-    BOOST_REQUIRE(node::WriteRecycleMarker(directory / "recycle-format", "1\n"));
-    BOOST_REQUIRE(node::PrepareRecycleDirectory(directory, /*from_block=*/true));
-    BOOST_CHECK(node::GetRecycleDirectoryState(directory) == node::RecycleDirectoryState::BLOCK);
-    BOOST_CHECK(!node::PrepareRecycleDirectory(directory, /*from_block=*/false));
-    BOOST_CHECK(node::GetRecycleDirectoryState(directory) == node::RecycleDirectoryState::BLOCK);
-    BOOST_REQUIRE(node::PrepareRecycleDirectory(directory, /*from_block=*/true));
-
-    // Once a database exists, missing records cannot be recreated from arguments.
-    fs::create_directory(directory / "chainstate");
-    { std::ofstream current{(directory / "chainstate" / "CURRENT").std_path()}; }
-    fs::remove(directory / "recycle-mode");
-    BOOST_CHECK(!node::PrepareRecycleDirectory(directory, /*from_block=*/true));
-    BOOST_CHECK(!fs::exists(directory / "recycle-mode"));
-    BOOST_REQUIRE(node::WriteRecycleMarker(directory / "recycle-mode", "block\n"));
-    fs::remove(directory / "recycle-format");
-    BOOST_CHECK(!node::PrepareRecycleDirectory(directory, /*from_block=*/true));
-    BOOST_CHECK(!fs::exists(directory / "recycle-format"));
-    BOOST_REQUIRE(node::WriteRecycleMarker(directory / "recycle-format", "unknown\n"));
-    BOOST_CHECK(!node::PrepareRecycleDirectory(directory, /*from_block=*/true));
+    CDBWrapper db{{.path = m_path_root / "metadata", .cache_bytes = 1 << 20}};
+    BOOST_CHECK(!ReadRecycleMode(db));
+    BOOST_CHECK(!db.Exists(uint8_t{'r'}));
+    BOOST_CHECK(!db.Exists(uint8_t{'m'}));
+    db.Write(uint8_t{'r'}, 4);
+    db.Write(uint8_t{'m'}, static_cast<int>(RecycleMode::BLOCK));
+    BOOST_CHECK(!ReadRecycleMode(db));
+    db.Write(uint8_t{'r'}, 5);
+    BOOST_CHECK(ReadRecycleMode(db) == RecycleMode::BLOCK);
+    db.Write(uint8_t{'m'}, 99);
+    BOOST_CHECK(!ReadRecycleMode(db));
+    db.Erase(uint8_t{'m'});
+    BOOST_CHECK(!ReadRecycleMode(db));
 }
 
 BOOST_AUTO_TEST_CASE(automatic_check_distinguishes_busy_and_shutdown)

@@ -66,6 +66,9 @@ public:
 //! In-memory DB behavior; does not change persisted codec values.
 enum class RecycleMode { DISABLED, INDEX, BLOCK };
 
+/** Read the mode only from a supported, existing DB. Never initialize metadata. */
+std::optional<RecycleMode> ReadRecycleMode(CDBWrapper& db);
+
 //! User-controlled performance and debug options.
 struct CoinsViewOptions {
     RecycleMode recycle_mode{RecycleMode::DISABLED};

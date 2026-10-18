@@ -1,6 +1,6 @@
 # Resatoshi node operations
 
-This storage format requires a fresh network data directory.
+Unsupported local storage formats require full reindexing or fresh synchronization.
 Keep the existing node and wallet backups separate. See [storage and recovery](recycle-state-integrity.md)
 for format boundaries and [network rules](resatoshi.md) for consensus.
 
@@ -151,15 +151,18 @@ The GUI defaults to English. Select another language in the settings or use
 On a fresh data directory, the GUI asks both node and wallet users to choose
 Index or Original blocks before synchronization starts. Original blocks also
 lets users choose complete history or pruning after expiry processing. Existing
-data directories continue with their recorded method. Startup options and
-configuration take precedence. The server-only node uses command-line options.
+data directories skip setup; their requested method must match the DB. Explicit
+startup options and configuration override saved `settings.json` preferences.
+Server-only nodes should set `recyclemode=index` or `recyclemode=block` in their
+configuration, or supply the matching option on every launch. Without settings
+or explicit configuration, the default is `index`.
 
-For an ordinary expiry-mode upgrade, stop the old node cleanly, back up the
-wallets, and continue with the same data directory. It remains in `index` mode;
-the first upgrade checks the index and resumes from the existing tip if healthy.
-Choosing `block` mode or recovering inconsistent index data after pruning
-requires a fresh directory and blockchain synchronization. Preserve the original
-directory and restore/load wallet backups into the new one: synchronization
+Stop the old node cleanly and back up wallets before upgrading. Format-5 state
+can resume in its existing mode. Unsupported formats, mode changes, or missing
+chainstate metadata require full `-reindex` with complete block history, or a
+fresh directory and synchronization. `-reindex-chainstate` is not a conversion.
+Pruned nodes without complete history need fresh synchronization. Preserve the
+original directory and restore/load wallet backups separately; synchronization
 does not restore wallet keys. See [upgrade guidance](release-notes.md#upgrade-guidance-for-expiry-modes).
 
 In coin control, hover over an output's amount or confirmation count to see

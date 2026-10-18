@@ -32,3 +32,18 @@ Storage changes should be validated on separately initialized directories for
 block acceptance, UTXO MuHash/count/value, pool balances,
 reorganizations, interrupted writes, pruning and resource costs. Serialized snapshot
 hashes and bytes are format-specific and are not cross-version equality criteria.
+
+## Decisions
+
+- **Both expiry modes: decided.** Keep index mode for practical pruning and
+  block mode for operators retaining original blocks without a height index.
+- **Mode and format records: implemented.** Mode preferences use `settings.json`
+  with explicit CLI/configuration taking precedence. Each DB records its format
+  in `r` and its actual mode in `m`; there are no directory identity markers.
+- **Regtest default recycling: undecided.** Recycling remains opt-in for now;
+  changing the default requires a separate decision and test-suite review.
+- **Dedicated Resatoshi test network: undecided.** Inherited Bitcoin test-network
+  parameters remain unchanged pending that decision.
+
+Chainstate-only rebuilds check DB format and mode before deletion because they
+retain old undo references. A full reindex replaces those references.

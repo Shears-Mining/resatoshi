@@ -21,23 +21,23 @@ The GUI asks new node and wallet users to select **Index** or **Original blocks*
 before starting synchronization. Selecting Original blocks also offers complete
 history retention or pruning after expiry processing. Pruning retains the expiry
 and reorganization windows, so actual disk use can exceed the storage target.
-The method is fixed for the folder; accepted preferences are saved for later
-launches. Existing folders skip this selection and continue with their recorded
-method. Explicit startup options/configuration are respected. Server-only
+Accepted preferences are saved in `settings.json`. Existing folders skip this
+selection; the requested mode must match the DB. Explicit startup
+options/configuration override saved preferences. Server-only
 `bitcoind` continues to use `-recyclemode` and `-prune` options.
 
 ## Upgrade guidance for expiry modes
 
-- **Normal upgrade:** stop the old node cleanly, back up your wallets, and start
-  the new version with the same data directory. Existing directories remain in
-  `index` mode automatically. The first upgrade checks the full expiry index;
-  healthy data resumes from the existing chain tip without a fresh sync.
-- **Switching to `block` mode:** select Original blocks in the GUI for a fresh
-  data directory, or start with `-recyclemode=block`, then synchronize from blocks. The existing directory cannot change
-  mode, even with reindex options. Back up each wallet and restore/load it into
-  the new directory; downloading the blockchain does not restore wallet keys.
-  Keep the original directory until synchronization and wallet verification are
-  complete.
+- **Format-5 upgrade:** stop the old node cleanly, back up wallets, and keep the
+  same data directory with the matching mode. Separate `recycle-mode` and
+  `recycle-format` files are no longer used. For block-mode directories, retain
+  a GUI-saved preference or set `recyclemode=block` in configuration; the old
+  marker file no longer selects the mode.
+- **Unsupported formats or mode changes:** use full `-reindex` with complete
+  block history, or synchronize a fresh directory. `-reindex-chainstate` checks
+  the existing format and mode before wiping and refuses mismatches. Missing
+  chainstate metadata with retained block history also requires full reindex.
+  Back up wallets separately; rebuilding chain data does not restore wallet keys.
 - **Index inconsistency:** validation and mining stop. On the next launch,
   complete block history allows automatic rebuilding of the block index and
   chainstate. If history was pruned, automatic recovery is refused before
@@ -45,7 +45,7 @@ method. Explicit startup options/configuration are respected. Server-only
   and restoring your wallet backups as above.
 
 The expiry rules are unchanged; healthy old and new nodes can use the same
-chain. See [expiry modes and recovery](recycle-state-integrity.md#upgrade-and-downgrade)
+chain. See [expiry modes and recovery](recycle-state-integrity.md#format-boundary)
 for details. The periodic checks can still miss an omission until a later scan.
 
 ## Unreleased maintenance changes

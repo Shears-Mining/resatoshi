@@ -2,32 +2,33 @@
 
 ## Format boundary
 
-Resatoshi uses chainstate format 5, typed block undo, and snapshot
-version 3. Start with a fresh network data directory and synchronize from blocks.
-Old chainstate, undo and snapshots are not migrated. Keep wallet backups and the
-original node's directory separate; changing a marker is not a conversion.
-A `recycle-format` file identifies directories created by this storage version.
-A single database format marker prevents codec-aware older binaries from opening
-new state. Software that ignores format checks must not share these directories.
+Resatoshi uses chainstate format 5, typed block undo, and snapshot version 3.
+Each chainstate DB records its format in `r` and its mode in `m`. There are no
+separate directory format or mode files. Older local formats require a full
+`-reindex` with complete block history, or a fresh directory and synchronization.
+Keep wallet backups separately; rebuilding chain data does not restore keys.
 
-Directory markers describe the directory as a whole, including its block undo,
-while database keys `r` (format 5) and `m` (mode) describe each chainstate DB.
-The directory format value `1` is a separate identifier, not the DB format number.
-Directory records select the startup mode for both GUI and daemon; explicit
-configuration must agree. Each DB then independently rejects an unsupported format
-or a different mode before loading state. Conflicting or missing directory records
-are rejected rather than silently rewritten. Directory checks run before reindexing
-can discard DB metadata. A new directory interrupted between marker
-writes can complete its missing mode record on retry, before DB creation.
+Before opening or wiping chainstate, startup checks the existing DB metadata.
+An unsupported format or a mode mismatch is rejected, including with
+`-reindex-chainstate`. Block history without chainstate metadata also requires
+full `-reindex`; its undo format cannot be inferred safely. Full `-reindex`
+rebuilds the block index, chainstate and referenced undo, so it can change modes.
+Interrupted rebuilds with missing metadata can be restarted with `-reindex`.
 
 ## Expiry modes
 
-Choose `-recyclemode=index` (default) or `-recyclemode=block` for a fresh directory.
-The `recycle-mode` file records that choice. On subsequent starts, both daemon
-and GUI use the recorded mode unless command-line/config settings explicitly
-request a mode. An explicit mismatch is rejected. Changing modes requires another
-fresh directory. Format and mode markers are published by committing a temporary
-file and renaming it; an abandoned temporary file is replaced on retry.
+Mode precedence is explicit command-line/configuration, then `settings.json`,
+then `index`. The GUI saves its selection in `settings.json`. For a server-only
+node, put `recyclemode=block` in its configuration or supply `-recyclemode=block`
+on every launch. Existing format-5 DBs remain usable with the matching mode;
+old directory marker files are ignored and are not recreated.
+
+With `-nosettings`, a different `-settings` file, or lost settings, the requested
+mode defaults to `index` unless explicitly configured. A block-mode DB then
+refuses startup and names the required option; it is never relabeled silently.
+Use a full `-reindex` with complete history or a fresh directory to switch modes.
+Do not use `-reindex-chainstate` to convert storage formats or modes, because it
+retains the block index and may reuse existing undo records.
 
 Index mode maintains `(E, creation_height, outpoint)` keys for current spendable
 UTXOs. The key plus placeholder value has 42 raw bytes before database overhead

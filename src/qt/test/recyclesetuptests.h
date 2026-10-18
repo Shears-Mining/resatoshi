@@ -13,8 +13,7 @@ class RecycleSetupTests : public QObject
 
 private Q_SLOTS:
     void directoryStates();
-    void modeFileContents_data();
-    void modeFileContents();
+    void settingsMode();
     void koreanLabels();
     void translatedLabels_data();
     void translatedLabels();

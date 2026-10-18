@@ -26,9 +26,6 @@
 #include <algorithm>
 #include <limits>
 
-using node::GetRecycleDirectoryState;
-using node::RecycleDirectoryState;
-
 RecycleSetupDialog::RecycleSetupDialog(const std::string& mode, bool mode_editable,
                                        int64_t prune_mib, bool prune_editable, QWidget* parent)
     : QDialog(parent, GUIUtil::dialog_flags),
@@ -129,11 +126,10 @@ bool ShowRecycleSetupIfNeeded(ArgsManager& args, bool recycling_enabled,
 {
     selected.reset();
     if (!recycling_enabled) return true;
-    const auto state{GetRecycleDirectoryState(args.GetDataDirNet())};
-    const bool configured_mode{HasRecycleStartupSetting(args, "recyclemode")};
+    const bool configured_mode{args.IsArgSet("-recyclemode")};
     // Core resolves the folder's mode for GUI and daemon alike.
-    if (state != RecycleDirectoryState::NEW) return true;
-    const std::string mode{args.GetArg("-recyclemode", "index")};
+    if (node::HasChainstateData(args.GetDataDirNet())) return true;
+    const std::string mode{node::GetRecycleMode(args)};
     const int64_t prune{args.GetIntArg("-prune", 0)};
     const bool configured_prune{HasRecycleStartupSetting(args, "prune")};
     // Let core parameter validation report invalid explicit arguments.

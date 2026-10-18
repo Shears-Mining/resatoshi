@@ -13,7 +13,6 @@
 #include <tinyformat.h>
 #include <uint256.h>
 #include <univalue.h>
-#include <util/fs_helpers.h>
 #include <util/result.h>
 #include <util/strencodings.h>
 #include <util/translation.h>
@@ -21,26 +20,13 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cstdio>
-#include <fstream>
 #include <string>
 
 namespace node {
-RecycleDirectoryState GetRecycleDirectoryState(const fs::path& datadir)
+bool HasChainstateData(const fs::path& datadir)
 {
-    const auto marker{datadir / "recycle-mode"};
-    if (fs::exists(marker)) {
-        std::ifstream stream{marker.std_path()};
-        std::string mode;
-        std::getline(stream, mode);
-        if (stream && mode == "index") return RecycleDirectoryState::INDEX;
-        if (stream && mode == "block") return RecycleDirectoryState::BLOCK;
-        return RecycleDirectoryState::INVALID;
-    }
-    if (fs::exists(datadir / "chainstate" / "CURRENT") || fs::exists(datadir / "blocks" / "index" / "CURRENT")) {
-        return RecycleDirectoryState::EXISTING_UNMARKED;
-    }
-    return RecycleDirectoryState::NEW;
+    return fs::exists(datadir / "chainstate") || fs::exists(datadir / "chainstate_snapshot") ||
+        fs::exists(datadir / "blocks" / "index");
 }
 
 bool HasExplicitStartupSetting(const ArgsManager& args, const std::string& name)
@@ -58,60 +44,18 @@ bool HasExplicitStartupSetting(const ArgsManager& args, const std::string& name)
 
 std::string GetRecycleMode(const ArgsManager& args)
 {
-    if (!HasExplicitStartupSetting(args, "recyclemode")) {
-        const auto state{GetRecycleDirectoryState(args.GetDataDirNet())};
-        if (state == RecycleDirectoryState::INDEX) return "index";
-        if (state == RecycleDirectoryState::BLOCK) return "block";
-    }
-    return args.GetArg("-recyclemode", "index");
-}
-
-bool WriteRecycleMarker(const fs::path& path, std::string_view contents)
-{
-    auto temporary{path};
-    temporary += ".tmp";
-    FILE* file{fsbridge::fopen(temporary, "wb")};
-    if (!file) return false;
-    const bool written{std::fwrite(contents.data(), 1, contents.size(), file) == contents.size() && FileCommit(file)};
-    const bool closed{std::fclose(file) == 0};
-    if (!written || !closed || !RenameOver(temporary, path)) return false;
-    DirectoryCommit(path.parent_path());
-    return true;
-}
-
-util::Result<void> PrepareRecycleDirectory(const fs::path& datadir, bool from_block)
-{
-    const auto mode_path{datadir / "recycle-mode"};
-    const std::string requested{from_block ? "block" : "index"};
-    const auto directory_state{node::GetRecycleDirectoryState(datadir)};
-    const auto format_path{datadir / "recycle-format"};
-    if (fs::exists(format_path)) {
-        std::ifstream stream{format_path.std_path()};
-        std::string format;
-        std::getline(stream, format);
-        if (!stream || format != "1") {
-            return util::Error{Untranslated("Unsupported recycle storage format. Synchronize a fresh data directory.")};
-        }
-    } else {
-        if (directory_state != node::RecycleDirectoryState::NEW) {
-            return util::Error{Untranslated("Unsupported recycle storage format. Synchronize a fresh data directory.")};
-        }
-        if (!node::WriteRecycleMarker(format_path, "1\n")) {
-            return util::Error{Untranslated("Cannot persist recycle storage format")};
-        }
-    }
-    if (directory_state != node::RecycleDirectoryState::NEW) {
-        const auto expected{from_block ? node::RecycleDirectoryState::BLOCK : node::RecycleDirectoryState::INDEX};
-        if (directory_state != expected) {
-            return util::Error{Untranslated("Recycle mode differs from the data directory. Use its recorded mode, or synchronize a fresh data directory.")};
-        }
-    } else {
-        if (!node::WriteRecycleMarker(mode_path, requested + "\n")) {
-            return util::Error{Untranslated("Cannot persist recycle mode")};
-        }
-    }
-    DirectoryCommit(datadir);
-    return {};
+    if (!HasExplicitStartupSetting(args, "recyclemode")) return args.GetArg("-recyclemode", "index");
+    // Unlike general GUI preferences, an explicit conf mode must also override
+    // saved mode preferences. Do not change precedence for unrelated options.
+    std::string mode;
+    const auto network{args.GetChainTypeString()};
+    args.LockSettings([&](const common::Settings& settings) {
+        auto startup{settings};
+        startup.rw_settings.clear();
+        mode = SettingToString(common::GetSetting(startup, network, "recyclemode",
+            /*ignore_default_section_config=*/false, /*ignore_nonpersistent=*/false, /*get_chain_type=*/false)).value_or("index");
+    });
+    return mode;
 }
 
 util::Result<void> ApplyArgsManOptions(const ArgsManager& args, ChainstateManager::Options& opts)

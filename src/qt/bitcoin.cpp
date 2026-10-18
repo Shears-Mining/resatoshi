@@ -665,7 +665,7 @@ int GuiMain(int argc, char* argv[])
     }
 
     const bool fresh_recycle_directory{!Params().GetConsensus().recycle_enabled ||
-        node::GetRecycleDirectoryState(gArgs.GetDataDirNet()) == node::RecycleDirectoryState::NEW};
+        !node::HasChainstateData(gArgs.GetDataDirNet())};
     if (did_show_intro && fresh_recycle_directory && (!recycle_setup || !recycle_setup->set_prune) &&
         !HasRecycleStartupSetting(gArgs, "prune") && gArgs.GetSettingsPath()) {
         // Store intro dialog settings other than datadir (network specific)
