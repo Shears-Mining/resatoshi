@@ -146,6 +146,7 @@ public:
 
         // ReSatoshi DNS crawler with service-bit filtering.
         vSeeds.emplace_back("seed.resatoshi.org");
+        vSeeds.emplace_back("seed-fra.resatoshi.org");
 
         // Existing bootstrap hosts. Upstream DNS seeding falls back to an
         // ADDR_FETCH connection when service-bit subdomains are unavailable.
