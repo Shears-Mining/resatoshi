@@ -539,7 +539,7 @@ void SetupServerArgs(ArgsManager& argsman, bool can_listen_ipc)
                    ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-pid=<file>", strprintf("Specify pid file. Relative paths will be prefixed by a net-specific datadir location. (default: %s)", BITCOIN_PID_FILENAME), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-recyclecheckinterval=<seconds>", "Minimum interval between automatic recycle index checks (default: 3600). Slow scans increase the interval to limit scan duty cycle to 0.1%.", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
-    argsman.AddArg("-recyclemode=<mode>", "Expiry source: index (default) or block. Changing modes requires a full -reindex with complete block history, or synchronization in a fresh data directory. Block mode retains the expiry window even when pruning.", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
+    argsman.AddArg("-recyclemode=<mode>", "Expiry source: index or block (default for new data). Existing chainstate keeps its recorded mode unless explicitly overridden by command line or configuration. Changing modes requires a full -reindex with complete block history, or synchronization in a fresh data directory. Block mode retains the expiry window even when pruning.", ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
     argsman.AddArg("-prune=<n>", strprintf("Reduce storage requirements by enabling pruning (deleting) of old blocks. This allows the pruneblockchain RPC to be called to delete specific blocks and enables automatic pruning of old blocks if a target size in MiB is provided. This mode is incompatible with -txindex. "
             "Warning: Reverting this setting requires re-downloading the entire blockchain. "
             "(default: 0 = disable pruning blocks, 1 = allow manual pruning via RPC, >=%u = automatically prune block files to stay under the specified target size in MiB)", MIN_DISK_SPACE_FOR_BLOCK_FILES / 1024 / 1024), ArgsManager::ALLOW_ANY, OptionsCategory::OPTIONS);
@@ -1389,17 +1389,35 @@ static ChainstateLoadResult InitAndLoadChainstate(
         }
         // Check BEFORE either reindex path can erase metadata. A full reindex
         // deliberately replaces the block index and all referenced undo records.
-        // Automatic recovery must still reject a mode change caused by lost settings.
-        if (chainparams.GetConsensus().recycle_enabled && !args.GetBoolArg("-reindex", false)) {
-            const auto requested{chainman_opts.recycle_from_block ? RecycleMode::BLOCK : RecycleMode::INDEX};
+        // Without an explicit CLI/config choice, preserve existing DB mode even
+        // when settings.json is absent or contains a different GUI preference.
+        // Resolve under the datadir lock, before any reindex can erase metadata.
+        const bool explicit_recycle_mode{node::HasExplicitStartupSetting(args, "recyclemode")};
+        const bool full_reindex{args.GetBoolArg("-reindex", false)};
+        const auto unknown_mode_error{Untranslated("Cannot determine the existing recycle mode. Specify -recyclemode=index or -recyclemode=block with -reindex, or synchronize a fresh data directory.")};
+        if (chainparams.GetConsensus().recycle_enabled &&
+            (!full_reindex || !explicit_recycle_mode)) {
+            auto requested{chainman_opts.recycle_from_block ? RecycleMode::BLOCK : RecycleMode::INDEX};
             bool have_chainstate{false};
             for (const auto& name : {"chainstate", "chainstate_snapshot"}) {
                 const auto path{args.GetDataDirNet() / name};
                 if (!fs::exists(path)) continue;
-                CDBWrapper previous{{.path = path, .cache_bytes = 1 << 20}};
-                const auto mode{ReadRecycleMode(previous)};
+                std::optional<RecycleMode> mode;
+                try {
+                    CDBWrapper previous{{.path = path, .cache_bytes = 1 << 20}};
+                    mode = ReadRecycleMode(previous);
+                } catch (const dbwrapper_error&) {
+                    if (full_reindex) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, unknown_mode_error};
+                    throw;
+                }
                 if (!mode || *mode == RecycleMode::DISABLED) {
+                    if (full_reindex) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, unknown_mode_error};
                     return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Unsupported chainstate format. Use -reindex to rebuild from complete block history, or synchronize a fresh data directory.")};
+                }
+                if (!explicit_recycle_mode && !have_chainstate) {
+                    requested = *mode;
+                    chainman_opts.recycle_from_block = *mode == RecycleMode::BLOCK;
+                    LogInfo("Keeping recorded recycle mode %s from existing chainstate", *mode == RecycleMode::BLOCK ? "block" : "index");
                 }
                 if (*mode != requested) {
                     return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated(strprintf("This chainstate uses recycle mode %s. Start with -recyclemode=%s, or use -reindex to rebuild in another mode.", *mode == RecycleMode::BLOCK ? "block" : "index", *mode == RecycleMode::BLOCK ? "block" : "index"))};
@@ -1415,6 +1433,7 @@ static ChainstateLoadResult InitAndLoadChainstate(
                     }
                 }
                 if (have_history) {
+                    if (full_reindex) return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, unknown_mode_error};
                     return {ChainstateLoadStatus::FAILURE_INCOMPATIBLE_DB, Untranslated("Cannot verify the format of existing block history without chainstate metadata. Use -reindex, or synchronize a fresh data directory.")};
                 }
             }

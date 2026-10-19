@@ -95,7 +95,7 @@ class RecycleInterfacesTest(BitcoinTestFramework):
 
     def run_test(self):
         node = self.nodes[0]
-        rules = {'enabled': True, 'mode': 'index', 'expiry_blocks': 200, 'max_reward_per_block': 1, 'pool_balance': 0}
+        rules = {'enabled': True, 'mode': 'block', 'expiry_blocks': 200, 'max_reward_per_block': 1, 'pool_balance': 0}
         assert_equal(node.getblockchaininfo(True)['recycling'], rules)
         assert 'recycling' not in node.getblockchaininfo()
         assert 'recycling' not in node.getblockchaininfo(False)

@@ -26,9 +26,10 @@ use `bitcoin help` to list its available subcommands.
 
 The configuration filename is `bitcoin.conf`. Mainnet uses P2P port `19333`
 and RPC port `19332`. Builds from the current `main` source automatically use
-`seed.resatoshi.org` alongside the existing `resatoshi-seed.freeddns.org` and
-`resatoshi-seed.duckdns.org` bootstrap entries. The DNS crawler answers
-service-bit queries such as `x9.seed.resatoshi.org`; existing bootstrap hosts
+`seed.resatoshi.org` (Seoul) and `seed-fra.resatoshi.org` (Frankfurt) alongside
+the existing `resatoshi-seed.freeddns.org` and `resatoshi-seed.duckdns.org`
+bootstrap entries. Both DNS crawlers answer service-bit queries such as
+`x9.seed.resatoshi.org` and `x9.seed-fra.resatoshi.org`; existing bootstrap hosts
 remain available through the upstream DNS-seed/address-fetch mechanism.
 No manual peer setting is required with the default networking options.
 These names do not establish independent operators or availability. The seed

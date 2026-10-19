@@ -18,7 +18,7 @@ class RecycleModesTest(BitcoinTestFramework):
         self.setup_clean_chain = True
         self.extra_args = [
             ["-test=recycle", "-recyclemode=index", "-recyclecheckinterval=1"],
-            ["-test=recycle", "-recyclemode=block"],
+            ["-test=recycle"],  # Fresh data defaults to block mode.
             ["-test=recycle", "-recyclemode=block", "-prune=1", "-fastprune"],
         ]
 
@@ -39,6 +39,31 @@ class RecycleModesTest(BitcoinTestFramework):
             assert not (node.chain_path / "recycle-format").exists()
         assert_raises_rpc_error(-1, "disabled in block mode", archival.checkrecycleindex, "start")
         assert_raises_rpc_error(-1, "disabled in block mode", pruned.checkrecycleindex, "start")
+
+        self.log.info("Existing DB modes survive missing settings and conflicting GUI preferences")
+        for i, mode in ((0, "index"), (1, "block")):
+            node = self.nodes[i]
+            self.stop_node(i)
+            settings = node.chain_path / "settings.json"
+            settings.write_text(json.dumps({"recyclemode": "block" if mode == "index" else "index"}))
+            for extra in ([], ["-nosettings"], ["-reindex-chainstate"], ["-reindex"]):
+                self.start_node(i, extra_args=["-test=recycle", "-recyclecheckinterval=1", *extra])
+                assert_equal(node.getblockchaininfo(True)["recycling"]["mode"], mode)
+                self.stop_node(i)
+            settings.write_text(json.dumps({"recyclemode": "unknown"}))
+            self.start_node(i, extra_args=["-test=recycle", "-recyclecheckinterval=1"])
+            assert_equal(node.getblockchaininfo(True)["recycling"]["mode"], mode)
+            self.stop_node(i)
+            node.assert_start_raises_init_error(
+                extra_args=["-test=recycle", "-recyclemode=unknown"],
+                expected_msg="Error: Invalid -recyclemode; use index or block",
+            )
+            settings.unlink(missing_ok=True)
+            self.start_node(i, extra_args=["-test=recycle", "-recyclecheckinterval=1"])
+            assert_equal(node.getblockchaininfo(True)["recycling"]["mode"], mode)
+        self.connect_nodes(0, 1)
+        self.connect_nodes(1, 2)
+        self.check_equal()
 
         self.log.info("Daemon inherits its recorded block mode when no mode is supplied")
         self.stop_node(1)
@@ -91,7 +116,7 @@ class RecycleModesTest(BitcoinTestFramework):
         self.connect_nodes(1, 2)
         self.check_equal()
 
-        self.log.info("Settings select the mode; missing settings never bypass DB verification")
+        self.log.info("Missing or disabled GUI settings preserve the recorded block mode")
         self.stop_node(1)
         for extra, missing_settings in (
             ([], True),
@@ -102,19 +127,11 @@ class RecycleModesTest(BitcoinTestFramework):
         ):
             if missing_settings:
                 settings_path.rename(settings_path.with_suffix(".saved"))
-            archival.assert_start_raises_init_error(
-                extra_args=["-test=recycle", *extra],
-                expected_msg="Error: This chainstate uses recycle mode block. Start with -recyclemode=block, or use -reindex to rebuild in another mode.",
-            )
+            self.start_node(1, extra_args=["-test=recycle", *extra])
+            assert_equal(archival.getblockchaininfo(True)["recycling"]["mode"], "block")
+            self.stop_node(1)
             if missing_settings:
                 settings_path.with_suffix(".saved").rename(settings_path)
-        saved_settings = settings_path.read_bytes()
-        settings_path.write_text(json.dumps({"recyclemode": "unknown"}))
-        archival.assert_start_raises_init_error(
-            extra_args=["-test=recycle"],
-            expected_msg="Error: Invalid -recyclemode; use index or block",
-        )
-        settings_path.write_bytes(saved_settings)
         (archival.chain_path / "custom-mode.json").write_text(json.dumps({"recyclemode": "block"}))
         self.start_node(1, extra_args=["-test=recycle", "-settings=custom-mode.json"])
         assert_equal(archival.getblockchaininfo(True)["recycling"]["mode"], "block")
@@ -122,12 +139,12 @@ class RecycleModesTest(BitcoinTestFramework):
         latch = archival.chain_path / "recycle-corrupt"
         latch.touch()
         try:
-            archival.assert_start_raises_init_error(
-                extra_args=["-test=recycle", "-nosettings"],
-                expected_msg="Error: This chainstate uses recycle mode block. Start with -recyclemode=block, or use -reindex to rebuild in another mode.",
-            )
+            self.start_node(1, extra_args=["-test=recycle", "-nosettings"])
+            assert_equal(archival.getblockchaininfo(True)["recycling"]["mode"], "block")
+            self.wait_until(lambda: not latch.exists())
+            self.stop_node(1)
         finally:
-            latch.unlink()
+            latch.unlink(missing_ok=True)
         self.start_node(1, extra_args=["-test=recycle", "-nosettings", "-recyclemode=block", "-reindex-chainstate"])
         self.connect_nodes(0, 1)
         self.connect_nodes(1, 2)
@@ -152,7 +169,7 @@ class RecycleModesTest(BitcoinTestFramework):
         self.log.info("Full reindex can change modes and regenerates usable undo")
         for mode in ("index", "block"):
             previous_mode = "block" if mode == "index" else "index"
-            options = ["-nosettings"] if mode == "index" else ["-recyclemode=block"]
+            options = [f"-recyclemode={mode}"]
             with archival.assert_debug_log([f"Rebuilding in {mode} mode; previous chainstate was {previous_mode} mode"]):
                 self.start_node(1, extra_args=["-test=recycle", "-reindex", *options])
             self.connect_nodes(0, 1)
@@ -177,7 +194,11 @@ class RecycleModesTest(BitcoinTestFramework):
                 expected_msg="Error: Cannot verify the format of existing block history without chainstate metadata. Use -reindex, or synchronize a fresh data directory.",
             )
             assert not database.exists()
-        self.start_node(0, extra_args=["-test=recycle", "-reindex"])
+        indexed.assert_start_raises_init_error(
+            extra_args=["-test=recycle", "-reindex"],
+            expected_msg="Error: Cannot determine the existing recycle mode. Specify -recyclemode=index or -recyclemode=block with -reindex, or synchronize a fresh data directory.",
+        )
+        self.start_node(0, extra_args=["-test=recycle", "-recyclemode=index", "-reindex"])
         self.connect_nodes(0, 1)
         self.check_equal()
         assert indexed.verifychain(4, 0)
@@ -185,8 +206,12 @@ class RecycleModesTest(BitcoinTestFramework):
         self.log.info("Unreadable old metadata cannot prevent an explicit full reindex")
         self.stop_node(0)
         (database / "CURRENT").write_text("missing-manifest\n")
+        indexed.assert_start_raises_init_error(
+            extra_args=["-test=recycle", "-reindex"],
+            expected_msg="Error: Cannot determine the existing recycle mode. Specify -recyclemode=index or -recyclemode=block with -reindex, or synchronize a fresh data directory.",
+        )
         with indexed.assert_debug_log(["Cannot read previous recycle mode; continuing full reindex"]):
-            self.start_node(0, extra_args=["-test=recycle", "-reindex"])
+            self.start_node(0, extra_args=["-test=recycle", "-recyclemode=index", "-reindex"])
         self.connect_nodes(0, 1)
         self.check_equal()
         assert indexed.verifychain(4, 0)

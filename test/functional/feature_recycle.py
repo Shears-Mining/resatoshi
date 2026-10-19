@@ -26,6 +26,7 @@ class RecycleTest(BitcoinTestFramework):
         parser.add_argument('--crash-mode', choices=('index', 'block'), default='block')
 
     def setup_network(self):
+        self.extra_args[0].append('-recyclemode=index')
         self.extra_args[1].append(f'-recyclemode={self.options.crash_mode}')
         super().setup_network()
 

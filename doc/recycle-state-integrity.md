@@ -13,19 +13,23 @@ An unsupported format or a mode mismatch is rejected, including with
 `-reindex-chainstate`. Block history without chainstate metadata also requires
 full `-reindex`; its undo format cannot be inferred safely. Full `-reindex`
 rebuilds the block index, chainstate and referenced undo, so it can change modes.
-Interrupted rebuilds with missing metadata can be restarted with `-reindex`.
+Interrupted rebuilds with missing metadata can be restarted with `-reindex`
+and an explicit `-recyclemode=index` or `-recyclemode=block`.
 
 ## Expiry modes
 
-Mode precedence is explicit command-line/configuration, then `settings.json`,
-then `index`. The GUI saves its selection in `settings.json`. For a server-only
-node, put `recyclemode=block` in its configuration or supply `-recyclemode=block`
-on every launch. Existing format-5 DBs remain usable with the matching mode;
-old directory marker files are ignored and are not recreated.
+Mode precedence is explicit command-line/configuration, then the recorded mode
+in existing chainstate. For a new data directory, saved `settings.json`
+preferences apply, otherwise the default is `block`. The GUI preselects Original
+blocks and saves the accepted choice in `settings.json`. Existing format-5 DBs
+retain their mode even without saved settings; old directory marker files are
+ignored and are not recreated.
 
-With `-nosettings`, a different `-settings` file, or lost settings, the requested
-mode defaults to `index` unless explicitly configured. A block-mode DB then
-refuses startup and names the required option; it is never relabeled silently.
+With `-nosettings`, a different `-settings` file, or lost settings, existing DB
+metadata still selects the mode. Explicit mode conflicts are refused without a
+full reindex; the DB is never relabeled silently. Missing, unreadable or
+inconsistent metadata cannot select a mode automatically. A full reindex of
+such history requires an explicit mode choice.
 Use a full `-reindex` with complete history or a fresh directory to switch modes.
 Do not use `-reindex-chainstate` to convert storage formats or modes, because it
 retains the block index and may reuse existing undo records.

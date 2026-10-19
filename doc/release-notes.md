@@ -6,6 +6,24 @@ wallet, explorer, and other bundled features, visit the `download-only` channel
 in the [official Resatoshi Discord](https://discord.gg/QyM3eHZZS).
 Consult the package's accompanying notes for its version and source information.
 
+## Default expiry mode for new nodes
+
+Fresh data directories now default to `block` (Original blocks). Existing
+chainstate keeps its recorded mode when no command-line/configuration mode is
+specified, including with lost settings or a conflicting saved GUI preference.
+Explicit options continue to take precedence; changing an existing mode still
+requires full reindex with complete history. Unknown existing modes require an
+explicit choice with full reindex, or synchronization in a new directory.
+
+## Frankfurt DNS seed
+
+The mainnet seed list now includes `seed-fra.resatoshi.org` alongside the Seoul
+crawler `seed.resatoshi.org` and the existing bootstrap hostnames. Both support
+service-bit queries. The two crawlers provide separate regional discovery
+endpoints under the same operator; this does not establish operator or hosting
+provider independence. Existing binaries need a new build to acquire the added
+seed list. See [peer discovery](dnsseed-policy.md).
+
 ## Pruned-node recovery with a separate blocks folder
 
 Automatic recycle recovery now checks the block-index database in the data
@@ -22,7 +40,7 @@ before starting synchronization. Selecting Original blocks also offers complete
 history retention or pruning after expiry processing. Pruning retains the expiry
 and reorganization windows, so actual disk use can exceed the storage target.
 Accepted preferences are saved in `settings.json`. Existing folders skip this
-selection; the requested mode must match the DB. Explicit startup
+selection and preserve the DB mode unless explicitly overridden. Explicit startup
 options/configuration override saved preferences. Server-only
 `bitcoind` continues to use `-recyclemode` and `-prune` options.
 
@@ -30,13 +48,14 @@ options/configuration override saved preferences. Server-only
 
 - **Format-5 upgrade:** stop the old node cleanly, back up wallets, and keep the
   same data directory with the matching mode. Separate `recycle-mode` and
-  `recycle-format` files are no longer used. For block-mode directories, retain
-  a GUI-saved preference or set `recyclemode=block` in configuration; the old
-  marker file no longer selects the mode.
+  `recycle-format` files are no longer used. The recorded chainstate mode is
+  inherited automatically unless command-line/configuration explicitly selects
+  a mode; a matching saved GUI preference is no longer required.
 - **Unsupported formats or mode changes:** use full `-reindex` with complete
   block history, or synchronize a fresh directory. `-reindex-chainstate` checks
   the existing format and mode before wiping and refuses mismatches. Missing
-  chainstate metadata with retained block history also requires full reindex.
+  chainstate metadata with retained block history requires full reindex with
+  an explicit `-recyclemode=index` or `-recyclemode=block`.
   Back up wallets separately; rebuilding chain data does not restore wallet keys.
 - **Index inconsistency:** validation and mining stop. On the next launch,
   complete block history allows automatic rebuilding of the block index and
@@ -73,7 +92,8 @@ this is not a complete upgrade to that release. See
 [upstream maintenance](upstream-maintenance.md) for source provenance,
 incorporated fixes, remaining differences, and local validation commands.
 
-- Enable automatic mainnet peer discovery using `seed.resatoshi.org`, the two
+- Enable automatic mainnet peer discovery using `seed.resatoshi.org`,
+  `seed-fra.resatoshi.org`, the two
   documented bootstrap hostnames and upstream DNS-seed/address-fetch behavior. Retry
   failed discovery with bounded backoff when there are no established automatic
   outbound full-relay or block-relay peers, including with stale known addresses
@@ -83,7 +103,7 @@ incorporated fixes, remaining differences, and local validation commands.
   pending batch runs on the DNS worker without blocking automatic connections.
 - Set a conservative minimum chain work from verified block 8,000 for initial
   synchronization protection; keep assume-valid disabled. See the verification
-  and future update policy in [network rules](resatoshi.md#bootstrap-and-minimum-chain-work).
+  and future update policy in [node operations](node-operations.md#bootstrap-and-minimum-chain-work).
 - Exclude internal recycle undo from the optional kernel library's transaction
   spent-output API, preserving the on-disk records used for recovery. Test real
   expiry blocks, transaction inputs, object lifetimes and disk reopen through

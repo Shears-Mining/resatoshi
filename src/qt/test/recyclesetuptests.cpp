@@ -67,17 +67,17 @@ void RecycleSetupTests::settingsMode()
     QTemporaryDir dir;
     ArgsManager args;
     Configure(args, dir);
-    QCOMPARE(node::GetRecycleMode(args), std::string{"index"});
-    Write(args.GetDataDirNet() / "settings.json", "{\"recyclemode\":\"block\"}");
-    QVERIFY(args.ReadSettingsFile());
     QCOMPARE(node::GetRecycleMode(args), std::string{"block"});
+    Write(args.GetDataDirNet() / "settings.json", "{\"recyclemode\":\"index\"}");
+    QVERIFY(args.ReadSettingsFile());
+    QCOMPARE(node::GetRecycleMode(args), std::string{"index"});
     QVERIFY(!HasRecycleStartupSetting(args, "recyclemode"));
     args.LockSettings([](common::Settings& settings) {
-        settings.ro_config["regtest"]["recyclemode"] = {"index"};
+        settings.ro_config["regtest"]["recyclemode"] = {"block"};
     });
-    QCOMPARE(node::GetRecycleMode(args), std::string{"index"});
-    args.ForceSetArg("-recyclemode", "block");
     QCOMPARE(node::GetRecycleMode(args), std::string{"block"});
+    args.ForceSetArg("-recyclemode", "index");
+    QCOMPARE(node::GetRecycleMode(args), std::string{"index"});
     QVERIFY(HasRecycleStartupSetting(args, "recyclemode"));
 }
 
@@ -155,6 +155,9 @@ void RecycleSetupTests::firstRunChoices()
         QVERIFY(dialog);
         auto* block = dialog->findChild<QRadioButton*>("blockMode");
         QVERIFY(block->isEnabled());
+        QVERIFY(block->isChecked());
+        QVERIFY(dialog->findChild<QGroupBox*>("blockStorage")->isVisible());
+        dialog->findChild<QRadioButton*>("indexMode")->click();
         QVERIFY(!dialog->findChild<QGroupBox*>("blockStorage")->isVisible());
         block->click();
         QVERIFY(dialog->findChild<QGroupBox*>("blockStorage")->isVisible());
@@ -218,7 +221,7 @@ void RecycleSetupTests::existingFolders()
     Configure(args, dir);
     std::optional<RecycleSetupChoices> selected;
     Write(args.GetDataDirNet() / "chainstate" / "CURRENT", "existing");
-    // Saved preferences select the requested mode; core verifies it against the DB.
+    // Existing folders skip setup; core resolves DB metadata after taking the lock.
     args.LockSettings([](common::Settings& settings) { settings.rw_settings["recyclemode"] = "index"; });
     QVERIFY(ShowRecycleSetupIfNeeded(args, true, selected));
     QVERIFY(!selected);

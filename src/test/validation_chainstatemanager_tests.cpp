@@ -924,6 +924,12 @@ BOOST_FIXTURE_TEST_CASE(chainstatemanager_args, BasicTestingSetup)
         return *result;
     };
 
+    // Fresh startup defaults to original blocks; explicit choices still win.
+    BOOST_CHECK(get_valid_opts({}).recycle_from_block);
+    BOOST_CHECK(!get_valid_opts({"-recyclemode=index"}).recycle_from_block);
+    BOOST_CHECK(get_valid_opts({"-recyclemode=block"}).recycle_from_block);
+    BOOST_CHECK(!get_opts({"-recyclemode=unknown"}));
+
     // test -assumevalid
     BOOST_CHECK(!get_valid_opts({}).assumed_valid_block);
     BOOST_CHECK_EQUAL(get_valid_opts({"-assumevalid="}).assumed_valid_block, uint256::ZERO);

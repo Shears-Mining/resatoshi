@@ -22,7 +22,9 @@ bool HasChainstateData(const fs::path& datadir);
 /** Command-line/config settings, excluding saved GUI preferences. */
 bool HasExplicitStartupSetting(const ArgsManager& args, const std::string& name);
 
-/** Explicit CLI/config mode, then saved settings, then index. */
+/** Initial mode: explicit CLI/config, then saved settings, then block for fresh data.
+ * Startup inherits existing DB metadata under the data-directory lock when CLI/config is absent.
+ */
 std::string GetRecycleMode(const ArgsManager& args);
 
 [[nodiscard]] util::Result<void> ApplyArgsManOptions(const ArgsManager& args, ChainstateManager::Options& opts);

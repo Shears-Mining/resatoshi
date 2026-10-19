@@ -44,7 +44,7 @@ bool HasExplicitStartupSetting(const ArgsManager& args, const std::string& name)
 
 std::string GetRecycleMode(const ArgsManager& args)
 {
-    if (!HasExplicitStartupSetting(args, "recyclemode")) return args.GetArg("-recyclemode", "index");
+    if (!HasExplicitStartupSetting(args, "recyclemode")) return args.GetArg("-recyclemode", "block");
     // Bitcoin Core's GetArg gives settings.json precedence over conf. For the
     // recycle mode, explicit CLI/conf must override saved preferences instead.
     // Keep the upstream precedence for unrelated options.
@@ -54,14 +54,17 @@ std::string GetRecycleMode(const ArgsManager& args)
         auto startup{settings};
         startup.rw_settings.clear();
         mode = SettingToString(common::GetSetting(startup, network, "recyclemode",
-            /*ignore_default_section_config=*/false, /*ignore_nonpersistent=*/false, /*get_chain_type=*/false)).value_or("index");
+            /*ignore_default_section_config=*/false, /*ignore_nonpersistent=*/false, /*get_chain_type=*/false)).value_or("block");
     });
     return mode;
 }
 
 util::Result<void> ApplyArgsManOptions(const ArgsManager& args, ChainstateManager::Options& opts)
 {
-    const auto recycle_mode{GetRecycleMode(args)};
+    // Existing DB metadata is resolved later under the datadir lock. Saved GUI
+    // preferences, including obsolete values, must not preempt that decision.
+    const bool inherit_mode{!HasExplicitStartupSetting(args, "recyclemode") && HasChainstateData(opts.datadir)};
+    const auto recycle_mode{inherit_mode ? "block" : GetRecycleMode(args)};
     if (recycle_mode != "index" && recycle_mode != "block") {
         return util::Error{Untranslated("Invalid -recyclemode; use index or block")};
     }

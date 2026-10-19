@@ -50,10 +50,11 @@ Sources: [difficulty calculation](../src/pow.cpp),
 ### Bootstrap and minimum chain work
 
 Builds from the current `main` source discover peers through
-`seed.resatoshi.org`, `resatoshi-seed.freeddns.org`, and
-`resatoshi-seed.duckdns.org`. The first entry is a DNS crawler that returns
-candidate peer addresses through service-bit queries, including
-`x9.seed.resatoshi.org` for NODE_NETWORK and NODE_WITNESS. The other two entries
+`seed.resatoshi.org` (Seoul), `seed-fra.resatoshi.org` (Frankfurt),
+`resatoshi-seed.freeddns.org`, and `resatoshi-seed.duckdns.org`.
+The first two entries are DNS crawlers that return candidate peer addresses
+through service-bit queries, including `x9.seed.resatoshi.org` and
+`x9.seed-fra.resatoshi.org` for NODE_NETWORK and NODE_WITNESS. The other two entries
 are the existing operator's bootstrap hostnames. If a hostname does not support
 service-bit DNS queries, the upstream networking code falls back to connecting
 to that host and requesting peer addresses.
@@ -151,15 +152,21 @@ The GUI defaults to English. Select another language in the settings or use
 On a fresh data directory, the GUI asks both node and wallet users to choose
 Index or Original blocks before synchronization starts. Original blocks also
 lets users choose complete history or pruning after expiry processing. Existing
-data directories skip setup; their requested method must match the DB. Explicit
-startup options and configuration override saved `settings.json` preferences.
-Server-only nodes should set `recyclemode=index` or `recyclemode=block` in their
-configuration, or supply the matching option on every launch. Without settings
-or explicit configuration, the default is `index`.
+data directories skip setup and keep their recorded mode unless explicitly
+overridden by startup options or configuration.
+New data directories default to `block` (Original blocks); the GUI preselects it
+but still permits Index. Explicit command-line/configuration choices take
+precedence. Otherwise existing chainstate metadata selects the recorded mode,
+even if `settings.json` is lost, disabled, or records a different GUI preference.
+Saved GUI preferences apply when there is no existing chainstate.
+Server-only nodes may explicitly set `recyclemode=index` or `recyclemode=block`.
+If existing history has missing or unreadable mode metadata, do not guess:
+rebuild with full `-reindex` and an explicit `-recyclemode`, or synchronize anew.
 
 Stop the old node cleanly and back up wallets before upgrading. Format-5 state
 can resume in its existing mode. Unsupported formats, mode changes, or missing
-chainstate metadata require full `-reindex` with complete block history, or a
+chainstate metadata require full `-reindex` with an explicit mode choice and
+complete block history, or a
 fresh directory and synchronization. `-reindex-chainstate` is not a conversion.
 Pruned nodes without complete history need fresh synchronization. Preserve the
 original directory and restore/load wallet backups separately; synchronization

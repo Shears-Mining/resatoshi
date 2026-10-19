@@ -72,7 +72,7 @@ class MiningMainnetTest(BitcoinTestFramework):
     def run_test(self):
         node = self.nodes[0]
         assert_equal(node.getblockchaininfo(True)['recycling'], {
-            'enabled': True, 'mode': 'index', 'expiry_blocks': 5_256_000,
+            'enabled': True, 'mode': 'block', 'expiry_blocks': 5_256_000,
             'max_reward_per_block': 1, 'pool_balance': 0,
         })
         # Clear disk space warning

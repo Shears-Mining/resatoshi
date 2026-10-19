@@ -18,7 +18,7 @@ class RecycleIndexTest(BitcoinTestFramework):
     def set_test_params(self):
         self.num_nodes = 2
         self.setup_clean_chain = True
-        self.extra_args = [['-test=recycle', '-coinstatsindex', '-checklevel=4', '-checkblocks=0'] for _ in range(2)]
+        self.extra_args = [['-test=recycle', '-recyclemode=index', '-coinstatsindex', '-checklevel=4', '-checkblocks=0'] for _ in range(2)]
 
     def add_options(self, parser):
         parser.add_argument('--crash-flush', action='store_true', help='Recover a deliberately interrupted flush')
