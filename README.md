@@ -31,8 +31,16 @@ precise expiry behavior, genesis hash, address encodings, and source references.
 
 ## Run a node
 
-Index mode is the default and supports pruning. Block mode reads original origin
-blocks and retains the expiry window. Both enforce the same rules; see
+Block mode is the default for new data directories. Existing databases keep their
+recorded mode unless you explicitly select another mode and perform a full reindex.
+Both modes enforce the same rules.
+
+Block mode reads the original blocks that created expiring coins and retains the
+expiry window plus a reorganization buffer. On mainnet, this means keeping the
+entire block history for approximately the first 100 years, even with pruning
+enabled. Plan disk space for the full history and its continued growth; a pruning
+target does not cap disk usage during this period. Index mode supports pruning
+without this expiry-window retention requirement. See
 [storage and recovery](doc/recycle-state-integrity.md).
 
 Unsupported local formats require a full reindex from complete block history

@@ -91,7 +91,7 @@ RecycleSetupDialog::RecycleSetupDialog(const std::string& mode, bool mode_editab
     connect(m_prune, &QRadioButton::toggled, this, [this](bool checked) {
         m_prune_gb->setEnabled(m_prune_editable && checked);
     });
-    add_text(storage_layout, tr("Pruning keeps all blocks still needed for expiry and a buffer for chain reorganizations. Actual disk use can exceed the target. Keeping the complete history supports rebuilding locally if data needs repair."));
+    add_text(storage_layout, tr("Original blocks mode retains blocks for the expiry window and a buffer for chain reorganizations. On mainnet, this means keeping the entire block history for approximately the first 100 years, even with pruning enabled. Plan disk space for the full history and its continued growth; the storage target does not cap disk usage during this period. Keeping the complete history supports rebuilding locally if data needs repair."));
     if (!prune_editable) add_text(storage_layout, tr("Storage is fixed by your startup configuration. To save a different storage preference here, enable settings and leave pruning unspecified."));
     layout->addWidget(m_storage);
     m_storage->setVisible(m_block->isChecked());
