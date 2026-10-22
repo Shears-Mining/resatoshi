@@ -69,11 +69,14 @@ The test verifies rejection of a stale excessive reward and acceptance of the
 adjusted reward without changing consensus rules.
 
 Mainnet AssumeUTXO loading is not currently supported: its approved snapshot
-table is empty. After recycling starts, the internal pool state uses reserved
-output number `0xffffffff`, which the inherited snapshot loader rejects.
-Do not advertise post-expiry snapshot support or merely exempt that number
-from validation. Support requires reviewing state encoding, snapshot hashes,
-loading and background validation together, with expiry and restart tests.
+table is empty. The recycle pool balance is stored under the separate chainstate
+database key `P`, expiry undo information is stored in `CRecycleUndo`, and snapshot
+metadata carries a separate recycle pool balance. The pool is not encoded as a
+UTXO with reserved output number `0xffffffff`.
+These state fields alone do not establish mainnet AssumeUTXO support. Do not
+advertise post-expiry snapshot support. Support requires reviewing state encoding,
+snapshot hashes, loading and background validation together, with expiry and
+restart tests.
 Recycle-index diagnostic database snapshots are separate from AssumeUTXO.
 
 ## Windows
