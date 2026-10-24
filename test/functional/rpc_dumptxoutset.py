@@ -51,10 +51,11 @@ class DumptxoutsetTest(BitcoinTestFramework):
             out['base_hash'],
             '6885775faa46290bedfa071f22d0598c93f1d7e01f24607c4dedd69b9baa4a8f')
 
-        # UTXO snapshot hash should be deterministic based on mocked time.
+        # Version 3 includes a zero recycle pool in the snapshot metadata.
+        # The complete snapshot hash remains deterministic based on mocked time.
         assert_equal(
             sha256sum_file(str(expected_path)).hex(),
-            'd9506d541437f5e2892d6b6ea173f55233de11601650c157a27d8f2b9d08cb6f')
+            '56cde3f67971f13dd74b58cf0ca67f0ab946fcfb5f9095043b6a6ebc3749db52')
 
         assert_equal(
             out['txoutset_hash'], 'd4453995f4f20db7bb3a604afd10d7128e8ee11159cde56d5b2fd7f55be7c74c')

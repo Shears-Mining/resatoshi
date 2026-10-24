@@ -69,7 +69,7 @@ class ResatoshiBootstrapTest(BitcoinTestFramework):
             if self.options.testnet4:
                 self.check_inherited_seeds()
                 return
-            mainnet_seeds = {"seed.resatoshi.org", "resatoshi-seed.freeddns.org", "resatoshi-seed.duckdns.org"}
+            mainnet_seeds = {"seed.resatoshi.org", "seed-fra.resatoshi.org", "resatoshi-seed.freeddns.org", "resatoshi-seed.duckdns.org"}
             pending = mainnet_seeds.copy()
             while pending:
                 command = self.proxy.queue.get(timeout=30 * self.options.timeout_factor)

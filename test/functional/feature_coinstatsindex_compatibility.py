@@ -9,12 +9,16 @@ This test may be removed some time after v29 has reached end of life.
 
 import shutil
 
+from test_framework.blocktools import COINBASE_MATURITY
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import assert_equal
 
 
 class CoinStatsIndexTest(BitcoinTestFramework):
     def set_test_params(self):
+        # Old binaries cannot read the current chainstate cache format. Share
+        # blocks over P2P while keeping each version's chainstate independent.
+        self.setup_clean_chain = True
         self.num_nodes = 2
         self.supports_cli = False
         self.extra_args = [["-coinstatsindex"],["-coinstatsindex"]]
@@ -34,6 +38,7 @@ class CoinStatsIndexTest(BitcoinTestFramework):
         self.start_nodes()
 
     def run_test(self):
+        self.generate(self.nodes[1], COINBASE_MATURITY)
         self._test_coin_stats_index_compatibility()
 
     def _test_coin_stats_index_compatibility(self):

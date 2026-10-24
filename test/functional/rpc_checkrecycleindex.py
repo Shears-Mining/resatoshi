@@ -17,7 +17,7 @@ class RecycleIndexCheckTest(BitcoinTestFramework):
     def set_test_params(self):
         self.num_nodes = 2
         self.setup_clean_chain = True
-        self.extra_args = [["-test=recycle", "-rpcthreads=8"], []]
+        self.extra_args = [["-test=recycle", "-recyclemode=index", "-rpcthreads=8"], ["-recyclemode=index"]]
 
     def setup_network(self):
         self.setup_nodes()

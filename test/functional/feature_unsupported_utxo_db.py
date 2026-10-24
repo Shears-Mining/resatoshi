@@ -45,11 +45,12 @@ class UnsupportedUtxoDbTest(BitcoinTestFramework):
         recent_blocks_dir = self.nodes[1].blocks_path
         shutil.copytree(legacy_utxos_dir, recent_utxos_dir)
         shutil.copytree(legacy_blocks_dir, recent_blocks_dir)
-        self.nodes[1].assert_start_raises_init_error(
-            expected_msg="Error: Unsupported chainstate database format found. "
-            "Please restart with -reindex-chainstate. "
-            "This will rebuild the chainstate database.",
+        expected_msg = (
+            "Error: Unsupported chainstate database format found. "
+            "Synchronize a fresh data directory. This version does not migrate "
+            "existing chainstate or undo files."
         )
+        self.nodes[1].assert_start_raises_init_error(expected_msg=expected_msg)
 
         self.log.info("Drop legacy utxo db")
         self.start_node(1, extra_args=["-reindex-chainstate"])
