@@ -4,6 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Check snapshot tooling, REST undo, and opt-in descriptor expiry across a reorg."""
 
+from contextlib import closing
 from decimal import Decimal
 import http.client
 import importlib.util
@@ -117,7 +118,7 @@ class RecycleInterfacesTest(BitcoinTestFramework):
         for fmt in ('hex', 'raw'):
             database = Path(self.options.tmpdir) / f'snapshot-{fmt}.sqlite'
             subprocess.run([sys.executable, str(tool), snapshot['path'], str(database), f'--spk={fmt}', f'--txid={fmt}'], check=True, capture_output=True, text=True)
-            with sqlite3.connect(database) as con:
+            with closing(sqlite3.connect(database)) as con:
                 assert_equal(con.execute('SELECT COUNT(*), SUM(value) FROM utxos').fetchone(), (278, 278 * COIN // 10))
                 assert_equal(snapshot['coins_written'], 278)
                 assert_equal(con.execute('SELECT balance FROM recycle_pool').fetchall(), [(0,)])
@@ -170,7 +171,7 @@ class RecycleInterfacesTest(BitcoinTestFramework):
         pool_snapshot = node.dumptxoutset(str(Path(self.options.tmpdir) / 'pool.dat'), 'latest')
         pool_db = Path(self.options.tmpdir) / 'pool.sqlite'
         subprocess.run([sys.executable, str(tool), pool_snapshot['path'], str(pool_db)], check=True, capture_output=True, text=True)
-        with sqlite3.connect(pool_db) as con:
+        with closing(sqlite3.connect(pool_db)) as con:
             assert_equal(con.execute('SELECT COUNT(*) FROM utxos').fetchone(), (0,))
             assert_equal(pool_snapshot['coins_written'], 0)
             assert_equal(con.execute('SELECT balance FROM recycle_pool').fetchone(), (2_680_000_000,))
