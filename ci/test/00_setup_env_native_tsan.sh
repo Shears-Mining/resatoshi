@@ -16,10 +16,12 @@ export PIP_PACKAGES="--break-system-packages pycapnp"
 export DEP_OPTS="CC=clang CXX=clang++ CXXFLAGS='${LIBCXX_FLAGS}' NO_QT=1"
 export GOAL="install"
 export CI_LIMIT_STACK_SIZE=1
+# Fortified glibc reads bypass signal handling in older TSAN runtimes.
+# Remove this workaround once compiler-rt includes llvm/llvm-project#206228.
 export BITCOIN_CONFIG="\
   --preset=dev-mode \
   -DBUILD_GUI=OFF \
   -DSANITIZERS=thread \
-  -DAPPEND_CPPFLAGS='-DARENA_DEBUG -DDEBUG_LOCKCONTENTION -D_LIBCPP_REMOVE_TRANSITIVE_INCLUDES' \
+  -DAPPEND_CPPFLAGS='-DARENA_DEBUG -DDEBUG_LOCKCONTENTION -D_LIBCPP_REMOVE_TRANSITIVE_INCLUDES -U_FORTIFY_SOURCE' \
 "
 export USE_INSTRUMENTED_LIBCPP="Thread"
