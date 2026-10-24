@@ -17,6 +17,7 @@ import platform
 import random
 import re
 import shlex
+import sys
 import time
 import types
 
@@ -29,6 +30,33 @@ from typing import Optional, Union
 SATOSHI_PRECISION = Decimal('0.00000001')
 
 logger = logging.getLogger("TestFramework.utils")
+
+
+def get_mock_signer_command(script):
+    """Build a mock command for the signer's whitespace-delimited argument format."""
+    arguments = [sys.executable, os.fspath(script)]
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        short_path = kernel32.GetShortPathNameW
+        short_path.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+        short_path.restype = wintypes.DWORD
+        for index, path in enumerate(arguments):
+            if not any(char.isspace() for char in path):
+                continue
+            size = short_path(path, None, 0)
+            if not size:
+                raise ctypes.WinError(ctypes.get_last_error())
+            buffer = ctypes.create_unicode_buffer(size)
+            if not short_path(path, buffer, size):
+                raise ctypes.WinError(ctypes.get_last_error())
+            if any(char.isspace() for char in buffer.value):
+                raise RuntimeError("No whitespace-free Windows path for mock signer")
+            arguments[index] = buffer.value
+    return " ".join(arguments)
+
 
 # Assert functions
 ##################

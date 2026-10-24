@@ -5819,10 +5819,12 @@ util::Result<CBlockIndex*> ChainstateManager::ActivateSnapshot(
         return util::Error{std::move(reason)};
     };
 
-    if (GetConsensus().recycle_enabled && !m_options.recycle_from_block &&
-        !snapshot_chainstate->CoinsDB().RecycleStateReady()) {
+    {
         LOCK(::cs_main);
-        return cleanup_bad_snapshot(Untranslated("Interrupted while initializing snapshot recycle index"));
+        if (GetConsensus().recycle_enabled && !m_options.recycle_from_block &&
+            !snapshot_chainstate->CoinsDB().RecycleStateReady()) {
+            return cleanup_bad_snapshot(Untranslated("Interrupted while initializing snapshot recycle index"));
+        }
     }
 
     if (auto res{this->PopulateAndValidateSnapshot(*snapshot_chainstate, coins_file, metadata)}; !res) {

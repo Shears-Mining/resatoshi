@@ -59,8 +59,9 @@ class RecycleIndexSnapshot {
 public:
     ~RecycleIndexSnapshot();
     uint256 GetBestBlock() const;
+    //! Run without cs_main; global mutexes use lock exclusion rather than negative capabilities.
     //! The progress callback must not acquire cs_main: resizing may wait under that lock.
-    RecycleIndexCheckResult Check(const std::function<bool(const std::string&, const RecycleIndexCheckResult&)>& progress) const EXCLUSIVE_LOCKS_REQUIRED(!cs_main);
+    RecycleIndexCheckResult Check(const std::function<bool(const std::string&, const RecycleIndexCheckResult&)>& progress) const LOCKS_EXCLUDED(cs_main);
 };
 
 //! In-memory DB behavior; does not change persisted codec values.

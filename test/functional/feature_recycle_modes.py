@@ -131,7 +131,7 @@ class RecycleModesTest(BitcoinTestFramework):
             assert_equal(archival.getblockchaininfo(True)["recycling"]["mode"], "block")
             self.stop_node(1)
             if missing_settings:
-                settings_path.with_suffix(".saved").rename(settings_path)
+                settings_path.with_suffix(".saved").replace(settings_path)
         (archival.chain_path / "custom-mode.json").write_text(json.dumps({"recyclemode": "block"}))
         self.start_node(1, extra_args=["-test=recycle", "-settings=custom-mode.json"])
         assert_equal(archival.getblockchaininfo(True)["recycling"]["mode"], "block")

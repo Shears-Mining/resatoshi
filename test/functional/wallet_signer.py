@@ -8,32 +8,32 @@ Verify that a bitcoind node can use an external signer command
 See also rpc_signer.py for tests without wallet context.
 """
 import os
-import sys
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import (
     assert_equal,
     assert_greater_than,
     assert_raises_rpc_error,
+    get_mock_signer_command,
 )
 
 
 class WalletSignerTest(BitcoinTestFramework):
     def mock_signer_path(self):
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'mocks', 'signer.py')
-        return sys.executable + " " + path
+        return get_mock_signer_command(path)
 
     def mock_no_connected_signer_path(self):
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'mocks', 'no_signer.py')
-        return sys.executable + " " + path
+        return get_mock_signer_command(path)
 
     def mock_invalid_signer_path(self):
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'mocks', 'invalid_signer.py')
-        return sys.executable + " " + path
+        return get_mock_signer_command(path)
 
     def mock_multi_signers_path(self):
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'mocks', 'multi_signers.py')
-        return sys.executable + " " + path
+        return get_mock_signer_command(path)
 
     def set_test_params(self):
         self.num_nodes = 2
