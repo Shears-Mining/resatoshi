@@ -74,6 +74,7 @@ const std::vector<std::string> RPC_COMMANDS_NOT_SAFE_FOR_FUZZING{
     "addconnection",  // avoid DNS lookups
     "addnode",        // avoid DNS lookups
     "addpeeraddress", // avoid DNS lookups
+    "checkrecycleindex", // flushes chainstate and scans the on-disk index
     "dumptxoutset",   // avoid writing to disk
     "enumeratesigners",
     "echoipc",              // avoid assertion failure (Assertion `"EnsureAnyNodeContext(request.context).init" && check' failed.)

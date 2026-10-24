@@ -18,6 +18,14 @@ using util::ToString;
 
 BOOST_FIXTURE_TEST_SUITE(dbwrapper_tests, BasicTestingSetup)
 
+BOOST_AUTO_TEST_CASE(failed_open_releases_resources)
+{
+    const DBParams params{.path = m_path_root / "locked", .cache_bytes = 1 << 20};
+    CDBWrapper database{params};
+    const auto open_again = [&] { CDBWrapper locked_database{params}; };
+    BOOST_CHECK_THROW(open_again(), dbwrapper_error);
+}
+
 BOOST_AUTO_TEST_CASE(snapshot_reads_and_iterators_share_one_state)
 {
     for (bool obfuscate : {false, true}) {

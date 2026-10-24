@@ -2080,7 +2080,7 @@ static RPCHelpMan getblockstats()
             for (const CTxOut& out : tx->vout) {
                 tx_total_out += out.nValue;
 
-                uint64_t out_size{GetSerializeSize(out) + PER_UTXO_OVERHEAD};
+                const int64_t out_size{static_cast<int64_t>(GetSerializeSize(out) + PER_UTXO_OVERHEAD)};
                 utxo_size_inc += out_size;
 
                 // The Genesis block and the repeated BIP30 block coinbases don't change the UTXO
@@ -2132,7 +2132,7 @@ static RPCHelpMan getblockstats()
                 const CTxOut& prevoutput = coin.out;
 
                 tx_total_in += prevoutput.nValue;
-                uint64_t prevout_size{GetSerializeSize(prevoutput) + PER_UTXO_OVERHEAD};
+                const int64_t prevout_size{static_cast<int64_t>(GetSerializeSize(prevoutput) + PER_UTXO_OVERHEAD)};
                 utxo_size_inc -= prevout_size;
                 utxo_size_inc_actual -= prevout_size;
             }
@@ -2164,7 +2164,7 @@ static RPCHelpMan getblockstats()
         expired_outputs = expired.size();
         if (do_all || stats.contains("utxo_size_inc_actual")) {
             for (const auto& [outpoint, coin] : expired) {
-                utxo_size_inc_actual -= GetSerializeSize(coin.out) + PER_UTXO_OVERHEAD;
+                utxo_size_inc_actual -= static_cast<int64_t>(GetSerializeSize(coin.out) + PER_UTXO_OVERHEAD);
             }
         }
     }

@@ -193,7 +193,7 @@ size_t CDBBatch::ApproximateSize() const
 
 struct LevelDBContext {
     //! custom environment this database is using (may be nullptr in case of default environment)
-    leveldb::Env* penv;
+    leveldb::Env* penv{nullptr};
 
     //! database options used
     leveldb::Options options;
@@ -211,7 +211,17 @@ struct LevelDBContext {
     leveldb::WriteOptions syncoptions;
 
     //! the database itself
-    leveldb::DB* pdb;
+    leveldb::DB* pdb{nullptr};
+
+    // Also release resources when CDBWrapper construction throws.
+    ~LevelDBContext()
+    {
+        delete pdb;
+        delete options.filter_policy;
+        delete options.info_log;
+        delete options.block_cache;
+        delete penv;
+    }
 };
 
 CDBWrapper::CDBWrapper(const DBParams& params)
@@ -261,19 +271,7 @@ CDBWrapper::CDBWrapper(const DBParams& params)
     LogInfo("Using obfuscation key for %s: %s", fs::PathToString(params.path), m_obfuscation.HexKey());
 }
 
-CDBWrapper::~CDBWrapper()
-{
-    delete DBContext().pdb;
-    DBContext().pdb = nullptr;
-    delete DBContext().options.filter_policy;
-    DBContext().options.filter_policy = nullptr;
-    delete DBContext().options.info_log;
-    DBContext().options.info_log = nullptr;
-    delete DBContext().options.block_cache;
-    DBContext().options.block_cache = nullptr;
-    delete DBContext().penv;
-    DBContext().options.env = nullptr;
-}
+CDBWrapper::~CDBWrapper() = default;
 
 void CDBWrapper::WriteBatch(CDBBatch& batch, bool fSync)
 {

@@ -11,9 +11,11 @@
 #include <pow/asert.h>
 #include <test/util/common.h>
 #include <test/util/setup_common.h>
+#include <util/time.h>
 #include <validation.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstddef>
 #include <limits>
 #include <vector>
@@ -367,6 +369,8 @@ BOOST_AUTO_TEST_CASE(asert_reject_in_range_incorrect_targets)
 
 BOOST_AUTO_TEST_CASE(asert_timestamp_extremes)
 {
+    // Keep the sync memory bound valid for every synthetic start timestamp.
+    SetMockTime(std::chrono::seconds{int64_t{std::numeric_limits<uint32_t>::max()} + 1});
     AsertHeaderChain chain{Params()};
     const uint32_t anchor_time{chain.headers[0].nTime};
     for (const uint32_t previous_time : {uint32_t{0}, anchor_time - 1, anchor_time, std::numeric_limits<uint32_t>::max()}) {
