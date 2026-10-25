@@ -80,7 +80,8 @@ class EncryptedP2PState:
     """
     def __init__(self, *, initiating, net):
         self.initiating = initiating  # True if initiator
-        self.net = net
+        # Match P2PConnection's empty mainnet data-directory suffix handling.
+        self.net = net or "mainnet"
         self.peer = {}  # object with various BIP324 derived keys and ciphers
         self.privkey_ours = None
         self.ellswift_ours = None

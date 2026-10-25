@@ -9,6 +9,7 @@ import http.client
 import json
 from pathlib import Path
 import random
+import subprocess
 import time
 
 from test_framework.blocktools import create_block, create_coinbase
@@ -177,6 +178,10 @@ class RecycleBoundaryTest(BitcoinTestFramework):
                 node.gettxoutsetinfo('muhash', use_index=False)
             except (http.client.RemoteDisconnected, ConnectionResetError):
                 pass
+            except subprocess.CalledProcessError as error:
+                assert node.use_cli
+                assert_equal(error.returncode, 1)
+                assert 'Could not connect to the server' in error.output
             node.wait_until_stopped(timeout=20)
         with node.assert_debug_log(['Replaying blocks']):
             self.start_node(0)

@@ -19,7 +19,7 @@ import urllib.parse
 from test_framework.blocktools import create_block, create_coinbase
 from test_framework.messages import COIN, CTxOut, MAGIC_BYTES, deser_block_spent_outputs, hash256, ser_varint
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_raises, assert_raises_rpc_error, util_xor
+from test_framework.util import assert_equal, assert_raises, assert_raises_rpc_error, rpc_url, util_xor
 from test_framework.wallet import MiniWallet
 
 
@@ -30,7 +30,8 @@ class RecycleInterfacesTest(BitcoinTestFramework):
         self.extra_args = [['-test=recycle', '-blockfilterindex', '-rest']]
 
     def spent_outputs(self, blockhash, fmt, status=200):
-        url = urllib.parse.urlparse(self.nodes[0].url)
+        node = self.nodes[0]
+        url = urllib.parse.urlparse(rpc_url(node.datadir_path, node.index, node.chain, node.rpchost))
         conn = http.client.HTTPConnection(url.hostname, url.port, timeout=self.nodes[0].rpc_timeout)
         try:
             conn.request('GET', f'/rest/spenttxouts/{blockhash}.{fmt}')
