@@ -799,10 +799,9 @@ BOOST_AUTO_TEST_CASE(btck_recycle_spent_outputs_disk_tests)
     for (const int lifetime : {199, 205}) {
         auto directory{TestDirectory{"recycle_spent_outputs"}};
         auto context{create_context(std::make_shared<TestKernelNotifications>(), ChainType::REGTEST, nullptr, lifetime)};
-        std::optional<BlockSpentOutputs> retained;
-        std::optional<Coin> retained_coin;
+        std::unique_ptr<Coin> retained_coin;
         const size_t expected{lifetime == 199 ? 0U : 1U};
-        {
+        const auto retained{[&] {
             auto chainman{create_chainman(directory, false, false, false, false, context)};
             for (int i{0}; i <= lifetime; ++i) {
                 bool new_block{false};
@@ -815,7 +814,6 @@ BOOST_AUTO_TEST_CASE(btck_recycle_spent_outputs_disk_tests)
                               chainman->ReadBlock(previous)->CountTransactions() - 1);
             auto outputs{chainman->ReadBlockSpentOutputs(tip)};
             BOOST_REQUIRE_EQUAL(outputs.Count(), expected);
-            retained.emplace(outputs); // public API copy, surviving the original and chain manager
             if (expected) {
                 auto tx_inputs{outputs.GetTxSpentOutputs(0)};
                 BOOST_REQUIRE_EQUAL(tx_inputs.Count(), 2U);
@@ -823,15 +821,17 @@ BOOST_AUTO_TEST_CASE(btck_recycle_spent_outputs_disk_tests)
                 BOOST_CHECK_EQUAL(coin.GetConfirmationHeight(), 205U);
                 BOOST_CHECK_EQUAL(coin.GetOutput().Amount(), 100000000);
                 BOOST_CHECK(!coin.IsCoinbase());
-                retained_coin.emplace(coin);
+                retained_coin = std::make_unique<Coin>(coin);
             }
-        }
-        BOOST_REQUIRE_EQUAL(retained->Count(), expected);
+            // Copy through the public API before the original and chain manager are destroyed.
+            return BlockSpentOutputs{outputs};
+        }()};
+        BOOST_REQUIRE_EQUAL(retained.Count(), expected);
         if (retained_coin) {
             BOOST_CHECK_EQUAL(retained_coin->GetConfirmationHeight(), 205U);
             BOOST_CHECK_EQUAL(retained_coin->GetOutput().Amount(), 100000000);
             check_equal(retained_coin->GetOutput().GetScriptPubkey().ToBytes(),
-                        retained->GetTxSpentOutputs(0).GetCoin(0).GetOutput().GetScriptPubkey().ToBytes());
+                        retained.GetTxSpentOutputs(0).GetCoin(0).GetOutput().GetScriptPubkey().ToBytes());
         }
         // Reopen chainstate and read the actual on-disk undo again. The API
         // must not have removed the metadata needed for restart/recovery.
