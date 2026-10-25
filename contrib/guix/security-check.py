@@ -20,7 +20,7 @@ def check_ELF_RELRO(binary) -> bool:
     '''
     Check for read-only relocations.
     GNU_RELRO program header must exist
-    Dynamic section must have BIND_NOW flag
+    Dynamic section must request immediate binding
     '''
     have_gnu_relro = False
     for segment in binary.segments:
@@ -33,13 +33,16 @@ def check_ELF_RELRO(binary) -> bool:
         if segment.type == lief.ELF.Segment.TYPE.GNU_RELRO:
             have_gnu_relro = True
 
-    have_bindnow = False
-    try:
-        flags = binary.get(lief.ELF.DynamicEntry.TAG.FLAGS)
-        if flags.has(lief.ELF.DynamicEntryFlags.FLAG.BIND_NOW):
+    # Linkers can express immediate binding with DT_BIND_NOW, DF_BIND_NOW in
+    # DT_FLAGS, or DF_1_NOW in DT_FLAGS_1. All require the same loader behavior.
+    have_bindnow = binary.has(lief.ELF.DynamicEntry.TAG.BIND_NOW)
+    for tag, flag in (
+        (lief.ELF.DynamicEntry.TAG.FLAGS, lief.ELF.DynamicEntryFlags.FLAG.BIND_NOW),
+        (lief.ELF.DynamicEntry.TAG.FLAGS_1, lief.ELF.DynamicEntryFlags.FLAG.NOW),
+    ):
+        flags = binary.get(tag)
+        if isinstance(flags, lief.ELF.DynamicEntryFlags) and flags.has(flag):
             have_bindnow = True
-    except Exception:
-        have_bindnow = False
 
     return have_gnu_relro and have_bindnow
 
