@@ -12,6 +12,7 @@ Example usage:
     find ../path/to/guix/binaries -type f -executable | xargs python3 contrib/guix/security-check.py
 '''
 import re
+import struct
 import sys
 
 import lief
@@ -125,6 +126,24 @@ def check_ELF_CONTROL_FLOW(binary) -> bool:
     return False
 
 def check_ELF_FORTIFY(binary) -> bool:
+
+    note = binary.get_section('.note.rsat.fortify')
+    if note is not None:
+        data = bytes(note.content)
+        if not data or len(data) % 28:
+            return False
+        byte_order = '<' if binary.header.identity_data == lief.ELF.Header.ELF_DATA.LSB else '>'
+        # This build note records __USE_FORTIFY_LEVEL from the executable's
+        # libc headers, rather than inferring it from calls left after optimisation.
+        # A present but disabled, malformed or unknown note must fail closed.
+        for offset in range(0, len(data), 28):
+            name_size, descriptor_size, note_type = struct.unpack_from(byte_order + 'III', data, offset)
+            version, level = struct.unpack_from(byte_order + 'II', data, offset + 20)
+            if (name_size, descriptor_size, note_type, data[offset + 12:offset + 20], version) != (
+                5, 8, 0x52534154, b'RSAT\0\0\0\0', 1,
+            ) or not 2 <= level <= 3:
+                return False
+        return True
 
     # bitcoin wrapper does not currently contain any fortified functions
     if '--monolithic' in binary.strings:
