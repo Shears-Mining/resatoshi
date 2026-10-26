@@ -10,7 +10,6 @@
 #include <common/args.h>
 #include <common/system.h>
 #include <compat/compat.h>
-#include <compat/fortify.h> // IWYU pragma: keep
 #include <compat/stdin.h>
 #include <policy/feerate.h>
 #include <rpc/client.h>
