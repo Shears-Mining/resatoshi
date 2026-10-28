@@ -41,6 +41,7 @@ class RecycleMiningLoadTest(BitcoinTestFramework):
         self.add_nodes(2, extra_args=self.extra_args)
         if self.options.reference_bitcoind:
             self.nodes[1].args[0] = str(Path(self.options.reference_bitcoind).resolve())
+            self.nodes[1].replace_in_config([("prevoutfetchthreads=1\n", "")])
         self.start_nodes()
         for node in self.nodes:
             node.add_p2p_connection(P2PInterface())

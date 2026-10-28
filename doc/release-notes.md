@@ -6,6 +6,22 @@ wallet, explorer, and other bundled features, visit the `download-only` channel
 in the [official Resatoshi Discord](https://discord.gg/QyM3eHZZS).
 Consult the package's accompanying notes for its version and source information.
 
+## Bitcoin Core 32.1 source integration
+
+The node source now follows the Bitcoin Core 32.1 stable release. It includes
+the new HTTP server, parallel input-prevout fetching, combined fee estimation,
+PSBT v2 support, OpenRPC discovery, wallet improvements and upstream fixes.
+ReSatoshi genesis, ASERT, expiry and reward rules are preserved. The wallet's
+external-input expiry metadata and the chainstate's recycle pool remain part of
+the local format. Existing all-in-one miner packages have their own source and
+version records; this source update does not update those packages.
+
+The source display version is `32.1.0-rsat.1`; the numeric upstream base is
+`32.1.0`. See [upstream maintenance](upstream-maintenance.md) for provenance,
+project-specific adaptations and validation requirements, and the
+[upstream 32.1 notes](release-notes/release-notes-32.1.md) for API and setting
+changes. Windows/macOS packages require their own build and runtime validation.
+
 ## Default expiry mode for new nodes
 
 Fresh data directories now default to `block` (Original blocks). Existing

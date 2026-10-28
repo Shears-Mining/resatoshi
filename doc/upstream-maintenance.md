@@ -2,8 +2,8 @@
 
 ## Source baseline
 
-The source baseline is the official **Bitcoin Core 31.0 release archive**, not
-Bitcoin Core master. The initial import is
+The source baseline is the official **Bitcoin Core 32.1 release archive**, not
+Bitcoin Core master. The initial 31.0 import is
 `0bb4cdfb0fec24b0bb0d087bc665373233efd045`; the main commit before the local
 maintenance changes is `8584d07bb2ce8765ffb0dcac64eeaaa9dd5241e3`.
 The import has independent Git ancestry. Do not assume `git merge` can find the
@@ -16,6 +16,37 @@ Archive checksums (SHA-256, checked against the official HTTPS SHA256SUMS):
 | --- | --- |
 | [bitcoin-31.0.tar.gz](https://bitcoincore.org/bin/bitcoin-core-31.0/) | `0ba0ef5eea3aefd96cc1774be274c3d594812cfac0988809d706738bb067b3e3` |
 | [bitcoin-31.1.tar.gz](https://bitcoincore.org/bin/bitcoin-core-31.1/) | `50411d5b43c7e4c90099394759eb6c2add6e7c2dbe728840893d638b6fc6afc9` |
+| [bitcoin-32.1.tar.gz](https://bitcoincore.org/bin/bitcoin-core-32.1/) | `a5f2f61e32cf7f790641c9ec306a3c88ca7b5a556946956b1f35ffd7e27813f9` |
+
+The 32.1 archive was checked against the official HTTPS SHA256SUMS on
+2026-10-28. Its release tag resolves to
+`f0de87f040621468b956f01f526a43a010310501`. This update does not establish
+Git ancestry with Bitcoin Core; release signatures were not verified.
+
+The 31.0-to-32.1 source changes were integrated against ReSatoshi main
+`e2505c0470c283b5ddbbcd662f42d42b25509127` in a separate worktree.
+Project governance, hosted workflow configuration, branded translations,
+generated manual pages and ReSatoshi release notes remain project-maintained.
+The original 32.1 notes are retained as
+[upstream history](release-notes/release-notes-32.1.md).
+
+### ReSatoshi adaptations for 32.1
+
+- Keep genesis, mainnet discovery, ASERT, expiry modes, typed recycle undo,
+  pool accounting and snapshot version 3. Taproot enforcement is now
+  unconditional upstream, matching ReSatoshi mainnet's activation from genesis.
+- Preserve the height index and recycle-pool state across the new coins-view
+  interfaces and parallel prevout fetching. Test serial and parallel fetching
+  with both expiry sources, failed-block reset and successful flush.
+- Preserve external input origins in the wallet's new typed metadata and
+  canonical witness-transaction representation, including writes after updates
+  and reload. Ignore expired-input spenders when classifying non-mempool spends.
+- Retain source revision reporting, empty-span stream handling, shared database
+  snapshots, cancellation during resizing and separate installation settings.
+  Adapt Windows installer generation to upstream's new script while retaining
+  ReSatoshi registration and user configuration preservation.
+- Adapt local functional tests to the revised RPC connection helpers. Old
+  reference nodes use separate directories without the new prevout-fetch option.
 
 All files shared by the original import and the 31.0 archive matched byte for
 byte. Nine omitted vendored source/build/test files are restored unchanged.
@@ -39,10 +70,11 @@ test/lint/git-subtree-check.sh -r "$vendor_dir"
 The check verifies consistency with the recorded split commit, not provenance
 from an upstream repository. Do not rejoin unreviewed changes just to clear lint.
 
-## Selected 31.1 backports
+## Historical selected 31.1 backports
 
-This is **31.0 with selected fixes**, not a complete upgrade to 31.1. Keep the
-version distinction when publishing packages. Sources and rationale are listed
+Before the 32.1 integration this was **31.0 with selected fixes**, rather than a
+complete upgrade to 31.1. These backports are now absorbed by the new baseline.
+Their sources and rationale are listed
 in the [official 31.1 notes](https://bitcoincore.org/en/releases/31.1/).
 
 | Upstream PR | Change |

@@ -52,12 +52,15 @@ void RecycleSetupTests::directoryStates()
     QVERIFY(!HasChainstateData(root));
     Write(root / "chainstate" / "CURRENT", "existing");
     QVERIFY(HasChainstateData(root));
-    fs::remove_all(root / "chainstate");
+    QVERIFY(fs::remove(root / "chainstate" / "CURRENT"));
+    QVERIFY(fs::remove(root / "chainstate"));
     Write(root / "external-blocks" / "index" / "CURRENT", "external");
     QVERIFY(!HasChainstateData(root));
     Write(root / "blocks" / "index" / "CURRENT", "existing");
     QVERIFY(HasChainstateData(root));
-    fs::remove_all(root / "blocks");
+    QVERIFY(fs::remove(root / "blocks" / "index" / "CURRENT"));
+    QVERIFY(fs::remove(root / "blocks" / "index"));
+    QVERIFY(fs::remove(root / "blocks"));
     Write(root / "chainstate_snapshot" / "CURRENT", "existing");
     QVERIFY(HasChainstateData(root));
 }

@@ -74,7 +74,7 @@ std::optional<RecycleMode> ReadRecycleMode(CDBWrapper& db);
 struct CoinsViewOptions {
     RecycleMode recycle_mode{RecycleMode::DISABLED};
     //! Maximum database write batch size in bytes.
-    size_t batch_write_bytes{DEFAULT_DB_CACHE_BATCH};
+    uint64_t batch_write_bytes{DEFAULT_DB_CACHE_BATCH};
     //! If non-zero, randomly exit when the database is flushed with (1/ratio) probability.
     int simulate_crash_ratio{0};
 };
@@ -96,12 +96,14 @@ public:
     ~CCoinsViewDB() override;
 
     std::optional<Coin> GetCoin(const COutPoint& outpoint) const override;
-    bool HaveCoin(const COutPoint &outpoint) const override;
+    std::optional<Coin> PeekCoin(const COutPoint& outpoint) const override;
+    bool HaveCoin(const COutPoint& outpoint) const override;
     std::set<COutPoint> GetCoinsByHeight(uint32_t height) const override;
     CAmount GetRecyclePool() const override;
     uint256 GetBestBlock() const override;
     std::vector<uint256> GetHeadBlocks() const override;
-    void BatchWrite(CoinsViewCacheCursor& cursor, const uint256& hashBlock) override;
+    void BatchWrite(CoinsViewCacheCursor& cursor, const uint256& block_hash) override;
+    //! Get a cursor to iterate over the whole state.
     std::unique_ptr<CCoinsViewCursor> Cursor() const override;
 
     //! Whether the database format or persisted mode differs from this view.
@@ -117,7 +119,7 @@ public:
     void ResizeCache(size_t new_cache_size) EXCLUSIVE_LOCKS_REQUIRED(cs_main, !m_db_mutex);
 
     //! Perform a full compaction of the underlying LevelDB on a one-shot background thread.
-    std::shared_future<void> CompactFull() EXCLUSIVE_LOCKS_REQUIRED(cs_main, !m_db_mutex);
+    std::shared_future<void> CompactFullAsync() EXCLUSIVE_LOCKS_REQUIRED(cs_main, !m_db_mutex);
 
     //! Return an underlying LevelDB property value, if available.
     std::optional<std::string> GetDBProperty(const std::string& property);

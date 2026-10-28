@@ -37,6 +37,7 @@ class RecycleMixedVersionsTest(BitcoinTestFramework):
         self.add_nodes(2, extra_args=self.extra_args)
         if self.options.reference_bitcoind:
             self.nodes[1].args[0] = str(Path(self.options.reference_bitcoind).resolve())
+            self.nodes[1].replace_in_config([("prevoutfetchthreads=1\n", "")])
         self.start_nodes()
         self.connect_nodes(0, 1)
         self.sync_all()

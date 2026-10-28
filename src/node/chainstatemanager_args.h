@@ -14,7 +14,7 @@
 class ArgsManager;
 
 /** -par default (number of script-checking threads, 0 = auto) */
-static constexpr int DEFAULT_SCRIPTCHECK_THREADS{0};
+inline constexpr int DEFAULT_SCRIPTCHECK_THREADS{0};
 
 namespace node {
 /** Existing chainstate or block-index directories; used to skip first-run GUI setup. */

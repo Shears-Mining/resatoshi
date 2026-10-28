@@ -10,7 +10,7 @@ import time
 from test_framework.blocktools import create_block, create_coinbase
 from test_framework.messages import CTxOut
 from test_framework.test_framework import BitcoinTestFramework
-from test_framework.util import assert_equal, assert_raises_rpc_error, get_rpc_proxy, rpc_url
+from test_framework.util import assert_equal, assert_raises_rpc_error
 
 
 class RecycleIndexCheckTest(BitcoinTestFramework):
@@ -52,7 +52,7 @@ class RecycleIndexCheckTest(BitcoinTestFramework):
             self.wait_until(scanning)
 
         with ThreadPoolExecutor(max_workers=1) as executor:
-            scan_rpc = get_rpc_proxy(rpc_url(node.datadir_path, node.index, node.chain, node.rpchost), node.index, timeout=60)
+            scan_rpc = node.create_new_rpc_connection(mode="AUTHPROXY", client_timeout=60)
             future = executor.submit(scan_rpc.checkrecycleindex, "start")
             wait_scanning(future)
             assert_raises_rpc_error(-8, "already in progress", node.checkrecycleindex, "start")

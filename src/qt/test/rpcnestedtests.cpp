@@ -16,9 +16,9 @@
 #include <string>
 #include <stdexcept>
 
-static RPCHelpMan rpcNestedTest_rpc()
+static RPCMethod rpcNestedTest_rpc()
 {
-    return RPCHelpMan{
+    return RPCMethod{
         "rpcNestedTest",
         "echo the passed string(s)",
         {
@@ -28,7 +28,7 @@ static RPCHelpMan rpcNestedTest_rpc()
         },
         RPCResult{RPCResult::Type::ANY, "", ""},
         RPCExamples{""},
-        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue {
+        [](const RPCMethod& self, const JSONRPCRequest& request) -> UniValue {
             return request.params.write(0, 0);
         },
     };
@@ -141,6 +141,11 @@ void RPCNestedTests::rpcNestedTests()
     QVERIFY_EXCEPTION_THROWN(RPCConsole::RPCExecuteCommandLine(m_node, result, "getblockchaininfo(True)"), std::runtime_error); //invalid JSON boolean
     QVERIFY_EXCEPTION_THROWN(RPCConsole::RPCExecuteCommandLine(m_node, result, "getblockchaininfo(1)"), UniValue); //wrong argument type
     QVERIFY_EXCEPTION_THROWN(RPCConsole::RPCExecuteCommandLine(m_node, result, "a(getblockchaininfo(true))"), UniValue); //method not found
+    RPCConsole::RPCExecuteCommandLine(m_node, result, "getblockchaininfo)"); //tolerate a closing bracket after a command
+    QVERIFY(!RPCConsole::RPCExecuteCommandLine(m_node, result, ")")); //reject a closing bracket with no command (empty argument stack)
+    QVERIFY(!RPCConsole::RPCExecuteCommandLine(m_node, result, "()")); //reject empty brackets with no command
+    QVERIFY(!RPCConsole::RPCExecuteCommandLine(m_node, result, "(")); //reject an opening bracket with no command
+    QVERIFY(!RPCConsole::RPCExecuteCommandLine(m_node, result, ",")); //reject a comma with no command
     QVERIFY_EXCEPTION_THROWN(RPCConsole::RPCExecuteCommandLine(m_node, result, "rpcNestedTest abc,,abc"), std::runtime_error); //don't tolerate empty arguments when using ,
     QVERIFY_EXCEPTION_THROWN(RPCConsole::RPCExecuteCommandLine(m_node, result, "rpcNestedTest(abc,,abc)"), std::runtime_error); //don't tolerate empty arguments when using ,
     QVERIFY_EXCEPTION_THROWN(RPCConsole::RPCExecuteCommandLine(m_node, result, "rpcNestedTest(abc,,)"), std::runtime_error); //don't tolerate empty arguments when using ,
