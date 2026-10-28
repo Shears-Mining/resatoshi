@@ -37,7 +37,7 @@ class RecycleIndexTest(BitcoinTestFramework):
         tip = new.getblockheader(new.getbestblockhash())
         coinbase = create_coinbase(1)
         coinbase.vout = [CTxOut(100_000, b'\x51') for _ in range(300)]
-        block = create_block(int(tip['hash'], 16), coinbase, max(int(time.time()), tip['time'] + 1))
+        block = create_block(int(tip['hash'], 16), coinbase, ntime=max(int(time.time()), tip['time'] + 1))
         block.solve()
         assert_equal(new.submitblock(block.serialize().hex()), None)
         self.sync_blocks()
@@ -46,7 +46,7 @@ class RecycleIndexTest(BitcoinTestFramework):
         spend.vin = [CTxIn(COutPoint(coinbase.txid_int, n)) for n in range(250)]
         spend.vout = [CTxOut(24_900_000, b'\x51')]
         tip = new.getblockheader(new.getbestblockhash())
-        spent_block = create_block(int(tip['hash'], 16), create_coinbase(102), tip['time'] + 1, txlist=[spend])
+        spent_block = create_block(int(tip['hash'], 16), create_coinbase(102), ntime=tip['time'] + 1, txlist=[spend])
         spent_block.solve()
         assert_equal(new.submitblock(spent_block.serialize().hex()), None)
         self.sync_blocks()

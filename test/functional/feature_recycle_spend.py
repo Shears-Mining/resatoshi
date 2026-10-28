@@ -26,7 +26,7 @@ class RecycleSpendTest(BitcoinTestFramework):
     def block(self, coinbase, txs=None):
         node = self.nodes[0]
         tip = node.getbestblockhash()
-        block = create_block(int(tip, 16), coinbase, max(int(time.time()), node.getblockheader(tip)["time"] + 1), txlist=txs)
+        block = create_block(int(tip, 16), coinbase, ntime=max(int(time.time()), node.getblockheader(tip)["time"] + 1), txlist=txs)
         if txs:
             add_witness_commitment(block)
         block.solve()

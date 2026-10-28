@@ -39,7 +39,7 @@ class RecycleIndexCheckTest(BitcoinTestFramework):
         coinbase = create_coinbase(1)
         coinbase.vout = [CTxOut(1, b"\x51") for _ in range(80_000)]
         tip = node.getblockheader(node.getbestblockhash())
-        block = create_block(int(tip["hash"], 16), coinbase, max(int(time.time()), tip["time"] + 1))
+        block = create_block(int(tip["hash"], 16), coinbase, ntime=max(int(time.time()), tip["time"] + 1))
         block.solve()
         assert_equal(node.submitblock(block.serialize().hex()), None)
         original_tip = node.getbestblockhash()

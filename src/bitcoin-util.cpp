@@ -180,7 +180,12 @@ static int GetChainParams(const std::vector<std::string>& args, std::string& str
         pow.pushKV("limit", consensus.powLimit.ToString());
         if (!consensus.fPowNoRetargeting) {
             pow.pushKV("target_spacing", TicksSeconds(consensus.PowTargetSpacing()));
-            pow.pushKV("difficulty_retarget_interval", consensus.DifficultyAdjustmentInterval());
+            if (consensus.nASERTHalfLife > 0) {
+                pow.pushKV("algorithm", "asert");
+                pow.pushKV("asert_half_life", consensus.nASERTHalfLife);
+            } else {
+                pow.pushKV("difficulty_retarget_interval", consensus.DifficultyAdjustmentInterval());
+            }
             std::string mindiff_blocks = (consensus.fPowAllowMinDifficultyBlocks ?
                   (consensus.enforce_BIP94 ? "bip94" : "yes") : "no");
             pow.pushKV("mindiff_blocks", mindiff_blocks);

@@ -54,7 +54,7 @@ class GenerateRecycleTest(BitcoinTestFramework):
             assert "transactions" in template["mutable"]
             coinbase = create_coinbase(template["height"])
             coinbase.vout[0].nValue = template_reward
-            block = create_block(int(template["previousblockhash"], 16), coinbase, template["curtime"])
+            block = create_block(int(template["previousblockhash"], 16), coinbase, ntime=template["curtime"])
             block.nVersion = template["version"]
             block.nBits = int(template["bits"], 16)
 

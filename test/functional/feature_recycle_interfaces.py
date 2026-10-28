@@ -110,7 +110,7 @@ class RecycleInterfacesTest(BitcoinTestFramework):
         coinbase = create_coinbase(1)
         coinbase.vout = [CTxOut(COIN // 10, script) for _ in range(278)]
         prev = node.getblockheader(node.getbestblockhash())
-        block = create_block(int(prev['hash'], 16), coinbase, prev['time'] + 1)
+        block = create_block(int(prev['hash'], 16), coinbase, ntime=prev['time'] + 1)
         block.solve()
         assert_equal(node.submitblock(block.serialize().hex()), None)
 

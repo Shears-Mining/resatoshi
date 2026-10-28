@@ -24,7 +24,7 @@ class GetblockstatsRecycleTest(BitcoinTestFramework):
         coinbase.vout = [CTxOut(0, CScript([OP_TRUE]) if script is None else script) for _ in range(count)]
         if count == 0:
             coinbase.vout = [CTxOut(0, CScript([OP_RETURN]))]
-        block = create_block(int(tip["hash"], 16), coinbase, tip["time"] + 1)
+        block = create_block(int(tip["hash"], 16), coinbase, ntime=tip["time"] + 1)
         block.solve()
         assert_equal(node.submitblock(block.serialize().hex()), None)
         return block.hash_hex

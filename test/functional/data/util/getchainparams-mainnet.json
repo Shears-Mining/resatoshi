@@ -1,28 +1,26 @@
 {
   "chain": "main",
   "test_chain": false,
-  "genesis": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+  "genesis": "0000000379813245fcdd4600969c6f74684f14433badf837be5b8ffa560174ec",
   "subsidy_halving_interval": 210000,
   "pow": {
-    "limit": "00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "limit": "0000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
     "target_spacing": 600,
-    "difficulty_retarget_interval": 2016,
+    "algorithm": "asert",
+    "asert_half_life": 172800,
     "mindiff_blocks": "no"
   },
   "net": {
-    "default_port": 8333,
-    "magic": "f9beb4d9",
+    "default_port": 19333,
+    "magic": "47d92434",
     "dns_seeds": [
-      "dnsseed.bluematt.me.",
-      "seed.bitcoin.jonasschnelli.ch.",
-      "seed.btc.petertodd.net.",
-      "seed.bitcoin.sprovoost.nl.",
-      "dnsseed.emzy.de.",
-      "seed.bitcoin.wiz.biz.",
-      "seed.mainnet.achownodes.xyz."
+      "seed.resatoshi.org",
+      "seed-fra.resatoshi.org",
+      "resatoshi-seed.freeddns.org",
+      "resatoshi-seed.duckdns.org"
     ]
   },
   "addresses": {
-    "bech32_hrp": "bc"
+    "bech32_hrp": "rsat"
   }
 }

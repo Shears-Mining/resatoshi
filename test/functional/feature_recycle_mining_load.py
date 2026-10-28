@@ -67,7 +67,7 @@ class RecycleMiningLoadTest(BitcoinTestFramework):
         coinbase.vout[0].scriptPubKey = BURN
         if reward is not None:
             coinbase.vout[0].nValue = reward
-        block = create_block(int(self.nodes[0].getbestblockhash(), 16), coinbase, self.timestamp + height, txlist=list(txs))
+        block = create_block(int(self.nodes[0].getbestblockhash(), 16), coinbase, ntime=self.timestamp + height, txlist=list(txs))
         if txs:
             add_witness_commitment(block)
         block.solve()

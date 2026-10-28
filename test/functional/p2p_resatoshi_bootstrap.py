@@ -109,7 +109,7 @@ class ResatoshiBootstrapTest(BitcoinTestFramework):
                 seed.addpeeraddress(f"44.1.1.{suffix}", 19333)
             # All destinations stay local, including addresses returned by the
             # seed. Recover without restarting or manually connecting node 0.
-            self.proxy.conf.destinations_factory = lambda host, port: None if host == "44.1.1.1" else {
+            self.proxy.conf.destinations_factory = lambda host, port, client: None if host == "44.1.1.1" else {
                 "actual_to_addr": "127.0.0.1", "actual_to_port": p2p_port(1),
             }
             resumed = time.monotonic()

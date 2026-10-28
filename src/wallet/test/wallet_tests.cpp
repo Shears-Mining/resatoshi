@@ -90,14 +90,13 @@ BOOST_AUTO_TEST_CASE(input_origin_serialization)
     tx.vin.emplace_back(COutPoint{Txid::FromUint256(GetRandHash()), 0});
     CWalletTx original{MakeTransactionRef(tx), TxStateInactive{}};
     original.input_origins.emplace(tx.vin[0].prevout, std::pair{123, GetRandHash()});
-    original.mapValue["comment"] = "preserved";
+    original.m_comment = "preserved";
     DataStream stream;
     stream << original;
-    CWalletTx restored{nullptr, TxStateInactive{}};
-    stream >> restored;
+    CWalletTx restored{deserialize, stream, {}};
     BOOST_CHECK(original.input_origins == restored.input_origins);
-    BOOST_CHECK_EQUAL(restored.mapValue.at("comment"), "preserved");
-    BOOST_CHECK(!restored.mapValue.contains("recycle_input_origins"));
+    BOOST_REQUIRE(restored.m_comment.has_value());
+    BOOST_CHECK_EQUAL(*restored.m_comment, "preserved");
     restored.DecodeInputOrigins("not hex");
     BOOST_CHECK(restored.input_origins.empty());
     restored.DecodeInputOrigins(original.EncodeInputOrigins() + "00");

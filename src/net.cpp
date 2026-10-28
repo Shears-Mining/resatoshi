@@ -2347,7 +2347,7 @@ int CConnman::LoadDNSSeed(const std::string& seed, FastRandomContext& rng)
         const auto addresses{LookupHost(host, nMaxIPs, true)};
         if (!addresses.empty()) {
             for (const CNetAddr& ip : addresses) {
-                CAddress addr = CAddress(CService(ip, m_params.GetDefaultPort()), requiredServiceBits);
+                CAddress addr = CAddress(CService(ip, m_params.GetDefaultPort()), SeedsAssumedServiceFlags());
                 addr.nTime = rng.rand_uniform_delay(Now<NodeSeconds>() - 3 * 24h, -4 * 24h); // use a random age between 3 and 7 days old
                 vAdd.push_back(addr);
                 found++;

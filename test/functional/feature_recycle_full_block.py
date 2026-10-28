@@ -76,7 +76,7 @@ class RecycleFullBlockTest(BitcoinTestFramework):
         coinbase.vout = [CTxOut(coinbase.vout[0].nValue + fees + min(COIN, available), BURN)]
         if full:
             coinbase.vout.append(CTxOut(0, CScript(bytes(BURN) + b'\0' * 1000)))
-        block = create_block(int(self.tip, 16), coinbase, self.timestamp + self.height + 1, txlist=list(txs))
+        block = create_block(int(self.tip, 16), coinbase, ntime=self.timestamp + self.height + 1, txlist=list(txs))
         if full:
             padding = (MAX_BLOCK_WEIGHT - block.get_weight()) // 4
             assert padding >= 0

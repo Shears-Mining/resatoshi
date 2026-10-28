@@ -259,7 +259,7 @@ BOOST_FIXTURE_TEST_CASE(pool_cache_rollback_flush_and_reopen, BasicTestingSetup)
         CCoinsViewCache child{&parent};
         child.SetBestBlock(uint256{2});
         child.SetRecyclePool(5 * COIN);
-        child.Sync();
+        child.Flush();
         BOOST_CHECK_EQUAL(parent.GetRecyclePool(), 5 * COIN);
         BOOST_CHECK_EQUAL(db.GetRecyclePool(), 0);
         parent.Flush();
@@ -675,7 +675,7 @@ BOOST_FIXTURE_TEST_CASE(index_iterator_io_error_and_restart, BasicTestingSetup)
             } else {
                 raw.Write(TestHeightEntry{'E', 1, output}, uint8_t{0}, true);
             }
-            raw.CompactFullAsync();
+            raw.CompactFull();
             for (const auto& file : fs::directory_iterator(path)) {
                 if (file.path().extension() == ".ldb" || file.path().extension() == ".sst") {
                     BOOST_REQUIRE(table.empty());
@@ -902,7 +902,7 @@ BOOST_FIXTURE_TEST_CASE(index_cache_overlays_and_overwrites, BasicTestingSetup)
     parent.SetBestBlock(uint256{1});
     parent.Flush();
     BOOST_CHECK_EQUAL(parent.GetCoinsByHeight(1).size(), 1U);
-    CoinsViewOverlay child{&parent};
+    CoinsViewOverlay child{&parent, std::make_shared<ThreadPool>("index-overlay")};
     BOOST_CHECK_EQUAL(child.GetCoinsByHeight(1).size(), 1U);
     {
         auto reset{child.CreateResetGuard()};
@@ -917,7 +917,7 @@ BOOST_FIXTURE_TEST_CASE(index_cache_overlays_and_overwrites, BasicTestingSetup)
     // Same outpoint overwritten at a different height, including cached parents.
     child.AddCoin(output, Coin{block.vtx[0]->vout[0], 2, true}, true);
     child.SetBestBlock(uint256{2});
-    child.Sync();
+    child.Flush();
     BOOST_CHECK(parent.GetCoinsByHeight(1).empty());
     BOOST_CHECK_EQUAL(parent.GetCoinsByHeight(2).size(), 1U);
     parent.Sync();

@@ -101,7 +101,7 @@ class RecycleBoundaryTest(BitcoinTestFramework):
         coinbase.vout = [CTxOut(v, PAY) for v in values] if values is not None else [CTxOut(value, PAY if spendable_reward else BURN)]
         self.unique += 1
         coinbase.vin[0].scriptSig = CScript(bytes(coinbase.vin[0].scriptSig) + bytes(CScript([self.unique])))
-        block = create_block(int(self.tip, 16), coinbase, max(int(time.time()), self.nodes[0].getblockheader(self.tip)['time'] + 1), txlist=list(txs))
+        block = create_block(int(self.tip, 16), coinbase, ntime=max(int(time.time()), self.nodes[0].getblockheader(self.tip)['time'] + 1), txlist=list(txs))
         block.solve()
         return block
 

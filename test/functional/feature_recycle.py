@@ -84,7 +84,7 @@ class RecycleTest(BitcoinTestFramework):
     def submit(self, coinbase):
         node = self.nodes[0]
         tip = node.getbestblockhash()
-        block = create_block(int(tip, 16), coinbase, max(int(time.time()), node.getblockheader(tip)["time"] + 1))
+        block = create_block(int(tip, 16), coinbase, ntime=max(int(time.time()), node.getblockheader(tip)["time"] + 1))
         block.solve()
         assert_equal(node.submitblock(block.serialize().hex()), None)
         self.sync_all()
