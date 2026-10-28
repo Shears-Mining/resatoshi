@@ -851,7 +851,7 @@ std::unique_ptr<ChainMan> create_chainman(TestDirectory& test_directory,
 BOOST_AUTO_TEST_CASE(btck_recycle_spent_outputs_disk_tests)
 {
     // Existing fixtures include a coinbase-only block at 200 and a real
-    // transaction spending height-205 outputs at 206. Activate expiry at
+    // transaction spending a height-143 output at 206. Activate expiry at
     // each boundary without mining mainnet or changing the production API.
     for (const int lifetime : {199, 205}) {
         auto directory{TestDirectory{"recycle_spent_outputs"}};
@@ -873,10 +873,10 @@ BOOST_AUTO_TEST_CASE(btck_recycle_spent_outputs_disk_tests)
             BOOST_REQUIRE_EQUAL(outputs.Count(), expected);
             if (expected) {
                 auto tx_inputs{outputs.GetTxSpentOutputs(0)};
-                BOOST_REQUIRE_EQUAL(tx_inputs.Count(), 2U);
+                BOOST_REQUIRE_EQUAL(tx_inputs.Count(), 1U);
                 auto coin{tx_inputs.GetCoin(0)};
-                BOOST_CHECK_EQUAL(coin.GetConfirmationHeight(), 205U);
-                BOOST_CHECK_EQUAL(coin.GetOutput().Amount(), 100000000);
+                BOOST_CHECK_EQUAL(coin.GetConfirmationHeight(), 143U);
+                BOOST_CHECK_EQUAL(coin.GetOutput().Amount(), 3949990974);
                 BOOST_CHECK(!coin.IsCoinbase());
                 retained_coin = std::make_unique<Coin>(coin);
             }
@@ -885,8 +885,8 @@ BOOST_AUTO_TEST_CASE(btck_recycle_spent_outputs_disk_tests)
         }()};
         BOOST_REQUIRE_EQUAL(retained.Count(), expected);
         if (retained_coin) {
-            BOOST_CHECK_EQUAL(retained_coin->GetConfirmationHeight(), 205U);
-            BOOST_CHECK_EQUAL(retained_coin->GetOutput().Amount(), 100000000);
+            BOOST_CHECK_EQUAL(retained_coin->GetConfirmationHeight(), 143U);
+            BOOST_CHECK_EQUAL(retained_coin->GetOutput().Amount(), 3949990974);
             check_equal(retained_coin->GetOutput().GetScriptPubkey().ToBytes(),
                         retained.GetTxSpentOutputs(0).GetCoin(0).GetOutput().GetScriptPubkey().ToBytes());
         }

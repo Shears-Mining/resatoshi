@@ -47,11 +47,13 @@ namespace {
 struct SeedThreadsCleanup {
     CConnman& connman;
     DNSLookupFn previous{g_dns_lookup};
+    const std::string dnsseed{gArgs.GetArg("-dnsseed", "0")};
     ~SeedThreadsCleanup()
     {
         connman.Interrupt();
         connman.StopThreads();
         g_dns_lookup = std::move(previous);
+        gArgs.ForceSetArg("-dnsseed", dnsseed);
     }
 };
 
@@ -132,6 +134,9 @@ BOOST_FIXTURE_TEST_CASE(dns_service_bits_recovery, TestingSetup)
         }
         return std::vector<CNetAddr>{};
     };
+    // The upstream test fixture disables real DNS. All lookups above are
+    // stubbed, so explicitly enable discovery for this recovery test.
+    gArgs.ForceSetArg("-dnsseed", "1");
     connman.StartSeedTestThreads();
     BOOST_REQUIRE(WaitForSeed([&] { return queries.load() >= seed_count; }, 5s));
     BOOST_CHECK_EQUAL(m_node.addrman->Size(), 0U);
@@ -158,6 +163,7 @@ BOOST_FIXTURE_TEST_CASE(dns_recovery_interrupts_initial_delay, TestingSetup)
         if (allow_lookup && host.starts_with("x9.")) queried = true;
         return std::vector<CNetAddr>{};
     };
+    gArgs.ForceSetArg("-dnsseed", "1");
     connman.StartSeedTestThreads();
     BOOST_CHECK(WaitForSeed([&] { return queried.load(); }, 65s));
 }
