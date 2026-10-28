@@ -71,10 +71,11 @@ class DumptxoutsetTest(BitcoinTestFramework):
             '220aee93f0f5409631f35488898258f0930952bd620063cb4d7d87f7c28a8f50')
 
         # Version 3 includes a zero recycle pool in the snapshot metadata.
-        # The complete snapshot hash remains deterministic based on mocked time.
+        # The complete snapshot hash remains deterministic based on mocked time
+        # and the upstream 32.1 snapshot encoding.
         assert_equal(
             sha256sum_file(str(expected_path)).hex(),
-            '56cde3f67971f13dd74b58cf0ca67f0ab946fcfb5f9095043b6a6ebc3749db52')
+            '1dc3700a0d6e82dc1a79aafa828c6f0a3c3b2ea427a3a05cbdb2098fc9b55414')
 
         assert_equal(
             out['txoutset_hash'], '771d773b5c27b6f35f598ce764652a2cf28fbc268341eb1827844e416c629c7d')
