@@ -1,0 +1,134 @@
+{
+  "reference": "/home/cjm/resatoshi/bitcoin-resatoshi-31.0/build/bin/bitcoind",
+  "small_cache": false,
+  "crash_expiry": false,
+  "accepted_blocks": 501,
+  "rejected_blocks": 8,
+  "checkpoints": 22,
+  "exact_utxo_checks": 3,
+  "profiles": [
+    {
+      "label": "maximum output cohort",
+      "height": 101,
+      "weight": 4000000,
+      "bytes": 1000000,
+      "transactions": 2,
+      "outputs": 99002,
+      "expired": 0,
+      "utxos": 99040,
+      "accept_seconds": [
+        3.356,
+        3.571
+      ],
+      "delivery": "p2p"
+    },
+    {
+      "label": "many transactions",
+      "height": 102,
+      "weight": 4000000,
+      "bytes": 1000000,
+      "transactions": 16301,
+      "outputs": 16302,
+      "expired": 0,
+      "utxos": 99040,
+      "accept_seconds": [
+        0.83,
+        0.934
+      ],
+      "delivery": "p2p"
+    },
+    {
+      "label": "many transactions",
+      "height": 103,
+      "weight": 4000000,
+      "bytes": 1000000,
+      "transactions": 16301,
+      "outputs": 16302,
+      "expired": 0,
+      "utxos": 99040,
+      "accept_seconds": [
+        0.812,
+        0.842
+      ],
+      "delivery": "p2p"
+    },
+    {
+      "label": "maximum witness payload",
+      "height": 104,
+      "weight": 4000000,
+      "bytes": 3994447,
+      "transactions": 2,
+      "outputs": 3,
+      "expired": 0,
+      "utxos": 99001,
+      "accept_seconds": [
+        0.216,
+        0.216
+      ],
+      "delivery": "p2p"
+    },
+    {
+      "label": "full block at mass expiry",
+      "height": 301,
+      "weight": 4000000,
+      "bytes": 1000000,
+      "transactions": 16301,
+      "outputs": 16302,
+      "expired": 50100,
+      "utxos": 48901,
+      "accept_seconds": [
+        0.975,
+        0.976
+      ],
+      "delivery": "p2p"
+    },
+    {
+      "label": "next cohort expiry",
+      "height": 302,
+      "weight": 580,
+      "bytes": 145,
+      "transactions": 1,
+      "outputs": 1,
+      "expired": 16300,
+      "utxos": 32601,
+      "accept_seconds": [
+        0.038,
+        0.043
+      ],
+      "delivery": "rpc"
+    },
+    {
+      "label": "following cohort expiry",
+      "height": 303,
+      "weight": 580,
+      "bytes": 145,
+      "transactions": 1,
+      "outputs": 1,
+      "expired": 16300,
+      "utxos": 16301,
+      "accept_seconds": [
+        0.032,
+        0.04
+      ],
+      "delivery": "rpc"
+    },
+    {
+      "label": "witness output expiry",
+      "height": 304,
+      "weight": 580,
+      "bytes": 145,
+      "transactions": 1,
+      "outputs": 1,
+      "expired": 1,
+      "utxos": 16300,
+      "accept_seconds": [
+        0.002,
+        0.001
+      ],
+      "delivery": "rpc"
+    }
+  ],
+  "final_height": 501,
+  "final_utxos": 0,
+  "final_pool": 0
+}

@@ -1,0 +1,2927 @@
+{
+  "source_commit": "4f0d4ebb15af9bfb468ebb2632486eb694b714e8",
+  "baseline": "official bitcoin-32.1.tar.gz",
+  "excluded_vendor_directories": [
+    "src/crc32c",
+    "src/crypto/ctaes",
+    "src/ipc/libmultiprocess",
+    "src/leveldb",
+    "src/minisketch",
+    "src/secp256k1",
+    "src/univalue"
+  ],
+  "export_subst": true,
+  "scope": "All other tracked/exported fork files and official archive files; includes docs, translations, generated manpages, branding, and hosted workflow differences.",
+  "changed_files": 412,
+  "added_lines": 181753,
+  "deleted_lines": 157037,
+  "binary_files": 0,
+  "inventory": [
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug.yml",
+      "upstream_sha256": "c7817e426ea53a457b2fc0fc484c95859f164df8de3a06d0652e54391a741d28",
+      "fork_sha256": "3c3baea67e5d711f3004786a01193930c6f32fcd886e329fe7b3ea708e7eca22",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/config.yml",
+      "upstream_sha256": "c3e7df52a73a4872aca0c1dfec12602e9a92d2aacf42ed55710a601667bd8123",
+      "fork_sha256": "9a949a585ff6ddf82e3e586160a6e35c8512586a19fc7064e4410409bd6608f8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.yml",
+      "upstream_sha256": "99daa1bdcee4a6a96fa901c5887189150987e4b5cfb8a5b9b81359a1919d0d9d",
+      "fork_sha256": "5532f98d2c3b996e375d3f6ecef099f37f275be2460672ac3bcc4ed2eee20049",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/good_first_issue.yml",
+      "upstream_sha256": null,
+      "fork_sha256": "814d35f1ee5027dbea8c133ca2aaa72f7a4158cbecfa7a95c93e54840d806217",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/gui_issue.yml",
+      "upstream_sha256": "38120b8ac9b16518340da90283c469562309cb81e8c50e977f91c11066e86412",
+      "fork_sha256": "1da9def14199b62704d14dd0f4460e8ef3459a7795e9a8c3aec09fbbc155c646",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "upstream_sha256": "1794bc4533f2b3af8757f4945f3db84b9c468de6828f7ba45141344ea5534204",
+      "fork_sha256": "1f7c35459440ce442e7e0bf4e9207a6a69860ed6173fb114db3cfdc8ffa259d5",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": ".github/actions/cache/restore/action.yml",
+      "upstream_sha256": "c249126a84ad4820f2f93adc3310ccb156354bfc71396523522c78dd38e269ff",
+      "fork_sha256": null,
+      "upstream_executable": 0,
+      "fork_executable": null
+    },
+    {
+      "path": ".github/actions/cache/restore/internal/action.yml",
+      "upstream_sha256": "df732dc1b2ccd8e6d4c7b70528822188d2a48d1f61e975197997fdfac91f44a8",
+      "fork_sha256": null,
+      "upstream_executable": 0,
+      "fork_executable": null
+    },
+    {
+      "path": ".github/actions/cache/save/action.yml",
+      "upstream_sha256": "93a7959f3b79ca2e7a9ca061c3b47819191a0075a51f7f1283246fd227032163",
+      "fork_sha256": null,
+      "upstream_executable": 0,
+      "fork_executable": null
+    },
+    {
+      "path": ".github/actions/cache/save/internal/action.yml",
+      "upstream_sha256": "ebe90ae0b27fd832ba205edb95d6bcebcc9f1b54e6ffb4e92d4991a9b372f424",
+      "fork_sha256": null,
+      "upstream_executable": 0,
+      "fork_executable": null
+    },
+    {
+      "path": ".github/actions/configure-docker/action.yml",
+      "upstream_sha256": "0cf92f4521baeb4a57b8dd2deaf8e1d642ad860be9e8a7d9308ec05b21dcb749",
+      "fork_sha256": "2cbefb9e396b98214f0962ed8625af9ba50c9ebf4fff8cb2d59b30c313bb48e0",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": ".github/actions/configure-environment/action.yml",
+      "upstream_sha256": "90798941f5481e4902b72bdf0763e4146207ada15e359af616ee5e8d89d166f5",
+      "fork_sha256": "c204dc7dffb1ddcf04fcdcb85fdaf203c719dce0cffca91edd00b55920568606",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": ".github/actions/restore-caches/action.yml",
+      "upstream_sha256": null,
+      "fork_sha256": "01f07c3cfb4b50336efd6b23cef4f2aa67a33a23d75378ba976d7c76dc2b0d8a",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": ".github/actions/save-caches/action.yml",
+      "upstream_sha256": null,
+      "fork_sha256": "bc9d8a16da42626d7fd62fc4ddd82e0b73f43f4fb43f27b863788bbab32db7d0",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": ".github/ci-test-each-commit-exec.py",
+      "upstream_sha256": "6960485b7fbdbc25669e01991f997af7c7126b64f3c20b6699d14ef500a6d8b4",
+      "fork_sha256": "7d6c921986188b726f82bb08a782be738f6dfc2460d1f64272ae8bd8715d040b",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": ".github/ci-windows-cross.py",
+      "upstream_sha256": "9099c6401374a392cf578de6ea78c049dd3f17239807a3bf539471869ade88d3",
+      "fork_sha256": "3d67e51113cb3edd9c24a6714d8393510c7b5d8d6a7bb8fed43a6911efd3fcc3",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": ".github/ci-windows.py",
+      "upstream_sha256": "5f137e7b3e4eccb2e57f7d9e1a47adc7c30505740034585e875b723e8f952af5",
+      "fork_sha256": "9cec268ddaf98292b2067ae07ff99e8290a6e1a2e3a97aac9814c6642542e27b",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "upstream_sha256": "6f8bfe07206d8b40b72d23cef0bf3e712fd7841459e0f2f0b98f69de555bdd73",
+      "fork_sha256": "c7ef290f587123b7f6f6f31bd221c93a6da35c6753a4d5ac5b3a0a9092209869",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "CMakeLists.txt",
+      "upstream_sha256": "65ebefce60e7b7efd64dcc3f141d9f66c181e525cf209be476f7723fca1a22d3",
+      "fork_sha256": "c1455093d913f44f122125fb09300b3afa4129d89171e5742dfe13d9fdf6cc40",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "upstream_sha256": "18936142d1a586ceaf7bde93e2b8615742a4508f879eed8c63f5f963bfa3423c",
+      "fork_sha256": "e25fefc8519bb9899d38d2754cce4b4f8d304e66699bf0099cdbb6c0cb203ef4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "README.md",
+      "upstream_sha256": "45916e6961540c536e8b17b3a4d3305393afce5b407d1ea3da82c246cba8aa5d",
+      "fork_sha256": "824c9bf345dae3bd6dd47d489f9f174770fac29f730ce4d2e12249a0643a5103",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "SECURITY.md",
+      "upstream_sha256": "c2a2223402183e8673bb1d9e157afddfee496c32366d5cdc45a5ca3ce6e78c57",
+      "fork_sha256": "03e72500b4c11c868635b55a8b22c95335e2dc743df85e11257d14f05735a745",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "ci/test/00_setup_env_native_tsan.sh",
+      "upstream_sha256": "aa67f346cfcab68fbb9f5297589fcdc3db066aed8d8ff5e2ae6ccfecec02b73e",
+      "fork_sha256": "c735462feb2653e02543c397d2de2f2da1202440aa2490dff1880867876df956",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "cmake/bitcoin-build-config.h.in",
+      "upstream_sha256": "967487d9bb1590d38d35670cdeb3d0a8e932a1a9c5bf0628f8b2ce292b2bc066",
+      "fork_sha256": "7abb5f792c3d17bae1351d6862027ff387a3014b7981314c0bb1d8938cd58e2d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "cmake/module/Maintenance.cmake",
+      "upstream_sha256": "748d40b62f16ecdfe9ba1b9cbf0d95061e5f497360859325fc3aa92a0c1fce89",
+      "fork_sha256": "c2bcbb49a2ff5d2ea8395c9f80d00eb95bffa7e3955f960956a3a4440d1b6bfd",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "cmake/script/GenerateBuildInfo.cmake",
+      "upstream_sha256": "0995719df9a6b352e146670613a10544147467578361ae17951073c0076cb3ce",
+      "fork_sha256": "3ddfc40d107d7d6a6ca21d6a81f6ebc70f71c1e6bce0f84eb353436441e87e28",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "cmake/script/GenerateWindowsInstaller.cmake.in",
+      "upstream_sha256": "09211390c17dcee37b194240b111a70d43705e6ce283f6039a26b55be7620807",
+      "fork_sha256": "d0277403f61226fcaed2752305cd563ecd9e7cdf37206c68e3a6b6dac18e9568",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "contrib/README.md",
+      "upstream_sha256": "29fc259c358488e35eb240cc807a287934ba65e42aff9117011b552791af7b23",
+      "fork_sha256": "76f86a7eee8dea2ce789475554df0f0f1e36c1f3783b8f01a3799641246729f4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "contrib/asmap/README.md",
+      "upstream_sha256": "4dfd0e1c4d6ed9417c56b95dfc850ad6dff0d828f5c2c8f7850be2094f0abf39",
+      "fork_sha256": "d5651fb1bd1115abbcbb6f1492e5c174a06892c8ee504ad522af9cf6d83dc953",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "contrib/devtools/headerssync-params.py",
+      "upstream_sha256": "292b733f22154165aff38835fbdbd5b2a32e887cdd7e1ec86dbaab06ae31df53",
+      "fork_sha256": "582c6e9f7bf19b60496cb60583c81392018146226f23cb8f1d5753e488ae3858",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "contrib/devtools/test_headerssync_params.py",
+      "upstream_sha256": null,
+      "fork_sha256": "34ea5ed415b98a21a1dd9457e684fda55b19b75320a2688f226bf7dde37cd3d3",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "contrib/guix/README.md",
+      "upstream_sha256": "36240855ecb35529da9f37e2bd504f6d8bde9b0f29d712f3b410cfd5d4f01213",
+      "fork_sha256": "bf8ebf9e2e65fc149b58d20db4c278e56d67ca869bd5642ac55234af33e5bf76",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "contrib/guix/security-check.py",
+      "upstream_sha256": "7304f12cc45a8f5dd59e46c7299d1594726f29562fe11bd0030c34fa40cf28cf",
+      "fork_sha256": "f38168d49fc2da262e4301f03d11821c4f50f515ec73885504540c66172d7ff7",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "contrib/guix/test-security-check.py",
+      "upstream_sha256": null,
+      "fork_sha256": "00580f89d21e1f3b87d39893cfb1a24e8342e9ac391d00dfcc1bb86c1e27f6be",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "contrib/linearize/README.md",
+      "upstream_sha256": "99efbdaa8d0c315cbf46220e58641e643e1ea9b1d3eb867415c5b6d89514479a",
+      "fork_sha256": "7c41ac8c1a50c9979feb4a57d931cdd372aa829bc2623e028e77b08af35e9c3d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "contrib/message-capture/message-capture-docs.md",
+      "upstream_sha256": "35064fa24c2727925eed10836e957decbf0345f64c12ba41113691f9d4fc8ac9",
+      "fork_sha256": "bfaed8b4332bbd8c7d46454c80afe89b8aef1f86e4b9ce86cc19b243a3140cb2",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "contrib/qos/README.md",
+      "upstream_sha256": "47d2ce41c83af8aff0828b915d5de0310fefe52493a110e6151d856506e28022",
+      "fork_sha256": "bbd90b0280e36ba3f828b50cf06d18e908103cbcc477a66dce1208c04a766891",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "contrib/seeds/README.md",
+      "upstream_sha256": "14b7a66e0baf29c17a33bc2659b8f454a779ee11a501fdcd78648099cd7692a5",
+      "fork_sha256": "477d882ef0a9c04a34ce08fa28a23479f046a7a71367cfaa2ae338c1b91e39fc",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "contrib/testgen/gen_key_io_test_vectors.py",
+      "upstream_sha256": "80f6d5a08d548c69838ad0bf5bcb4149333f9db8b463e5d413cd57d47c874381",
+      "fork_sha256": "4075e8922fb8485556bcee983199271f7c9fb6da80ed6c5c6ad517671845165e",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "contrib/tracing/README.md",
+      "upstream_sha256": "fdf8903c431ccd01a62f3da05e58ac7c7e2db345ff79aacd5296ddd86493e549",
+      "fork_sha256": "b84d358f5598f287db3b0c0e9f697dfe67531ee62533570c643160b903e290c5",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "contrib/utxo-tools/utxo_to_sqlite.py",
+      "upstream_sha256": "532bb3ce8c84d1448b930b7f9195e97ce604da713c5d5e58c00ceff27490e9b9",
+      "fork_sha256": "8ecc4ff38cad01960b21c901de6ec2e74c2f2f407b98db912f5930db889f82d1",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "contrib/verify-binaries/README.md",
+      "upstream_sha256": "4308f163b45b41b262bd66b8e3e7656ca3f756c7e18eda4468bd16a7988bc3e9",
+      "fork_sha256": "261379b1dc1d1007cce09dcf43c3736a6ffeb118c07e0984dcfdaef72b1189d3",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "contrib/verify-commits/README.md",
+      "upstream_sha256": "0e1bc80de54b0831d8b3e5dd18b9161b9a31289c5318d5b2f341c47e3e23713d",
+      "fork_sha256": "6fee152466fa5c1c6821eae089f8b45e940cb59d37e7456fbba2f948d45acd2f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "depends/README.md",
+      "upstream_sha256": "526958c557bbc04d5caf390fc38b191d6300881739d66bf684df7e92e508484d",
+      "fork_sha256": "cf7b4b80f1521a8391bc6a74a7622caf1fa38727eb120f3188e170ceb8f80b62",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/Doxyfile.in",
+      "upstream_sha256": "94c38ccff7214c27b6bc4096a3ae7a8c7b40208a4f9c4761324097ad5f697cd8",
+      "fork_sha256": "e85d1d957d68d147b9b26b865b3973374126376018fbdece8085ea6eb5cece1e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/JSON-RPC-interface.md",
+      "upstream_sha256": "0d92a9f8b0319373462e93a02ba414fd5f61f173e89366d430227776ba23f4bd",
+      "fork_sha256": "9c65fb5b60bcdac20dcc5b9b2dae0c8688a48c908cc079fe241b04494f18179f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/README.md",
+      "upstream_sha256": "efa121f49b44bb110d7ddead48106f6f71db71d0d9b619e85f38193f525a06e8",
+      "fork_sha256": "745c7546f99ca6895dd72c539d6a5713095857f1f311c7b843ab24c093a95f8c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/README_doxygen.md",
+      "upstream_sha256": "56056731e8d47c669eed919510fe71ac110a41288fffaf56a5cb66190ef6bdd4",
+      "fork_sha256": "0a6c18de9e0f124f5479123cfae565f4c61ef61030a29dc0fdc75174ada40efe",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/README_windows.txt",
+      "upstream_sha256": "c9ea36a83c960895637b447be87603981e0bd57c6584b17ac907618c9aacee96",
+      "fork_sha256": "636420283333fdc86a3582244a497abc51d93b66367881c97ff34e23bfa99732",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/REST-interface.md",
+      "upstream_sha256": "38280f814aef01959ad9001ac5017eae9591e79e11d008ee99ff1baa1a9ddc80",
+      "fork_sha256": "54037fd5eafd53872acd92038022cdfae7b057de019b84cfcca41d6b02be219c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/asmap-data.md",
+      "upstream_sha256": "95f525c7f18c5d421b7fbb58f101e04061bccd3ee9c82c0a863a20ee3a0f6f26",
+      "fork_sha256": "9c80844039f7a1ae645c052bc8b9e205fccf948be0b5358de530c17a0de8cf92",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/assumeutxo.md",
+      "upstream_sha256": "56222a3d8ebddb3a397619e640582826f8f280aacda9c3ad12a4697ce9421d38",
+      "fork_sha256": "84a81666987d6be3392f51fe3183daac50ea9ecbd461ef2e507791746cea77f5",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/benchmarking.md",
+      "upstream_sha256": "8f0e0734c523287907f64bc1f63b4f36537921ccbedc99f92dd0d991c142f655",
+      "fork_sha256": "f32ecfe31dac51cadedf2581097132a1d7df4182ca7a9f43c3d345a580bd1a1c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/bips.md",
+      "upstream_sha256": "922fbd07cab18c6ddf0d96b9ddd72929640a33e4d03f705cca885f31b927a39f",
+      "fork_sha256": "2a71b8ddcda7d06f4a613b5fcea8713702bb199bd20860a1d689730a77b0a3db",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/bitcoin-conf.md",
+      "upstream_sha256": "f0e4ef5eae69a3670f5a9c38597850900dadd770d4a3eb51201c63c5554034c7",
+      "fork_sha256": "6b97bb62048f4d6498a625e8b71e00cc2412d97151a5899e8351daf1eea92931",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/build-freebsd.md",
+      "upstream_sha256": "1609a645903931d9c21b204683f40897eaadc338ab30c8fc5597800e333824f9",
+      "fork_sha256": "a289b1dcd121d8221452a035532fe32bdc71faf94d4a3eaafbd0a1f43936ebed",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/build-netbsd.md",
+      "upstream_sha256": "6a028ed7ac1aa172fd68e5dee2b0df71662b17e4b665e3fcc513c11c603fa50e",
+      "fork_sha256": "7113301b518a8c49a04ef082a846faeab85f06f30e57b04f976c5908a8560caf",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/build-openbsd.md",
+      "upstream_sha256": "063e5abd916ddbe7b05b06a2e2e81e257799b608cdd9d449637580e80ddc355a",
+      "fork_sha256": "3e8796b700aa0911f94643015f59155bf0d156557f7e65452ba4cded6820e498",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/build-osx.md",
+      "upstream_sha256": "d358aab85b9a411002e47ed30116be7226cbd31b46a9ca1dd772d27de70a1cfa",
+      "fork_sha256": "9909acbd37d16d884ddd075a97276c08e35dea860c3b8ff327843171eb44dc63",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/build-unix.md",
+      "upstream_sha256": "119b48d645bddbe91e6e41e6412031c6ef26a403d099db504f1ed4b35ae0cba9",
+      "fork_sha256": "ce973f94c4f4d8697a42d8c8a6dea58f792c06dc1132ab3cd74ef0fc22b17c12",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/build-windows-msvc.md",
+      "upstream_sha256": "cedb92f8b28a765dfae852ae75a51e1bbb65971537d01be3aab23729fdf297ff",
+      "fork_sha256": "b923fe438b412eb174a82037a83aa1a9cd3c6e8cdeb534c7d35dbdc529522ca5",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/build-windows.md",
+      "upstream_sha256": "b1904154dea8698c2da790dd684f0262e4d3596e2e28e007cf8c38db8a52374e",
+      "fork_sha256": "c40e8fbe9f092f492ef1d7e1d1dc0d17cb2bd6494ec28bacedf9e187a6aaac7e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/cjdns.md",
+      "upstream_sha256": "61bc7e5d4579497451503cf3757f9b8ee89492ee86ea757466bf5e769427368a",
+      "fork_sha256": "fe34868dbe09d033506ddaf6c6274fc98d8eaecdfec621d6e1be2bb89afa93c8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/dependencies.md",
+      "upstream_sha256": "7bb50de4ba87b367bbadd38cdade5cfcee7b339b5d0d62aec82d6c6a2484622e",
+      "fork_sha256": "3586f01b7c5f62c55b1e9b345a3909a4188e269789118691be3f9ec1a8154238",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/descriptors.md",
+      "upstream_sha256": "48d462a1e281714026301618894ac7b327aa88428ada666e7bd6843dbabe4550",
+      "fork_sha256": "dae8a850c3dea0fd53e8d975cafda6898b9c3f753b8ca15c8af7612234acb680",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/design/assumeutxo.md",
+      "upstream_sha256": "11614fe8c73513bc27b12aaab49a684eee3c8c42807878ab0028503a0344cbc2",
+      "fork_sha256": "08c00cb4739697c1c5f78aae0050ecb71323965f67ba2e61e297cf1a4377132d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/design/libraries.md",
+      "upstream_sha256": "407962011e5126ee610373bd58b4e4c985dba587dc8dd9e46506cdfafebe74fa",
+      "fork_sha256": "b36fd98471792716e53ffff8a2a9873ee9640516d19f00e3822b23b917331f7c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/design/multiprocess.md",
+      "upstream_sha256": "8dcf406dec9b483ecfef1b497f1fa7b84ff03ba3d2bb1fb218eb6359a90691a4",
+      "fork_sha256": "e8ddf9eba445d118b14a039ffc688fb464b9481eab8eeaeafe79de521d5cefbb",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/developer-notes.md",
+      "upstream_sha256": "89cd8efadc27eb20d8b0f1fb4d22edad0099a5192becbe3b5bfe98bc0d5d87ca",
+      "fork_sha256": "2d326eb4292f20e0d8af8d11fcf5eafe6cdfa6360d716275b8d8a72972f461b7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/dnsseed-policy.md",
+      "upstream_sha256": "9c4b36539964d2a26a14588dc57b5a19b4d5b02ca7f3bd64eb24c4417d9ec42e",
+      "fork_sha256": "b86fbd31e8b9bb6aa87f80bb729dea995dfa0f9f6dcd6ae84ce66cff2915153c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/documentation.md",
+      "upstream_sha256": null,
+      "fork_sha256": "e26ee4907e402750cf8b9a9d4041828e59f6ac804bd4cd4db1e2d84537e084e9",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/external-signer.md",
+      "upstream_sha256": "0171168ebeb150129bdde360adaa456a42a0d80a53727ab2df83c637a6eed501",
+      "fork_sha256": "48580ce76ed98ec22401634b88366f124e7dae786af627321fe38b726dad25f4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/files.md",
+      "upstream_sha256": "b40dee9fe75d0a02751a5b2a354328c386c01820684f823405ebc27f2af89ab7",
+      "fork_sha256": "f669dae15eb2948e6d2d7a01309b44b80cb4d91ac89efed67ca512317f2b3db8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/fuzzing.md",
+      "upstream_sha256": "053dda246efe9936ce81a4b1beee5d00524f997e9aaae6fd248b78b4f66bb883",
+      "fork_sha256": "09533c6f0c13b972550f941574d14b8964879653b7f0d57247137ee603807451",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/guix.md",
+      "upstream_sha256": "fb7a35ce46f539bf1c0efebdb0ccbcd368b655c392082724b0fdb412951db1d3",
+      "fork_sha256": "204e7d55eebb696a0a220dfc73b698bb53bc233c531a4f80407f2fee014c1952",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/headers-sync.md",
+      "upstream_sha256": null,
+      "fork_sha256": "1f1c2d800297f3473f74c6b8f42af5d4280df3f29008529c9523ec1f884d96e6",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/history/recycle-state-integrity-20260911.md",
+      "upstream_sha256": null,
+      "fork_sha256": "cf11d1d9e6ab115f7d2938552bcab3c89d89d8eb7ea346d4a2d0e1063296ae3d",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/history/storage-experiment-baseline.md",
+      "upstream_sha256": null,
+      "fork_sha256": "54d1c7b3ff140b7a35d013ea7205ba281cca062784dab69a25d2069e74d6d47e",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/i2p.md",
+      "upstream_sha256": "cc8452b0ec8a2050dc91b4f7f4d6387eb453c29ed944d03b36d0591d16ea13ff",
+      "fork_sha256": "daa7fc2577c83465ace70706327c96d3d2f0b1bfa4020a2515bcebc01b3ac3ad",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/init.md",
+      "upstream_sha256": "1bc62c9758d1fafdddb8ad952e8590fa3934501c34bbc1d449dc407528d15f75",
+      "fork_sha256": "74f932177a0fa750e9d98ac682de161029c557331164ca75c0b11cc140d4a5d7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/man/bitcoin-cli.1",
+      "upstream_sha256": "57582ada38490d32bb622241e5658c46f991a62e666557a1e86d9d67f71abcb1",
+      "fork_sha256": "b316835583c86e7455d9e9bae5ba18009e955e7088184769356c11ed1076a224",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/man/bitcoin-qt.1",
+      "upstream_sha256": "50382748dc3d965e7904225e5069e1bf56fde5b2cd30bcdd97a256ab378cd428",
+      "fork_sha256": "49b9df492744b919eeeb5234420c55cbd54cf416d586edffa884d68e5cd52c10",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/man/bitcoin-tx.1",
+      "upstream_sha256": "eeb0be1c9bbf583de19607fe7daad1194526bdbe28d2d35b7afb6cb426d2e4ee",
+      "fork_sha256": "ca38bb2d1249f5d6e7b4d8cb351c1b6eb086a45eb23c75e7cefd48010559a3f7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/man/bitcoin-util.1",
+      "upstream_sha256": "79887ba5ccdbdad10991f6fc1f2134a50d2a2e6a533ab5b70898ff5c2ebbee90",
+      "fork_sha256": "0ba4bb55a9c7ddc78c2851855fdb2fb5ebee8d3f64514ec184950e8e91855ada",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/man/bitcoin-wallet.1",
+      "upstream_sha256": "57753096898504b6f9599bd2efe01e4aff93e496e6bdfcdea0af262400fc9dd0",
+      "fork_sha256": "035c962e05409b16d68a11f421dbcb5672944cf4fb84b0666109e6334cd71e17",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/man/bitcoin.1",
+      "upstream_sha256": "ee0b8b4056d6ebf4506b19214ff4a79cdc2519444344eeb3e17bb7d1bd98f297",
+      "fork_sha256": "589d6d600a06f299bacabd5cc6003fd4e2af3c783c633ccc1ec0c2298b8b1b5b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/man/bitcoind.1",
+      "upstream_sha256": "8167593878ea7a48faa8b7450f415ab4789201030663294455d73d17c44c656c",
+      "fork_sha256": "4f994bb5062b2c76b84e311f9118da26836b4e8c7c606f812ac6ee08a1a64c2b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/managing-wallets.md",
+      "upstream_sha256": "563832590e17bc1f851607c243b359ff0d3e9be1fc2606bdc49377bf2166ece7",
+      "fork_sha256": "c9cd568307926ddaa67a0f061462939040d9684fdab70ec224eb53cd7d89024c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/multisig-tutorial.md",
+      "upstream_sha256": "ccd405a03fc5a1fec7e74817ff179e24ad568bf0e167423d65da92f2d82de59e",
+      "fork_sha256": "d50e3c97e08e7c835bb9528802ccf37b7a7b4ffa46e304c9fd552b7f12ec4165",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/node-operations.md",
+      "upstream_sha256": null,
+      "fork_sha256": "d96e0e5d04ea76e93d30f30a8735704b2a5c62864b38969fdd6865b06ae907ff",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/offline-signing-tutorial.md",
+      "upstream_sha256": "da6853336d75350864b933b21244805ac1686323899356c1a9a1421f6f896cb1",
+      "fork_sha256": "cc9371db86ba8a10cf4fd7460971d73f2726fba5d75d423506f589f580ced1e8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/p2p-bad-ports.md",
+      "upstream_sha256": "808dc6485a7956cf2fde6417426f1a7b73d0c7a46d9410654c51514bc13b0050",
+      "fork_sha256": "b88c9c3d2519924348d9443e5d70d3e8f94420e3f2166041c346f5a80ba86f98",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/policy/mempool-replacements.md",
+      "upstream_sha256": "154a1b7a655f045cdb3d1f7faf4eb1c6ed779b3c75f9562ac0cdc37802822a28",
+      "fork_sha256": "1afa63344a1c480b3472c8b2f56fbd74e1aede3e66c10009f8a6e765d11dca88",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/productivity.md",
+      "upstream_sha256": "bbd0afcc7b8b8124796a5f1617a9b23485c87f3040fa2598712abfb57cee9ec7",
+      "fork_sha256": "d84a5c6fce390e4bb530779879ac1bf6a67fde9aebac5212cf9e6778a093ab86",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/psbt.md",
+      "upstream_sha256": "63da9cf724420b49c4e521d09fecffa7cd6fe7e3e549cf795e7360e16fb5ecf7",
+      "fork_sha256": "b677a9eaa9622207e32880bd5d0d8c4f61a0e83719b0329d2f35a7bfe8d6cb4d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/recycle-design.md",
+      "upstream_sha256": null,
+      "fork_sha256": "f03f4b653c636ccd61ccaf72432e2ea127512b508d89c7a01d160353b5eb050b",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/recycle-integrations.md",
+      "upstream_sha256": null,
+      "fork_sha256": "e305230e5c1c96410e8bf8dc9c7d412bbae819401e2bb9fb0b71395436bb5ef3",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/recycle-state-integrity.md",
+      "upstream_sha256": null,
+      "fork_sha256": "859ed72acc9960968f545491ce75d5fa027c2e1e3773862facc212f32e41c8b0",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/reduce-memory.md",
+      "upstream_sha256": "7b203108ebc5f76b01f51e86a748484ef6e3b33de66eb535dabb712235c9dc8c",
+      "fork_sha256": "e996efe4142dd3a61b67325529546f3fab109010fa5eb803986571ccd2d8cac6",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/reduce-traffic.md",
+      "upstream_sha256": "f56e6c67ed72c9f8fe9dd85a4c13f949a206d605bcd975b493a864b0c7939175",
+      "fork_sha256": "950e9d6eb96ab25a3f8e75a24a19aa2439d93cc846bbb7d516213920781fc29b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/release-notes.md",
+      "upstream_sha256": "a6c785797ceffc658502b74285b808f5c029847976d536558feebb306652a745",
+      "fork_sha256": "788e04fff15abb666307acd60eca408d5d83f2269b4c5aa433098d6650ce5ba1",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/release-notes/release-notes-31.0.md",
+      "upstream_sha256": "2b677e988f398fed6b61b132d89f83b45fb729997210321847dcf58f083f18fa",
+      "fork_sha256": "7ec6a121245758221f8710ebc3554af0f7bacac0650fb0f9d6776beac26f80e8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/release-notes/release-notes-32.1.md",
+      "upstream_sha256": null,
+      "fork_sha256": "a6c785797ceffc658502b74285b808f5c029847976d536558feebb306652a745",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/release-process.md",
+      "upstream_sha256": "82e9b14091f5cfcb070c02808bf0c33377f376f0c1f4393a3433f216b6272a5a",
+      "fork_sha256": "0c6fcbe33c8b3295031d6b2d9dfd0f82e6999cdac6fb20318743fd009f70ecdb",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/release-validation.md",
+      "upstream_sha256": null,
+      "fork_sha256": "fab085420cbad64ab98d3ed37bb1f0fb10002ceb760f5b7aa83d647d372a7e4e",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/resatoshi.md",
+      "upstream_sha256": null,
+      "fork_sha256": "e04fef4436f96d4a35a2c14c6e0b7115a96726f07f3e2c86fd39a2c321516631",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/tor.md",
+      "upstream_sha256": "83fd127b13f95c9849d71f32d390cb6b29f0551477743a55d0fc5d9c0de2dfdc",
+      "fork_sha256": "0d47f821f699c7de104e1d07b729445494ddc8cb889bf051539b322c6c0921d8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/tracing.md",
+      "upstream_sha256": "1633cfc4c2de046affb0b5831bca0ac737e4fb4a7741e29b2d9575eb824411b0",
+      "fork_sha256": "f6f5219e1ee9da19f78e851709a9803786b0e5cc7cba89171c366643cbb02512",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/translation_process.md",
+      "upstream_sha256": "42a64ab29d9bc9714d2051adf083b0ba7b6d9a29c0e6666237970163992cbb54",
+      "fork_sha256": "6994debe3e6dc4c329675f6a6a9dbe722b8c4775d596e0dd0a57e5c83c9e1270",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/translation_strings_policy.md",
+      "upstream_sha256": "8bf4eadd4933f54ec4e8abda275f301618e2daa781fb3cc07b786778541b3235",
+      "fork_sha256": "aeec0418082dd52a3bd3278b008e0f7863e8377e44b715a368ddadd69fdc5197",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/upstream-maintenance.md",
+      "upstream_sha256": null,
+      "fork_sha256": "bc298d28ff5ab7d0531cbb356b76b5c6cc0e433a2dcf633e36acf41ce9f4ee4c",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/upstream-release-history.md",
+      "upstream_sha256": null,
+      "fork_sha256": "0b0ec0e8005e2d96af1f168cbd614d1b476a9a26e04aa90ca32f596f780920fa",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/validation/0b4d564-local.json",
+      "upstream_sha256": null,
+      "fork_sha256": "e36638ade35077b18b2c9995721c518813c4fae5784fd7191545abab43c6b4b6",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/validation/aea436a-local.json",
+      "upstream_sha256": null,
+      "fork_sha256": "c83cf3bf89f53ba2fcd303fdc0ecffda3f52d4c830d34c95a7db299e820f1aaa",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "doc/zmq.md",
+      "upstream_sha256": "80dd823edba14d97fdfd29da3d58783e3e6e4ce94b1c09c86192d38a759e2778",
+      "fork_sha256": "5b82a90c9191c32faafc583550dbedced8f570f73a1257b05063bcd022e2336e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "share/examples/bitcoin.conf",
+      "upstream_sha256": "b2bd02c77a91e49cb4187ecb259a43d2d87754f08f4c3d9c3eba10e368df735b",
+      "fork_sha256": "9f7e475bf02d95a90cf9c05f80adf639ab0e59d7037b36d251d4d6c9cf62dff9",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "share/qt/Info.plist.in",
+      "upstream_sha256": "75c0ef22dec115cd804f63e1a594a6d4130717d9b8a19bc8b4d776c695c762c2",
+      "fork_sha256": "43d933add4b3ed0e6e07353b0b89f4e34f622cecdf34cb4d0ea930fa2abcdeb5",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "share/setup.nsi.in",
+      "upstream_sha256": "6b01db06d97b959a3413ec899c07bc65cdfbfff093de2f143e9f6516cae6df07",
+      "fork_sha256": "e97ce7f3908c4ca796be0d731b42c2ff5c1571288be216985bb85f0601e3e18b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/CMakeLists.txt",
+      "upstream_sha256": "1fb4ef58c1cdc976ef8e34bdaec08f8b5eb5084fba69ee2c744cecb3bbcc3987",
+      "fork_sha256": "88a2666a9d753e14e5bfdbf9606a0cb5bc2147cf531e4072c3c492ee689b6169",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/bip324.cpp",
+      "upstream_sha256": "58aaf7d2a2ab98679bbb1e1d4c40d0c3e4021822fd1f628099c1a178e4494685",
+      "fork_sha256": "33cb198d70c03f2a0fe764a1884e8f5a6d45471dce4c10cfacd45809ad5175ee",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/bip324.h",
+      "upstream_sha256": "4da8509634a9ab64ec43350be6401ae3091cd5d66669598e3a95bbdd5818677e",
+      "fork_sha256": "9b6a07e52238a174dd25489d40438b3b67956a16dc2f6fc9819114c1a0e1752b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/bitcoin-cli-res.rc",
+      "upstream_sha256": "0e2eab7bff714149c911c9dfc40d11b6e052163ca287cac2b111493e15163e20",
+      "fork_sha256": "85f887aebbe8250e2f48d7feccd4e55db1ba5eebc183e335c5d0a7afc78b2c9c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/bitcoin-res.rc",
+      "upstream_sha256": "1089fdec6b69c667a60ca6b8b9a41372be308d8762268e9c95d4dcd6cd92c2b5",
+      "fork_sha256": "c767f4d50fb4c16eb74eb09eccedf0950186307e8c46e081da4816be38be507e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/bitcoin-tx-res.rc",
+      "upstream_sha256": "0d26b6a1fb2192ff79860ec9f5467faa8850fed6d551b6a6a000b163329ae1f1",
+      "fork_sha256": "1b5e4855789b21b52487c6700907432c262f89e9b3d4187893bb0c576e55dba7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/bitcoin-util-res.rc",
+      "upstream_sha256": "9b3c246d5d59bc2d1ebbf96909858728912661139d4a573f34ce9bd83cd4013b",
+      "fork_sha256": "0da4430eaa9d3821f282ca1a3efb228599feb48998268ca2be8e9af626a99cff",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/bitcoin-util.cpp",
+      "upstream_sha256": "6a88a5ca2c7df584be04ff83e0e5b977e8548e586a0bf25f0cc92c7cd149ab81",
+      "fork_sha256": "eb9abe2e0d43dd134b6563ec66c1dd07e732c66689cb0f4ec7e7a52d5746c172",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/bitcoin-wallet-res.rc",
+      "upstream_sha256": "0512ffe3e0d17bccd09d7e7aafb3d4ff641e62aa615fd985695cb2377115c8e8",
+      "fork_sha256": "7e86fa0d73d8152f671dcfa86723ed5e516689a5630c9d44c82befff32748b3c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/bitcoind-res.rc",
+      "upstream_sha256": "35a41a57f7a0667044680fa20bb6cfe846f5993ad0ccff33d3bae64bc958a25e",
+      "fork_sha256": "4e3576ad2eaa38ef44645da068e3de220c8c2345f9d5db2c4d735cc423288e20",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/bitcoind.cpp",
+      "upstream_sha256": "c85d236cd0fe9543b95499877c1fa8335de5e6bbfdec93290eaf636944a861e4",
+      "fork_sha256": "87d6b3f17a81c56e26eae941b12cb7c80b0424821fee2bfb24cc665c8a92f9d2",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/chainparams.cpp",
+      "upstream_sha256": "65cf974165b52d404545af7360cc310ab9c7c2d3e3c9ecfc363cf808286210de",
+      "fork_sha256": "4033bed9de6065c7394da337be4234ccae015a1ac4bd37e1c6f474653af7426e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/chainparamsbase.cpp",
+      "upstream_sha256": "5a263b1d88733eb0207c07f6c1970b83de5cc2bbb7f5f26879287992b7e6d0f3",
+      "fork_sha256": "4631f09ccaef60111772923528ce14181a5e70fc384dfdc095ba00da44ac688e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/clientversion.cpp",
+      "upstream_sha256": "ab12767a1c45079f9b52500eeacae5a3f9c736e8d67450d90de4056fa4ab6f03",
+      "fork_sha256": "eb330d8c2d251cb04d66dedc11ba15d90c26f0c056c14f7ed3211194d88f2ee7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/coins.cpp",
+      "upstream_sha256": "bed8e14ab614c1f2042260c9612abe46a12d96470413fb25f1f7112a2c36a940",
+      "fork_sha256": "d200cbc9f40bbbef74cdc226450291426aa59af97e98be060874d99abd37249f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/coins.h",
+      "upstream_sha256": "d6ab4f5ca6a0f2882b03352c6c1ec5a795eb4b5a14b64af781974ed584bd9f8b",
+      "fork_sha256": "dfcf51118f79a01f44a16ffb978c6aa5cf3582ae5a909d5d75c4fe55cf60d8c7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/common/args.cpp",
+      "upstream_sha256": "502a01297124ac28db4050f480a515199dcbbf566b47ac44d1a1fa3109d7956d",
+      "fork_sha256": "d69197cf0f74733faa98e1a6a21f0ae438fd365f63278cce09d66fbb190af515",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/common/args.h",
+      "upstream_sha256": "feb7fb1c5985e80234fbba00743a7879f4742032a65e989389ff425ce9ed8fbf",
+      "fork_sha256": "e5a41d9decb637c340410fa978c6d2ca91784179681f1ea8b91004b4e14fc431",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/common/license_info.cpp",
+      "upstream_sha256": "56c71be8ff7cb15be909e683579fe4d63bade17f27f5d63006b674628ee9ce13",
+      "fork_sha256": "557b5b16c0e1649f2dfa4b39a3a4115b476ea33a5fc85997f42f1f4acd68bcea",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/consensus/params.h",
+      "upstream_sha256": "21bc0a1421ca71b057325fac96ef1a7297b737a47c3231a6c7c7ff8e0598e2f0",
+      "fork_sha256": "f9cb904d6664114c685542d13fd132b02dfd267b38a8fc6c45e5d53c160a3803",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/dbwrapper.cpp",
+      "upstream_sha256": "3ecd43525a45dbf0318d5a00a6fadbd47393241a8204cb714b86893b7f20727f",
+      "fork_sha256": "40900914c40c0a875a5dd2e972372a5ea5e81a4dedb831aba4efe67e896685d0",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/dbwrapper.h",
+      "upstream_sha256": "471819617ae415b498801f20b89a51cfdda927105b59608d386aecca44cac890",
+      "fork_sha256": "ab5ada02bcd5336592c2ad169212abb79676e16c076eef7d033e4dce2fc77bff",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/headerssync.cpp",
+      "upstream_sha256": "bc61319b39e993d07a9852e67869b479fdbf258d290c9d13bcfd8386c68e25a6",
+      "fork_sha256": "8b50c4be2088175247df3b1b7d13465f2f3063b1fdcc120dbe96fc26af91f1f4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/headerssync.h",
+      "upstream_sha256": "60485439e8fcee7ac9ab1cef39fc42a114bfd40c769e918cf4fd5e88489d29aa",
+      "fork_sha256": "20282c89f5f5bb6cffd39c9756fd73109af0978e160ac4a38dbbb7e0e1b5ab44",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/index/coinstatsindex.cpp",
+      "upstream_sha256": "ddc0a760a9a7990dfd2df3c8725c1120d85a30db68b7d57871988f10c48e2fb3",
+      "fork_sha256": "304bb39345eb79649f15c1548f2b1db431444968217055bf2b96acc0a48f1717",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/index/coinstatsindex.h",
+      "upstream_sha256": "46a88808a43ffb9bee6f15d5a62f988bf67174cc99334af4bbd87b1e5f1d48d2",
+      "fork_sha256": "fcec9e5eff49fdeae7a47fc3e393fe7ba436b5cf4a9ecb5a5fc64b98e976acf2",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/init.cpp",
+      "upstream_sha256": "9c1bcea496f20eeffbf1d8aa8167a7a6c806bcaf6881c89f239dbd78ec0a72fc",
+      "fork_sha256": "ed04b7dd6353bf1afb0e58cf7ccdc78e17d858c9efca69e56fcac02ff8b80592",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/interfaces/chain.h",
+      "upstream_sha256": "e04b34e2f2974bb56a675e266493ee8acad25b293a426392e7d5494248799cbb",
+      "fork_sha256": "9e3f7403fea977cda70168e10f51ff2990cebc79a380c7edf893a169e942b608",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/interfaces/wallet.h",
+      "upstream_sha256": "f795cf2bb28e959f8fdc6af5fdb3c7d6e09518731ab050af8198b718c8d1bca7",
+      "fork_sha256": "b2add342e7ce18635553863e8bf520caa803a3a420872c56f25111bbb27ddd27",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/kernel/CMakeLists.txt",
+      "upstream_sha256": "5812c5ad6dde135895e659c8da8a369db401b481b2c5d92bbe66809adf546f03",
+      "fork_sha256": "02f0b42db9f2a71d9d0911440cd7dc87a22da9ef6b7020f380fe4c86418aa8ca",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/kernel/bitcoinkernel.cpp",
+      "upstream_sha256": "0edc24ffb4b6d9f7a701ee9bc1bbdf898b2c526c863beac8aeef1d5209d1977f",
+      "fork_sha256": "fb727768c47987255653d5e1b0dc6699bef8646a2b59ba6c13f7defd4d442beb",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/kernel/bitcoinkernel.h",
+      "upstream_sha256": "d682bfdacdf972914922385047f64f32369b7dcc01c3dc4d993dc24b833cb438",
+      "fork_sha256": "5eed84466d74f1af7f418eb09dd7e5dbe2d7f42260ebc2a08f33c343ad8da651",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/kernel/chainparams.cpp",
+      "upstream_sha256": "59b33fb0bcdf65a1d35f6bef01ce861d8ac77484237fd610f3a1cdaa6c879e8c",
+      "fork_sha256": "ec2e23be393482efb3991464a292873e30e3f19bf10e8f5d4628ac994a3c5598",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/kernel/chainparams.h",
+      "upstream_sha256": "81d17e805931bde2150a3b604120822fea6bcdaaf8f08bae5ff25dbb95768b5a",
+      "fork_sha256": "370b8459674bc2c443ad7dafa7c9a5bef11fc7b12444d9103194dea3343e076a",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/kernel/chainstatemanager_opts.h",
+      "upstream_sha256": "17ac764f4be308cb8640528421f59f6d222668dae0db0600360c26cf4a198a6e",
+      "fork_sha256": "967759f02174dcb470b5df415699584e14e51ff48dbe34ecec35e55dd9a14417",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/kernel/coinstats.cpp",
+      "upstream_sha256": "e53e66b2412b74dd52ee5b8c948b62915c304b68881b488cd270af5c859c366b",
+      "fork_sha256": "20fb313814858393300e77e07d20f86ba515cf2c7b2069802043e42ba14502eb",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/net.cpp",
+      "upstream_sha256": "27a5697ca2065ed38cb6cfea2eb3f561c49cc39fb922708575ac571b134d3210",
+      "fork_sha256": "7157fbb8ba8f53e8570186508861cf7524e2ef003a0de102e3ee854c115ea4fa",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/net.h",
+      "upstream_sha256": "056a59bbafb97c33e5519b966a5be2cbff9990b104f0d1b5ff67a88e67d49c31",
+      "fork_sha256": "c78a36f221e18ef505ecd0d7da0812e28eb1950f8151134fc43effab45b189c1",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/node/chainstate.cpp",
+      "upstream_sha256": "3dc5d55514c367c776ed8cbcf0b06fffce473dfe377589f3b7e48d38d42a64da",
+      "fork_sha256": "7b2f67cc9d773eec349bc19027d8ae1425a3ec163e678b2ca3047bb7e459c22d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/node/chainstatemanager_args.cpp",
+      "upstream_sha256": "03a2f1e71d8c6cb81c0509353ddcb76a77cc29741804399cc993a576ad830d60",
+      "fork_sha256": "6e3673fc60f70884d411b12c121c977a72d655c9d93eef0bd9eab4e4bbff92f6",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/node/chainstatemanager_args.h",
+      "upstream_sha256": "3a4caca60d742a3aa4bd4557672eaea4f01566bd616fed3f75d679580e445939",
+      "fork_sha256": "b64003a3359b017bd6ef7335545a28acf62c95c909a972b35d3cf86acccc2ce5",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/node/context.h",
+      "upstream_sha256": "87158da66520a0d752f41e246abf5240609c48518da479b9ed434f9a846ed679",
+      "fork_sha256": "eb83527163f2aee9dd48264c1bc39991f37ffc051c3c35015f8281351077e79c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/node/interfaces.cpp",
+      "upstream_sha256": "e96f991fed767050b92b7f69a1f0fbe1d9060f5c37c3fd386e47add5d99c4ee8",
+      "fork_sha256": "165bf4666584a7891823ac08e4ab1e1437d71d287ebb858abc7e1777eefeb09b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/node/miner.cpp",
+      "upstream_sha256": "b80e58831251af42fdf9a9f3690cfafa23e2175fe87c951970017cc6533fb810",
+      "fork_sha256": "6fb8f4b6a3d8a7a2d9ad940d2ca258113300d3d86f1c235572ac3b263614dd10",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/node/recycle.cpp",
+      "upstream_sha256": null,
+      "fork_sha256": "cec9306c52eeb9674deb62d3db8587ada8896288d0d938ebe31f4b78d50bef6a",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/node/recycle.h",
+      "upstream_sha256": null,
+      "fork_sha256": "2921d6c6819659fee3849db64773f7563978a62394f8d4e1b427f0ca4a94d080",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/node/utxo_snapshot.h",
+      "upstream_sha256": "9da2c30d41e8ed13a8f96eba826324dec3cc4b0e8398b665561c07400cfb16f7",
+      "fork_sha256": "4dbf3dadd6cc6d4384e141b1acb0af7f031cb581b7da681261a2aabab74b45ba",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/pow.cpp",
+      "upstream_sha256": "cad89cf4d7b99f3f6d3e93393febe523133320a5f4e92a61c8179bb5ac526a8a",
+      "fork_sha256": "30ff481c48ba84874d57ac334c91f8b19c0aa80b9bdfac3552a3659fe0c5110b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/pow.h",
+      "upstream_sha256": "f24633898a46a41ef8e8c0cd1c8af5b0122c4f83aac03e2e93ac510a3896f719",
+      "fork_sha256": "42f4aab8de91ca30393d69276b5826f48df6146503297b364aa7c379dc15050a",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/pow/asert.cpp",
+      "upstream_sha256": null,
+      "fork_sha256": "a7ce0d4d0a295a366ec13751dca2afcb46dfb52cab689301710696ffefc341ab",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/pow/asert.h",
+      "upstream_sha256": null,
+      "fork_sha256": "7d34cf17147de7ab58bab2b49482580dce24fc34d8ae7d175619c80537650355",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/CMakeLists.txt",
+      "upstream_sha256": "22630eb89a531f614e25db2201df980ded490c40f787ceeffe08431341765035",
+      "fork_sha256": "0968c975ab8fc7d5afa98798b61a8bd978abccfbf7556c188d655f5365639b4a",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/README.md",
+      "upstream_sha256": "b02428723077664e4125ba17b4a0340b3b42923340e99aab0e923099345bb9b4",
+      "fork_sha256": "dc0d145e3737d4e695f0b25fe74f1eb033d56ecf79cbb512fe791601994272e0",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/bitcoin.cpp",
+      "upstream_sha256": "983f9e0a52214e8e287bd48459c7346dbee0b4da5ac3dd9513b55c98a9c27a2a",
+      "fork_sha256": "883a409d28df4db01b809c7a52b6b1907f10e92e2aaef0d201012bf30797c128",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/bitcoingui.cpp",
+      "upstream_sha256": "83037e76883a7142adcca8553f946ac326674b63a2c53435035c70279ce56c13",
+      "fork_sha256": "4ee4cf0783fb07564286955f85fd4165e0ef97d28b2965f727b47d430fed6ee7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/coincontroldialog.cpp",
+      "upstream_sha256": "160bcdffebeb779d6563fb6ebccf81d4657744c077f80081ab1e9192a7584abe",
+      "fork_sha256": "6466c7f73d02b586eb16e5ff702b4e97cf4a767351fa819a9c5ee58ed7850fef",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/forms/openuridialog.ui",
+      "upstream_sha256": "321dce3fe408cddd789f6edf4e45033946b25cbdb4afec307d14656be8c5ff4b",
+      "fork_sha256": "65f4ddf9e9f49f092ba9ffd0dd4f3a302702475f23b65f499f81ef8923519c35",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/forms/receiverequestdialog.ui",
+      "upstream_sha256": "4f48f726017f2360c24b69bd53a8b61914c4e0a330f551c29c3c195a2a4d499c",
+      "fork_sha256": "793b161fad99e868fb0fc7c7fc9051ab5ca20ee1d5394359522e901f0e85da9d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/guiconstants.h",
+      "upstream_sha256": "99ded0e192afdfcbbad14a415d3c2eac71545f8b5a1edb6b873ea439f88ee54f",
+      "fork_sha256": "97804ba0ac77075ef1d027d486d58948ab1b7d61a4a2c7da1f82f359f16e3e26",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/guiutil.cpp",
+      "upstream_sha256": "fa0a455a2d2875644ac7dc1f91fa33b94e182fa392203b8a2937d6f462af1666",
+      "fork_sha256": "dd44b9df959e1cab004b858fa2e46e637ab4495b1cd62dc70c7bd40d129d5cf7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/guiutil.h",
+      "upstream_sha256": "42cd6cfc8f0de649c681c5b9448751dc4c8aad357d8cd28bdec43de429fb6197",
+      "fork_sha256": "888b7fa17aef2530d54390de8c0c189ccf2d53ec26efa7b49759dc1f62fd98e5",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/intro.cpp",
+      "upstream_sha256": "8593052f6f00ce9714d5efb2a8a62ce0f88cfb0a70100ecac7f074d9047b030d",
+      "fork_sha256": "bfd4c1ca6fc91e26b84ff23cccc45e6b9db65dfb36220b216b209f15f2c38268",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/intro.h",
+      "upstream_sha256": "dbbe88757212bc984b5ffe3b0944b5621055fd5533c4c9870f2db60d5311d52e",
+      "fork_sha256": "9919de12539d537e99d7fc1b589b0b70a43feae112e0d8b41d69bd85d5f0d0ba",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_am.ts",
+      "upstream_sha256": "a813905139a1f53b7bca7193872c75a1404734a2b36c6f38674f03ea4bd09f60",
+      "fork_sha256": "d1d11c258f882b12d7a928c14aaf116ef311623ab4ab68c8b7e1f839f25a0a7f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ar.ts",
+      "upstream_sha256": "ffbebb0383212e3fc4200407032013edc6a1da77d9c24b3b3bf6d5e4fe109a37",
+      "fork_sha256": "2fa438b5896bc2ea3cee880e37a5a892ede95ab2694f2dc1d8ccd4139fa82058",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ast_ES.ts",
+      "upstream_sha256": "c1fb8ab3a03008436a8db34f467c8918e6efd2e7cc31b6377b98cc5a5ab6a6b3",
+      "fork_sha256": "f487f1a2b190aa44bc95413df7d8d1044f83f3fdb8f85baa7c90a49c0bc35f6d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_az.ts",
+      "upstream_sha256": "a028b79c5b09cb9844757d5533b292067e073e7dca713fdcbf7ccc07ad7714d1",
+      "fork_sha256": "48bc549cec1831bc3181c5949c79a015b187e8f505e08bfa7f3e1c94381f1a1e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_az@latin.ts",
+      "upstream_sha256": "c796e05524b5bebf64aba68cf599b987d2be83ed4b0e5c326fb43f0bc7c34074",
+      "fork_sha256": "ee7c679eeea01e47383d1e540af2f4dab5772a44b815b55e1c1cb85afae0cf81",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_be.ts",
+      "upstream_sha256": "31417980360f380305c6090db8c4dc71e8b45681376572c34dbfa1d56238cc2e",
+      "fork_sha256": "a04dd6052fe33fe08a2fed19f24822d4211d28ef1deb9482b44b22950201752d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_bg.ts",
+      "upstream_sha256": "12357a0a2ed239dd6f246a7ff8a91ca84cb9c07f750e074f68c734edf5e83b9f",
+      "fork_sha256": "165f94c5e6e40abaf83ff87a27d5ba309239ddc79e7cc5a979403067d0a628cf",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_bn.ts",
+      "upstream_sha256": "36d997760637b5bd5f188368b5f1efcd2d77a25d39f65dd7fe3c57fc4ca25138",
+      "fork_sha256": "286a313ffab9bd110a0f2bd5eb3e350c41d4421708dc58e655c85b2e9c17fa6b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_br.ts",
+      "upstream_sha256": "9ccc1b75feef8742f60d97126bc4ab6a489a3aa23f8149ac46af3f8713175bce",
+      "fork_sha256": "166e8febb0deeef3c3692442949197a3e16b8f5ad50d953ae5d5f06e53456483",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_bs.ts",
+      "upstream_sha256": "395c7d60424d6c41c98d4c7b8bdec8f5e7aa1cbd1a050696adb85919381472c9",
+      "fork_sha256": "cae8c3600960e64f56191f38f22898f3997c3633ea5b558f11ce1c57d9100016",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ca.ts",
+      "upstream_sha256": "28fec3fb4e98d928724b53a59f774276456173c1d0d3c277326616b9425fc4dc",
+      "fork_sha256": "f6b81fe069800ed29b39a6987e982f2d897037a6c2af8ec2cb18317cd9d3db23",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_cmn.ts",
+      "upstream_sha256": "39e1506fcaac9ba6c8e60c7ba52a5b1fe97bc5ac3a7e6555c45f3fb0daf98427",
+      "fork_sha256": "b3868415551b588dd91b9ed5673c16ad44e93c54a027b2a4a71111550484ffc5",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_cs.ts",
+      "upstream_sha256": "0331a10e19baccd1bf8152a64e577f0ac4200975b78b7a1a1f83d723504b2f8d",
+      "fork_sha256": "2e371980908393fa9b44fb08b968c69dc07d26ab433eb0957db7ed86168d7aa3",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_cy.ts",
+      "upstream_sha256": "e795e438494f092a90de40aa0e58d0fb22bf46d5525dc927eb06a201d1ce9b8e",
+      "fork_sha256": "e4466e90c5f74cbc335d94b83fe6c0f86acf407c2bc217a533ccaa4edfab1246",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_da.ts",
+      "upstream_sha256": "0c4622811c0f1eebb1817d6b4a1ef331f2431dc03ad87e0f32787f77c05ddc8a",
+      "fork_sha256": "5ad5e8019df5aa14114ada72e9123dd757e26935ba68a71ed10153947caa4926",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_de.ts",
+      "upstream_sha256": "257e669ca026807fac05f8e4ad93863ea7bfb49a3d0bcb3ac684d7288f65acdd",
+      "fork_sha256": "3cb0d9850530883209836d36263fcb6ef5ff03d32ae1d7a61d8b94d74432952f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_el.ts",
+      "upstream_sha256": "8d5f0b57a250421216b4602b0abd41ccb7e1dd5f895a59b0796d2b21aae3c6e1",
+      "fork_sha256": "4ceb00d68fe18a97790b7970279ea8db2193f3a03af1db8dba11017bf33c40e7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_en.ts",
+      "upstream_sha256": "c7f3f295d1a513435098d1a2ddc10479a6c738ea4555c73f6e15f18d7590c5ac",
+      "fork_sha256": "ecd6a0f99aab1fefbba39e324eecfb1bb0596fbfd82b1eef9ab3bd8a89b92601",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_en.xlf",
+      "upstream_sha256": null,
+      "fork_sha256": "f705b85210387e5dcdb514d4bbb8707b00ac34fef7299b2029f3ec3a56a8342d",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_eo.ts",
+      "upstream_sha256": "5c0c36f059d1f21247d798f6db5652d277dc53a84b1f42f3dd11c8e357766202",
+      "fork_sha256": "29c250812e02346d1c04ab970e11bbdaaddf9dfb7cea0a29ba53d6b6b61d6bbb",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_es.ts",
+      "upstream_sha256": "08f5aa6ce5c555531184377cb5ae35daa871d5f27024a6df9a8c94a3f7acc6b8",
+      "fork_sha256": "69ac8f341d376d040d47a34d65a66c10787485be4a2cb388495e2a8bd1cfa189",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_et.ts",
+      "upstream_sha256": "8e5c0a349fae8154c67f6e5e4ed70728d85fc4d286710cab21a23b2ae017c91e",
+      "fork_sha256": "520531b41c1cff0bfdc4c7a8aa6d2f66d85b607d991443abd1ac92a92040013f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_eu.ts",
+      "upstream_sha256": "bf0cd23d36d1faf0a1947cce7bc689eaf458dbc22869d66a92068f955ceb09a9",
+      "fork_sha256": "812ac3585ac7224217ff91016227e3d29cfe99a58b587cc89fd27cebc49077f3",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_fa.ts",
+      "upstream_sha256": "1f89e53019b9d82604017a3f84c09191c6445ba32b252ed3973fcdc8a7a9afc9",
+      "fork_sha256": "b85e11fecaacf7aa789eebf10c06d47147d51103d9c6ec68079d295b4681533a",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_fi.ts",
+      "upstream_sha256": "2d4308efe11922336944a6fcc0a21ee9b8447f20a320f99cc4c4d883e10e25e1",
+      "fork_sha256": "1a1a1ad26fc5a38a1bef952b79890d850ac5ae24108039b897d45a512d65558d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_fil.ts",
+      "upstream_sha256": "a18f3133e827c9f2646b70d98d7485dcea429c6320a5fb7e01d5bbc54125fef9",
+      "fork_sha256": "cc1cf9e5e7c5b2850dab35ecf6b3a3d93a22dedbaa8af7569d648df53947d3f3",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_fo.ts",
+      "upstream_sha256": "5327dc0ed5133ee357efc21daf57913e5d02d0efde79a9d70296f88bc3fc505a",
+      "fork_sha256": "277a1d68c7b5642037e8591e1fdab9ce798135b8289722799dbdba46ca10d382",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_fr.ts",
+      "upstream_sha256": "78be2ef36ff855879acd239159e9347b100dc6b28e20b2cfcf147efd810114d7",
+      "fork_sha256": "2ce9475c071711c676afb64404fdbb5bd6003fbb41d9278e253b678be4accd7f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ga.ts",
+      "upstream_sha256": "75eeb906602f4b8e80d00fcd068c31c92eed3dc1c319c9680516c7b202818025",
+      "fork_sha256": "45ec5d37dbbc91a220e7e9d22c1483185f469709ae8bb0c63103d8c4d39ef82d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ga_IE.ts",
+      "upstream_sha256": "5fdf05daaa005ab1e815be1cb645d1841f4a574da67950b5647739282efe0a16",
+      "fork_sha256": "de5ed1fe9e7d3d8b6a4f05aaa3abb02d270b131f600104eeef11dea60e4ccc28",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_gl.ts",
+      "upstream_sha256": "d28f935993112ab4c0933be69b0705a033fe45d5262d8aaf70e02a46a1660e26",
+      "fork_sha256": "3e639cc22c3a63fca60c46423ac83f03e0df17124d665f7e1a541be0587a8ac9",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_gl_ES.ts",
+      "upstream_sha256": "9cb1f1aeffc995d7d72efc37d6b7e5a3b334364f8fa8cb303c2cfcb340cf2046",
+      "fork_sha256": "3d9a32e729d720f000886d338a9855bd27f6d2dc73fe80bdb92c40f77514e0ed",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_gu.ts",
+      "upstream_sha256": "f8e1e7536d100a859b5a1c7861155d30126f385d361e119834f73855ffe85132",
+      "fork_sha256": "7e5271ef913e708a35fb6bcb70be54a87ba4671239bd039c47370f1520ee4c8f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_hak.ts",
+      "upstream_sha256": "c2841cf1d59c531f58c8d77f7cbbef7edadd5dc59f1a32cb316936ae38dc84be",
+      "fork_sha256": "5176bbfcdd862f9e1a9a197647000a82c2da38561076e08c6552e6dbace58f29",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_he.ts",
+      "upstream_sha256": "a9c713e9a6fbed4b4812671a38434bad1cbd5a74e93af232e589da7c7cb4200c",
+      "fork_sha256": "da935a67d79c953cc01df224efd89812e42d93d1e373b6daaeb94c10bcf28a69",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_hi.ts",
+      "upstream_sha256": "b33f06b5e120f488d0fd9eea10695b060ecae0fd01f5a728520d9f5419e56d14",
+      "fork_sha256": "4fb4cd0e2246567fdceae63b8ce1108bbbf5179e83842ffe366631a4b7543409",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_hr.ts",
+      "upstream_sha256": "a8b747749f3ccfd1cdfdd798bda2635c2f1cb897a1600fd54fc3ba8b71fdc761",
+      "fork_sha256": "ffd176e1fe0acd8390400201ea19eccde614a7bcc21f8d81d94e6b1e390fbe17",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_hu.ts",
+      "upstream_sha256": "f9e64ad9268cbb42839bbb2ac1f3fec9c0f141066f4fc9e939dd07eab7744b7c",
+      "fork_sha256": "4e7a91a8476c18ea146bb363039ed372ebda6e722fc09aff4662fd239cdf3966",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_id.ts",
+      "upstream_sha256": "ce7212ad7fa19f7f74c00396eacc2411ed8881f855d3139ecfaaf2efa36f5134",
+      "fork_sha256": "8fbe5c473bde8eea289c046205a07ba283f4699baae5096e0812576d0cdcc180",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_is.ts",
+      "upstream_sha256": "5223b2626759dfaec3557ee153ea5477248d21afa6544e5860b00e7ff37377cf",
+      "fork_sha256": "30dd2082f5ab49607dbb52e89297b526cc9d99a6d3f0c942564670c7511aefee",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_it.ts",
+      "upstream_sha256": "956d8d594b5b3f82115b8e00f93a4aec8c5df268c30e239be1b7b6f99ad88ef7",
+      "fork_sha256": "f87ba88864dbf468d8d5487979f86d6581e4233326a994c27909a81b223d5196",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ja.ts",
+      "upstream_sha256": "2f77d923f19e3fd3cae78c78a48bfff48de0b662a9f4a85afae3c2307b7e2838",
+      "fork_sha256": "89b5c3afea5ee6d473aec5ee8f2a5b8ab37dbe583f98624fd4556e28c5c9a315",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ka.ts",
+      "upstream_sha256": "62607ed442d72c82465770433a705d95f6e674cf8669cf7be878153c0efdb7f7",
+      "fork_sha256": "93d91c622b732d8234550c5eb97ae697e35d2a5c03842336f0753f04aa770e4e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_kk.ts",
+      "upstream_sha256": "f7607a33c21cb0c8e83165995c74eae7068984dc4249a8596a944b85a7c26469",
+      "fork_sha256": "c54ef7080c2f26e9b0f51e0b95952d047ad5c8008ab5f8096b25d5bead94c87a",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_kk@latin.ts",
+      "upstream_sha256": "e728a46df423014ac140e79531dab4f7be226111a3381f841afb34aaecf7673a",
+      "fork_sha256": "5fc4b8a8bfb6bed8d65aae55dd0dd67598a6cdc4fc3c3f9998a886ede578072f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_km.ts",
+      "upstream_sha256": "353f4401ae5a4ce6897667bdab78371e815e41ff4cbe32720887627732d72b78",
+      "fork_sha256": "d6e6751bf2f810c7ca33323874556b251da3e6ed917fefba1b58642472aca106",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_kn.ts",
+      "upstream_sha256": "0fff34190c8b8319839ac8b33a873f34bd0a33640a44253159eca8ed8f5ff66f",
+      "fork_sha256": "7128cb89d9db5f8fa1568dedbe9a1d227fdf7cc203636958daeaeadd135783c8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ko.ts",
+      "upstream_sha256": "206fe42aa9b2772ff346152f632379f1530cdd50ae060f4fec51ccd8739373fd",
+      "fork_sha256": "420b086c42295aff8a2392b11fed62640c63a1f0da9599a084787f7fea8b6987",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ku.ts",
+      "upstream_sha256": "6ed57c92b7c36bb5b74e61e35acb1bf757cf7d044081a516ce9cc9f8451b2bf1",
+      "fork_sha256": "34436803b289cde36d26ddd503433b5d13fb0f12fe0cf122ab721f212ce011e4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ku_IQ.ts",
+      "upstream_sha256": "f9a28337013ff792b04e729610a1a20ee0f7f60061874a994b871d90cff7006c",
+      "fork_sha256": "9b1510f025436768556eed495ade1bbae1ab7e9d13423b1de83a13ee8c27cb8f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_lt.ts",
+      "upstream_sha256": "66208d1ec943ec6577f4166d44b02d0a85d18b98e96a4aa9fca00aa090b42a1a",
+      "fork_sha256": "3e08e5495ca2b114b642f91cc6af927fb505f9842f60090384e94714b5610ac8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_lv.ts",
+      "upstream_sha256": "30471f3f36befef2478c83ff897fad2b9fdf405b988b525ed6dcdcd1f1ca0b4b",
+      "fork_sha256": "2c69a0e718a7c5d87626bb0b6e49daa42535c1045baeb35a1a3084a597068ca7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_mi.ts",
+      "upstream_sha256": "73743a96990c4e5be37619b274738a8586fc3d37e566f79bcc34222c6024fe02",
+      "fork_sha256": "1b0417a0199c8a0cf881bc040cb38f5546677fdbc9a14d0ac6a7cfa953231fb6",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_mk.ts",
+      "upstream_sha256": "ade479629f66fb2bc3f22735202004a51981a42675bdbea493381ceb82f08e3b",
+      "fork_sha256": "60276cd7c141a063db5d88cd3780395592aec5432ee9cb16dd8ac6110e1701ed",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ml.ts",
+      "upstream_sha256": "680de95185bbc343ac770b342a1e25f5c07bd3aa7782a8c323e738215df7bfa7",
+      "fork_sha256": "a5eb0a2dcd5beaa37b23a9ded37e8a8ccb21813a87200b5677a2a695c7e66c79",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_mn.ts",
+      "upstream_sha256": "f550ea7c29155a76583b567792a76fac1f2b0d9d42f795e27851ba2ea004a9ac",
+      "fork_sha256": "0954e735875bc1f9d810f0debaa70ddaff2010852c8548760c0727975bfbe48b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ms.ts",
+      "upstream_sha256": "225ec9a2a4bbaede46c6d5a360a1228442d9303f0c2158f19e90e8c8b30875e4",
+      "fork_sha256": "8d718a573803809ec279e3939a93ab8d1ea84687d81fca59849f069212f524d6",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_mt.ts",
+      "upstream_sha256": "a73f23805e2c5cd02574a7b792ff9b6e17476bfec586807b8535da2a7e5769cb",
+      "fork_sha256": "f8c918c17d31541dca838e6c56b9cdea4162dd9d16e66501e364ac990c4aa5e7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_nb.ts",
+      "upstream_sha256": "7fccbef715ef54bd27ceed4add01e83d168d7348bac8fa6938eb4154ae84ff9f",
+      "fork_sha256": "ca3edbbd7bf67eb54e4f88c4a1bb056359073eb23f6735797c682ce105c69c0c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ne.ts",
+      "upstream_sha256": "127aca6f3ea0170840ce3dc273263bfbd8b625a2ff5df707db44a262ce3b1526",
+      "fork_sha256": "c83d0b5881bb02363e91fba910aed836776c5027551f3f9aa5eb4bd8f88162e2",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_nl.ts",
+      "upstream_sha256": "e226d726030845469c7fe3c0c184c3c43962fb21efab676905077fac1776f93c",
+      "fork_sha256": "4f21cb78edc13373041bc25cb437e719f411937c8787a246d80e0ff244ed50fa",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_no.ts",
+      "upstream_sha256": "1243b36574768a0ecd1b9b5eac6725b044548cf2b9eec9b5ba7aca611f2211d4",
+      "fork_sha256": "43184ca13a5411f1c3d9041d83ac92bcc3f4fa82a461928a74fb6cc9cbdd5823",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_pam.ts",
+      "upstream_sha256": "1351b6baef70be8ec2a1638c5bc78cccf53a76fd3793d2f52f27deae2a0f5fe8",
+      "fork_sha256": "ab130c09b499aa0359ec536474f0593559a5bf0c4a62c83b31c52f05f867a218",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_pl.ts",
+      "upstream_sha256": "d23907af690a5d13c6324dbd9d6cd12613a63f82ba7adfcfb84322ccb5310bad",
+      "fork_sha256": "28273f01a41b118864193ee66763de890f8528ade0fa47d7cd96c019e6ef7616",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ps.ts",
+      "upstream_sha256": "8d811ee257dd0d44071fe001c7b14fb6bcf5364365f4ae6b8ede5d578b27c841",
+      "fork_sha256": "5cd40e5d6d5ee7f0900e043696a280d0f1907cacd9d6e2214995e192fc98cd08",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_pt.ts",
+      "upstream_sha256": "1e311cb4fe0167d81c31d0ac2d306ca499c0d73cca5b6c0f133b7b032e57150b",
+      "fork_sha256": "b5aafa0d57b0e1e5b4afd770a1763198f44e890181b5bbb997408197af0c59d1",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_pt_BR.ts",
+      "upstream_sha256": "81a2c29080757eafa6e9652b5f3e15bc600cf24e35e7dbe12c631200cba91be1",
+      "fork_sha256": "fa3a107e4af39870884fef540575fb391aefc42b41751972f91400a14ad86d28",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ro.ts",
+      "upstream_sha256": "ec38be28c4ec0b5ff4a04c0318dc4208d9079ca9ec32ca6a97670e847dfc5e4d",
+      "fork_sha256": "90b7ada3f9fe5ba1900df79759db6e8bb1eec67e666de0c5f612d0b9ed7e47ad",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ru.ts",
+      "upstream_sha256": "628a2d1ec667ab67f03434da8345b9a5dc392f6c77f42df2c311dae992494a0d",
+      "fork_sha256": "966193613536cc4ed5ce8b7a61d8eec877df38e3623ac74eb08382cf6b3556e3",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_si.ts",
+      "upstream_sha256": "08ae889533041a75c1576267528dce15ade534b4ef0035083815e9aafe3f5bf3",
+      "fork_sha256": "c383977c9357f7527ddece1548f7f7cff8b1b0ff4426c44e441d6a0e9852e0a0",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_sk.ts",
+      "upstream_sha256": "18b94afab542e512e97f910b1a3da496d7f8051700c84efdfb23f537c3e7be8a",
+      "fork_sha256": "e12fdeb3cb88410f5ba62dbd14e2ba82843a53f2f82e3e255d10ab4216a0254e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_sl.ts",
+      "upstream_sha256": "d1da5f41b061298ced51b5b7e5cb057f1f80a461a736d1cf8c3d53e10de59b9f",
+      "fork_sha256": "ef5d53fb391f1fabaafb00e2b6ec3da5fd12fbf128be44f48745383cfd131a53",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_sm.ts",
+      "upstream_sha256": "7fd538883eeb7d9984441f1f9193ebf3e13d4b49088a4226fb842a3353c4122e",
+      "fork_sha256": "ac5d874efd24c658d41640837b763a919e5790cbc8c20d904391b66ff5781890",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_sq.ts",
+      "upstream_sha256": "f6e98372ce8b88bf459d5dd4330b3ca410f8ca562cbb126b1d8964d9fb25fdb4",
+      "fork_sha256": "8e37b962c1607496f4b44da73c480af4aad808f34f63249f16ce7cf7bc0e882c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_sr.ts",
+      "upstream_sha256": "b2b1faa5cf837ac22ef9dd3cefaf5a89f8942c79d3321d59ae8e972ea49b7147",
+      "fork_sha256": "1afc60154b73f5c14b78bbd90e60220f1e361858e2801fa0d7cb6bf7e77e33f1",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_sr@ijekavianlatin.ts",
+      "upstream_sha256": "a7c73504e57e02f40dfbd1baefc8f3b12bf11a3f0f5b4c24b17737120b6f1355",
+      "fork_sha256": "ad654e73c833b354aa8e62c913823714c89e7fe656225f8a656fe313769bc530",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_sr@latin.ts",
+      "upstream_sha256": "e756aff6a40360262db02ab9974c57f217bdeca710408263bf5c8f68dfaa45b7",
+      "fork_sha256": "487fe503d42dc0e42e5a5b7c891ebad824c039d0c15c280a20ebbd39258d9226",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_sv.ts",
+      "upstream_sha256": "5fe05ab087cd64fc476803c30544c154f856fff011714228b0d42eefc3a6e840",
+      "fork_sha256": "73b0d274f8672402e43d7db6f81de829e77de5a7138db2cd50cbaadd10c545c4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_sw.ts",
+      "upstream_sha256": "3b82f5cdceae382496407aaca460f03e74676029941dcbf2a8fc95d6d3f75b9f",
+      "fork_sha256": "7d2941288c61bb91d7d83ada858083721a5fba9032dc8bd1850e41f15afc27c7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_szl.ts",
+      "upstream_sha256": "967944101b346817afe951fa489b12a8271179f8fd41d0796ab4a241b8f5c170",
+      "fork_sha256": "74cee0fb6f33cebe8ece95bae52bac2610946128af75b906b4de0d2615ec90aa",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ta.ts",
+      "upstream_sha256": "7ac63f6ffcfadf25ca28a455179df00e16e824ad5a32b8845eddd50dc3b4d681",
+      "fork_sha256": "161ae3c1b2dd018992491ce3791a1b4608d0e258c52566d3c945ca3dbe9dfed8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_te.ts",
+      "upstream_sha256": "7efe294dfe188711539c7404bfcaaeaa6b6cec54c06c0d09997ee74697f50727",
+      "fork_sha256": "a46ba8116edf0c16e67b5adb7439f55e03959fc78c3c2eb01f79f956ca68216b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_th.ts",
+      "upstream_sha256": "9aee39227a6259898c86d699b330124a2b633782b6150c28ed091801b38e7b7d",
+      "fork_sha256": "dd4339ce7c6d5a9df1f27844182a7db10993d8d6755f95a302fba244bc66071d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_tk.ts",
+      "upstream_sha256": "313ea19df4ea42f9926bbfe28298417e10f2e52e465d0b43f8c94295460696d4",
+      "fork_sha256": "907c2fba7d0d3bc31ae4eae0e2d20ec848362a706b605c78f21d2c6a88650fb0",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_tl.ts",
+      "upstream_sha256": "e2695cadfd23c72b85dd41dfb96aa5997dd9b3fb4943293f674e547e48ce7930",
+      "fork_sha256": "0d14d5f03383e43df83b0dca8482aff2430738404de8a8588988eb3eb5599b5a",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_tr.ts",
+      "upstream_sha256": "69449979ed581add861c21344ea1183a9b02d50eab4496e2f42c159e7d9b17a1",
+      "fork_sha256": "1262cb4da681fffc13b48ea604933d849105fd607112abf9fdbc45aa6d584ca4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_uk.ts",
+      "upstream_sha256": "18245389f2d28eeba0ba25be322cd7df1848949cccab1363f31d9f6213ecde7e",
+      "fork_sha256": "2c6a94a3d47fc5f1e6f2c37bb682f3ce01a566e9c95b7f92438103f3b12aaf8e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ur.ts",
+      "upstream_sha256": "eb9fcada136f8c1066edba6c2dd2b903aef5a8c857e8ccf2efb0ced00e3e195b",
+      "fork_sha256": "566202090e21d991c446a04da90608cb08949c3bfdeb6382999b107d3712e846",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_uz.ts",
+      "upstream_sha256": "db4271d6085aa6a02c75fa4891c65a82426e588e308b804ee85cee5888e5b5ee",
+      "fork_sha256": "cbf4e9d7b6299b032d5f44c5b6ab80c37ca81f4c60d5f0ae5c25d9ea6501350b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_uz@Cyrl.ts",
+      "upstream_sha256": "17642f0741d25980ddfc49bb64bda5fbfa30e09ec821c62d1e29fba6ade2bbdd",
+      "fork_sha256": "49ffbb0f9c7681f80bbfd1c5964eb17380d4fd17a200fe9c7ad3af27ab92a8da",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_uz@Latn.ts",
+      "upstream_sha256": "d331e2c1e24cc580e6561575a1ac6640974d8226e669e147faa76f9b310007b6",
+      "fork_sha256": "7435fc74ee63e34d6e4f7d4b556afbb3f12458f97a50c7049d8b2b16ea135636",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_ve.ts",
+      "upstream_sha256": "d2ca084f6ee944b8e89eb3813080e8d9fd1db970690b0d79d7b72a4c441a3c94",
+      "fork_sha256": "b539a80dc7024d8956db110fd94617bd65dec72ba82a46450d50af1fb73f6527",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_yi.ts",
+      "upstream_sha256": "e78addbf6c72c13d4126355ba25c37390e0746e81fa2535bff0378308167afd6",
+      "fork_sha256": "bbea1590664a9f863b79553e57f507d0f17a326911fa77a01f001d2372bcf82f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_yo.ts",
+      "upstream_sha256": null,
+      "fork_sha256": "cb3f9a2937568fe0aa13f3dde97f99c469c61e8dedc4c965b0eaeef4da65ef55",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_yue.ts",
+      "upstream_sha256": "2cfa5a96ca0d0c45c0b6895161c28a9bdf814095a783f8ba166dcfafbe62b7e2",
+      "fork_sha256": "7a673a250d92926ee22d76bc6059b39735ad183c3e1f76c27112813364931f93",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_zh-Hans.ts",
+      "upstream_sha256": "e37fe098e10651f5cb541ed10d82aceea5c83847f73d2afc0a7780d7be88b1c7",
+      "fork_sha256": "07f94ac1cc2102562cbc9ff862a82d7d2f1200f47bdcbd966f8da3d0a2cea152",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_zh-Hant.ts",
+      "upstream_sha256": "2aad881ecf862b93a8519b210c36748c2cad70f85a87aacd9f91993d7a69a78f",
+      "fork_sha256": "5ed64319878a9b838778231cd3afe6327e1300032864548c869a609e3264bb10",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_zh.ts",
+      "upstream_sha256": "a1df27020a34eee5365780a2b4a5678bd4f3fa2b9a310783abab75a4b9b9b121",
+      "fork_sha256": "b9bdabed7a794d6d714772acb1d621b6425c01fa82bd355ce4e745d50e91fae5",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_zh_CN.ts",
+      "upstream_sha256": "e7cb8a56e5241a0213135a2f5cbbfb8fa8a85f13bb5a8b4310b37159c6c54d1f",
+      "fork_sha256": "332d36ce7f6e025592ef3a029fbb042f30edac10245b4bf632d449bb1dceb7d2",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_zh_HK.ts",
+      "upstream_sha256": "20d9a2bcf3d6d190a595b6980e9435d6c5432a29f6beb21fe5a2021f0bb507e7",
+      "fork_sha256": "3c4ae3cb1d8a2a71d8a19a37a2f9f08c59abfd42a58cebe591317266b7da15b7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/locale/bitcoin_zh_TW.ts",
+      "upstream_sha256": "bd06d6a98940b1b4b53c8ae0248b2642049665435e98cd4ef2255701f5ea0df1",
+      "fork_sha256": "e1b21c77f7eefec0a6525792a2fe8be4f8dadc67fef9deb138d2239cc657529a",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/macnotificationhandler.mm",
+      "upstream_sha256": "fec66a50963cc0577570ae85963cc1987e4573e2c4f535a5a6cd45b57c536300",
+      "fork_sha256": "c46ea14f46d7e7e232dabbc7871925c317949c631741ac571534e227ca32b098",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/paymentserver.cpp",
+      "upstream_sha256": "c1f339a3c0b11f14c81055004112c02dbfadc28fb9e81d176387f18497439877",
+      "fork_sha256": "a42f6980cd985ed43ce6f4b4f5d807e054a1e8c2e4c7463c6c311fcc7b03a3b8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/recyclesetup.cpp",
+      "upstream_sha256": null,
+      "fork_sha256": "46fe42916b95b4ee726768e737441fd78463c3aec7db84ae05183a1121e0cab6",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/recyclesetup.h",
+      "upstream_sha256": null,
+      "fork_sha256": "51beb96eb0f37d9925ab3ab4623d632821c59bbd2f9ae76cb17ade5985fe0d0b",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/res/bitcoin-qt-res.rc",
+      "upstream_sha256": "27b999ee4600ebad938c62c77d42385900b11fe829a0d816a3c497da19cd03e0",
+      "fork_sha256": "cc135849083e878b97d8a74f1e98733ed24aff50bed087267820403edaacf490",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/splashscreen.cpp",
+      "upstream_sha256": "e7b939a13c1a215e5527593c18c2bfdfcedac8c8f62c819f60480ceada35efc9",
+      "fork_sha256": "74ff78543ff3e0efee00d9f86dbc92cdf31618aede41bb6d0928a43f5194a012",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/test/CMakeLists.txt",
+      "upstream_sha256": "c67e7c546995e4f483fddaeb64717e32d61cd2596f6ebaa79ba711132dc22722",
+      "fork_sha256": "cb760ece3a652dc085523042633ba9c0b6fcd9385bd109c7bd6887db2c30f417",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/test/recyclesetuptests.cpp",
+      "upstream_sha256": null,
+      "fork_sha256": "938a1bd041cfb274bcb82c7c58ab96d52ed044ca3e014b19ad3db47177641aad",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/test/recyclesetuptests.h",
+      "upstream_sha256": null,
+      "fork_sha256": "a0c12af4312ba720b36102b214e6f1927ddd9a3d063ad790aaf3aef33fab8ced",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/test/rpcnestedtests.cpp",
+      "upstream_sha256": "245fb99cc70908a779af57ea867b8c36f1441c1376da2309cac5632f74d4bdd8",
+      "fork_sha256": "0997a55ac2d60da16ec0f54bb4b54bea45f22c8d41813a1f19b9ad5fff675fc8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/test/test_main.cpp",
+      "upstream_sha256": "348285e05a8b1b06f5c38f8a890e5a44890dccee3db81476694c23068f109192",
+      "fork_sha256": "802c308276f31255129ec32c150b191f891edbf540cc4893f38d27f3ac7c2465",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/test/uritests.cpp",
+      "upstream_sha256": "4eb3e3b3fef31a03886e4d8a28bce2077340ac4ed3106b7ccea729bfa9d768cf",
+      "fork_sha256": "9dd0c1e7c88520ce75d8f7f4986e4b81e4ac1fc0e5a46ce8bd25f1de7a32da1c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/test/uritests.h",
+      "upstream_sha256": "78d9cdb9e131d08db63f48f3485680c152cbe5bf8f80ca661efeadd3670096a9",
+      "fork_sha256": "11a37a85ee2cb768bfd8e49ecc3c7e6bda7c2e401b7fecbfdccdbe6aa04f7c4a",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/test/wallettests.cpp",
+      "upstream_sha256": "a6390ea97636e30410a7b634759b9782df7eff88c0b33adcedd6b5d71e0367af",
+      "fork_sha256": "4e42be0ef8653849a29a60aa7a15f81b0e09216e068d843cca3bccf628031e88",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/qt/test/wallettests.h",
+      "upstream_sha256": "677798d5efd339a666e07a60f6a7f40d40b75901f1f81caa0c5c893c0bae2c27",
+      "fork_sha256": "9c2efa28305443df69a3a008aaa992611cbf083631773605154479e1008a760f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/rest.cpp",
+      "upstream_sha256": "3c318d03f07bf3c5cd7806151564b2cc7b819b2ecb19b172dcb44e558e5542ef",
+      "fork_sha256": "06efdea6723d55da3087f09e0e779502afe31f269e44748fffe491ac5c149542",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/rpc/blockchain.cpp",
+      "upstream_sha256": "fb08af4bd58946b94480f06149ce8361b9f42a9678b4120430197fbb1587324b",
+      "fork_sha256": "3d7d3240c60a5fb2bd7627f9dedcdd412cbca757c1558abf463436eb0cea1c35",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/rpc/client.cpp",
+      "upstream_sha256": "57c235abd5f780e8b4e1341911df01457508c300eb1788c6261b6e4669d3997a",
+      "fork_sha256": "da6e7304a62cf5b7f55f25c52c820b8f2f758d80e434d06e46f49c357eed5b49",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/rpc/mining.cpp",
+      "upstream_sha256": "c4f61838a65431e92e4cea58e90386e927ec5b9738d155ded149b8b7fb49bd14",
+      "fork_sha256": "06ddbc956be54c68905ffbfdd6223a1f1336475af6f554a4a3525011957c7837",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/streams.cpp",
+      "upstream_sha256": "2e417383f75c17a5540e1ab6090a4322131862cbc3870c0c6e92daf40018d3b2",
+      "fork_sha256": "b6a76ace2eb4a92a41da429901a1875db98035253237738150946a6c6e0ad4ba",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/CMakeLists.txt",
+      "upstream_sha256": "2296c52cfb08cb44901f97d14ca0529d43baba3d01c48f6e13d726ef2a4ed7f6",
+      "fork_sha256": "deffc617d8866de3979522031e6e22bc5d7f48d126de236d20ca9d6ccf908831",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/README.md",
+      "upstream_sha256": "dc4fcf8211a441366a3b210aff1f7b08bc33b9af8df59ac9cf22817a1e7e8e02",
+      "fork_sha256": "c8caff848a9400a25528bfe88230ef99ccc4ac4af2efcff50f2180c97e68dba2",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/bip324_tests.cpp",
+      "upstream_sha256": "1773fa553f209445e823f0b5f8614f238177b19638799e1c11f108dc785e30ff",
+      "fork_sha256": "12aeb0e9f049ad0ebce87073afd5956d890b82162506ee27a3c3ba24b7a4899b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/data/key_io_invalid.json",
+      "upstream_sha256": "c3ca74ddad7c01faaca7c26063537feb73ff2be03eb7fc83a42a655d2979261d",
+      "fork_sha256": "0ce19626bdf684e286855daef306b05a4536d0ac953ffaa600f3d833515466a6",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/data/key_io_valid.json",
+      "upstream_sha256": "90bd1d35d12763e0d00c5400b2c9fe551e532a821e1e466c20cad3aced70a7fe",
+      "fork_sha256": "c743db873febc81599e2fdbb197e7d55bd5c4f4b7ffd6139ed77b9b59ddfb0eb",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/dbwrapper_tests.cpp",
+      "upstream_sha256": "0cfe29408517ea61006e71a8e7a64f933585a8c6b44675689b246716e2715d04",
+      "fork_sha256": "d5250d37668c6a57a585d1e2b2e8611d831bfce27f8d8097d0843a43f7a3ad6a",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/descriptor_tests.cpp",
+      "upstream_sha256": "e3647b0208657c0345112d160570b1d4f1e93c67dc431db615fe824a2cd7b5c9",
+      "fork_sha256": "226dc9e4b7430c34b1fdbb449384e781a5e62d32f992da561d2f8230c3ed9afc",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/fuzz/headerssync.cpp",
+      "upstream_sha256": "300cc7054746ecf257d94b5618a9bbc7f2dbc480bb3fcafa6fe5b38c6c4051b1",
+      "fork_sha256": "3d01cc1092d960da41541371e18ab16180f4adf102c604bb73d0a0af9ec11de1",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/fuzz/p2p_headers_presync.cpp",
+      "upstream_sha256": "9ee9553fbcfc9a3c58100ec39c56d4a81d4bfd935f0195687839e754fc9fe4e8",
+      "fork_sha256": "9ad2530595a7c4cf74fc5e7ce7916643edb1452683feb9eb41ea3488c2464c12",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/fuzz/pow.cpp",
+      "upstream_sha256": "3d258e3171d837be8d1da07c4401fdf94154fad57f4fa403b6ddfb2b8790c505",
+      "fork_sha256": "f7ab9202f94c65f4685db4b8a0abac9bd38d494f5ce774edebf37a561d905a4a",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/fuzz/rpc.cpp",
+      "upstream_sha256": "f64bd97b1bd98302ed9f516413463ed6394a36cfcf12e197c4e34c0bf1177ed3",
+      "fork_sha256": "9a33feddfabce8c2947b900ef922748886a68791eec2a3fee39fad0d6f1cf88c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/headers_sync_chainwork_tests.cpp",
+      "upstream_sha256": "2a87ece6fb3e0083de6ab3c3dbba16830854a37dd2d991e78f086d9555576167",
+      "fork_sha256": "137323944846cfb5f8f4477ec6560fc02e8b0951072d35584396b1b877a47117",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/kernel/CMakeLists.txt",
+      "upstream_sha256": "1f726aa339f2ce8b5a90243847adb1a6d8aa26a7b6ed437ae59b24b37a9d9510",
+      "fork_sha256": "e486bac0d24e2b88124de50fb5f969ebe6ee5234c1141e558c2c7a67a5eb261a",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/kernel/recycle_params.cpp",
+      "upstream_sha256": null,
+      "fork_sha256": "6a22bc77126fef2a1a15d524922e6e32b3ab68e2abea4b837258cf6008ef4f4d",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/kernel/test_kernel.cpp",
+      "upstream_sha256": "ab1666057930228b8555bd28a15300dd833cf6e680d4ba5654b9d71bd6209b45",
+      "fork_sha256": "246fccbeda2312aec96853a37717e1b43b326af7446008d022fc85cfc0a537c0",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/key_tests.cpp",
+      "upstream_sha256": "4b932d17030401324a87791eb60097522f48900f31fd43b4731d5982146ab085",
+      "fork_sha256": "71c8c3e13e13ef1eb8dbd7e57cb389a8355643f12e5ee3aa557087c88be83077",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/miner_tests.cpp",
+      "upstream_sha256": "48bff7065a045ce5cf95c6171d33ddd2c09972ec7796e426619745587a89f297",
+      "fork_sha256": "fd1e09c3efaf11fa9cecc0cc98385d36bb53c0c1ee5c2754c5a65c2bdc163b07",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/net_peer_connection_tests.cpp",
+      "upstream_sha256": "08af82dc91d54c841c2fa3ea57f966801017b1839abbdc1e6f4c082870845ea6",
+      "fork_sha256": "5db93f64a2132d42c23bd0a70a625f5f4d8c5357deebf201db0e577d08f97792",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/net_tests.cpp",
+      "upstream_sha256": "51dfe280f65ef3c67b5c11204c09998554500fbcff47e7245b60c3f47041ad07",
+      "fork_sha256": "4693d21a8f60bd5a6fe8f1764241e6d178bf84399a0f880b266fd00814382fd8",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/pow_tests.cpp",
+      "upstream_sha256": "8f2710bf6cc92a044006992ca567b249320a46b31141a9e7041f19f56fbf1f2e",
+      "fork_sha256": "0e9edd868109d50666a98f3af429ec92450c835c9f73282641ffacc2a84d58a3",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/recycle_tests.cpp",
+      "upstream_sha256": null,
+      "fork_sha256": "1ef62e5cc9043cd6184f4e56745f8889f9247a54fe05cc21bc9e229e147ee9ef",
+      "upstream_executable": null,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/rpc_tests.cpp",
+      "upstream_sha256": "e410b83b27b8a443b24bb92b68e6df5673d7ad1e8a1d49846d831ba20676358d",
+      "fork_sha256": "0cb98ff37fef069d3e9918a7a34ab518a0e15f23758635bf9356966429f264da",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/script_standard_tests.cpp",
+      "upstream_sha256": "07bf1d0d6c7c1b77d3b1bd5917c442046c8cffe1c3497450aa56f1a01377036b",
+      "fork_sha256": "c834a8f9ab178d85646c537a80fed092f7a123ccc427fc04a18fbb1377e44434",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/settings_tests.cpp",
+      "upstream_sha256": "33a85c01810e7ea94b0bd12817426e62a9e9e42fd34e5c932fe0788c47e07e04",
+      "fork_sha256": "5ab334996f17e243036b6f2c002b9348bb1e99e34866e9f7747b18b6a83df894",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/streams_tests.cpp",
+      "upstream_sha256": "e59224d706f6c7923560f94c126373f28f5d6a81a8a67ff065ef3cf251e3d5ff",
+      "fork_sha256": "a835276195d2587e1737b4206f995b37b71ff34b06545411dc4d5cc8b05d5cc3",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/util/net.cpp",
+      "upstream_sha256": "432b91c123750a21097cb2efacbc5f0fca88c461a8606e4a458bb71c257dbb5e",
+      "fork_sha256": "b211ba0d5a34b81506cd68610b64b1a2f22dabc2c6c4d116f5a1902061861bc7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/util/net.h",
+      "upstream_sha256": "5c8c29d224117df7d09f9bf21c9c5d30a26e9051f33cb60d50172f5847054e05",
+      "fork_sha256": "f7e3ddedb629bb01d12193793fba0b71ce1b5914ba93aa5f0d13236ee3811532",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/util/setup_common.cpp",
+      "upstream_sha256": "f7f5bd8e9e275db90a6ebfe124c9b88d492dd0f376c6c861577c89e60658fe93",
+      "fork_sha256": "e3a76b2a12a5bdc081ba7c78f93d7acedb0eda3bf251d51218a321cd3fe833cb",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/util_tests.cpp",
+      "upstream_sha256": "6ed9c8e5344c3b1350b4038a53511ce90294e2e9b9bdd9c72e12e8ebefcf41d2",
+      "fork_sha256": "421a8ae2c2b8dc6fbb3bfb6801a7444624a0ac5a2d8e4cd76f78db825461af1d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/validation_chainstatemanager_tests.cpp",
+      "upstream_sha256": "f84b52d752a07b2ca2e24a8ae85440257c30ee5a02983944e0af0ce023aa8b36",
+      "fork_sha256": "e1d4e2fc23c546bde08deffb0cc6c96e51881373e1eaacd66def356668c3659c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/test/validation_tests.cpp",
+      "upstream_sha256": "174ebba0af246a7b5e3d7769be4a504f00f6d5b47a80935b57d4a8a58b648dbf",
+      "fork_sha256": "ad76a751d51950dff2d2678a3f709d8b7cb284d34d50b0451d57c8efbbc9d22b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/txdb.cpp",
+      "upstream_sha256": "fcd265ad7d8a6b77cc121f37c6541df860e1a9d24725e6158ff1a83e722faef3",
+      "fork_sha256": "c7068b3760124dde3736b303ef0dfe664bd272f5f8f77ce94a67d7a450935fc7",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/txdb.h",
+      "upstream_sha256": "6458793372c08c2ec2462da121b46e73ea210b87d8376e54117cbc2481fe0f29",
+      "fork_sha256": "b1837621f287c1dc1a3a369bc6d13c3c7344824dbd15c58c0b5e56eab767213d",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/undo.h",
+      "upstream_sha256": "b61350ff64a25d07740b5dd5d6e37181bdcea34606c98b74a617897f3132de15",
+      "fork_sha256": "eaad4c66aba9d1b9df90ab5270589ad06f228d23261866c1befd1f4793d350f0",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/validation.cpp",
+      "upstream_sha256": "8626f665975c1c508b26b8b42210d2ab465f363b70804c1773f4d57f2872d6f0",
+      "fork_sha256": "0bb76d489c89506ece9c4851dd9d8e21b30e19428193b2bc69dbdd1270041e60",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/validation.h",
+      "upstream_sha256": "d64f6d7690ede678f55bfaaa1cd1171c412f1d313cdd3517f24f4d9b3f129dd2",
+      "fork_sha256": "fb69cea0c22bab657395100f7d471d0b6658b722dc408177c0df2b665c8664e4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/wallet/interfaces.cpp",
+      "upstream_sha256": "9c0a974d138e2cff60ca9b5e878a1d05155a6a20b493a9f8b8679d91abc1238d",
+      "fork_sha256": "bea3df033b3ad6ce3266da384da3a523d8310e14a699404194cb490f7edfa91b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/wallet/receive.cpp",
+      "upstream_sha256": "45aaa27870da472b7198bc59ede213ce606e3e436c81b8e9982b200fd0325211",
+      "fork_sha256": "1dfd9cd53fc7a8ed0fe8fa2a7fd3d98ddf0568668daef93f39df4aa302badcc4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/wallet/rpc/coins.cpp",
+      "upstream_sha256": "17bea50356e6421d54d24bb5b9062dc6bbec2ec46a2159dc8701e27c6f21caca",
+      "fork_sha256": "c5c43ef3dfafa1e290819faa8bf663fea2927587c5855dfbf8211a98f22f2b75",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/wallet/rpc/spend.cpp",
+      "upstream_sha256": "cfde33b7823662ab056a1dca336f3c6de5dea6f510765379b8c11b878d847f8b",
+      "fork_sha256": "42f2191fab63e8c259ceb6aa7c18326481d8eb112ad05ef1e0a6fd19d967fd98",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/wallet/spend.cpp",
+      "upstream_sha256": "7c338f627d0bd0c8d580691d27e916fae137c69dd536e4ff2c8343918b3eafe9",
+      "fork_sha256": "453e86fcd38e5aabfd9320103a76d684eeb5f9841794dac75eb7d75e41ccbcbd",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/wallet/test/spend_tests.cpp",
+      "upstream_sha256": "cfd84dced77ddee09b8ee51912c6156958dcec6e52d59b4b193ab56b629496b3",
+      "fork_sha256": "03fdc507cab09983aab90de8727ea4efe3aac93c9e1a5914c662833e8caab1ef",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/wallet/test/wallet_tests.cpp",
+      "upstream_sha256": "f4f05aa877eb57631b73a2949595d880e260315dd86cd1abe8f1ba0c3fee98f5",
+      "fork_sha256": "8f1f249c0706fb4b0dac3fc9a0e7804c8efc1376455f385448cc528a33c89cbc",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/wallet/transaction.cpp",
+      "upstream_sha256": "d4b046dff78baba2bb55a7c0c9fcdc5b8dff0221843272414a1e4904331d8082",
+      "fork_sha256": "66029045173df654973b9ddaef2c7d3be4a09fe728807ff7b7b977b6c2ca85c3",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/wallet/transaction.h",
+      "upstream_sha256": "c92bc6e5115d96fc31106f8ec178fa3ff08a6551258cb64c9d9c51dccd90b4ce",
+      "fork_sha256": "fbb62ea9b9e54b32052aa15c822c98a4d895fb44c48f8d17b726628c7c3a19a1",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/wallet/wallet.cpp",
+      "upstream_sha256": "b35a1e5cd020ef1cabeca0f75428e2e0027dab3b6af801ef350409f2f2dc1f2b",
+      "fork_sha256": "38d29715c45b4d1c351a34d60936b721a299832a3c0a71b67c32f8398d035599",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "src/wallet/wallet.h",
+      "upstream_sha256": "f1f6e7a6f98b1da7b73336f24c57fb346684d4b98d1284d3d2a9b5ead47490cb",
+      "fork_sha256": "70a9667ea0f546d862e5602c4d4b917598ae122515a97dd634cad300447de475",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/README.md",
+      "upstream_sha256": "31102cc43847806fdd37c374cadf8258c6adb597927584f03dc9f13f6d06dde9",
+      "fork_sha256": "fa6434d4fc0872c59147ad9109bdf247ec9307291838f5f0008594fc8e4f4b2f",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/README.md",
+      "upstream_sha256": "0c3b00778ee9c5d488fad15da6f2d20244efeb260f083eac435628f0d26646d3",
+      "fork_sha256": "55104ec14f5fbd91d374c633ba8e159aad338c68601817fedb0a4c70e05dcc18",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/README.md",
+      "upstream_sha256": "fb70ba8ddd4fc2352c862c89a4a4dcdeea6284c2a844d018c0b003249173ff68",
+      "fork_sha256": null,
+      "upstream_executable": 0,
+      "fork_executable": null
+    },
+    {
+      "path": "test/functional/data/mainnet_alt.json",
+      "upstream_sha256": "b85576c28ac5b0e5f26a3d4c089fc6693a921530df734f2cd134a4e557dc0681",
+      "fork_sha256": null,
+      "upstream_executable": 0,
+      "fork_executable": null
+    },
+    {
+      "path": "test/functional/data/rpc_getblockstats.json",
+      "upstream_sha256": "97fa82aaf2e430e4d3e0cba71decc9438b8f87602015e4055ed241bbdb4e360a",
+      "fork_sha256": "9a13be1efce03ba0bd2918540d7a7487ce6f1f62827883d63a8427f22439ce74",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/bitcoin-util-test.json",
+      "upstream_sha256": "3ca4bf3d04b60c3a776caf62e5aea0d596a6acf346d7d130bc84708b699bb038",
+      "fork_sha256": "e0c66da174aefb7863ea55d1cf3287538b0df209aaa28718a83d8086cf879549",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/getchainparams-mainnet.json",
+      "upstream_sha256": "d786bf3591b597040f2dfa3fafe97a514dbc3ae78234225b8f3109e72acefc80",
+      "fork_sha256": "3379a1ff596a372766303a3f9911be0c7a628134952c7d99cefd0f5bff66e342",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/tt-delin1-out.json",
+      "upstream_sha256": "5df6fa1b3467a6efee626539ab3220685e3006430457cf9579cbf8f3bc3f2b7f",
+      "fork_sha256": "a76bd84659d1398aadf403df4f91a134e989a7c154902e509a3e73e5ea230493",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/tt-delout1-out.json",
+      "upstream_sha256": "17d9b3ed92fac5253b06b512f4eba70bda801a0053d6a111da20e56c1be71b4f",
+      "fork_sha256": "1b5c3fde9cec3a37b8ce98d93286d4d3dbc5ffa8e5347e113515e1ae07d995a3",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/tt-locktime317000-out.json",
+      "upstream_sha256": "280ef2e1e79a677eac543e249237ca2d97f2d770562bfef4a55d59746bff4a3e",
+      "fork_sha256": "2655d450dd65eb985e7e7cff92e3ac4bb1a417fef81c812692d00c6df03da0a4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreate1.json",
+      "upstream_sha256": "5a5377945bb7d258c3c791b3259c17832d5496156f383ffe0900dd94af358a29",
+      "fork_sha256": "99596f1e0d029b9672ee6abc28f4b7fc39342d3b0d1ca04d1601366c6a44e3a4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatedata1.json",
+      "upstream_sha256": "7e89ea11ce81ca6d16730dc52deb191ca6d92648e7c9eff5b1a7e9eff2f95afa",
+      "fork_sha256": "f24695ff3c25f537b1a234af0af81c0b2c13df4c268f6a6d1dafa1661c20e91e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatedata2.json",
+      "upstream_sha256": "09715853e8cbb76d6c66790af5dc9b026ed973d1b267bc45bfa26ee9403b84a6",
+      "fork_sha256": "8e4273342b8c62b94f41b789e1b34f8aabd4e6f7e36598f10bc741b56b7a0d43",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatedata_seq0.json",
+      "upstream_sha256": "db7d53080d642b1870b16fec49bd212e8eb04a4a0eb5cb17b0792257c107078a",
+      "fork_sha256": "52ecbe2388d01598ed257948986985f532e2078d8baa83d442d5f2967a4c6e8e",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatedata_seq1.json",
+      "upstream_sha256": "038a3532f150a884f5bd75ee4cd11eecca9bdf6f81f42b61b1922e1a37561679",
+      "fork_sha256": "ac369929f82250cc1128f7edb6ddae87f55a65939a43bd9453f9c03298606e27",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatemultisig2.json",
+      "upstream_sha256": "356da91fe4fc6f410bf2c72e40b67d9f1155b8cd8e76c6d01f070ea45ece2a33",
+      "fork_sha256": "f7a3bf2b486ed941c2ae874ae3ee2d1d251d40b42666fc3ae3c326cf66b866eb",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatemultisig3.json",
+      "upstream_sha256": "01a740782c6759fa90926b47a40658beff75788feccc42a965902f61346a2abc",
+      "fork_sha256": "bf5a988e19b374634e6fd169baf94bfaa99849122cf650575055bc5945ecb573",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatemultisig4.json",
+      "upstream_sha256": "2d421c2ec45784130e7295d2c469633d38f2285b640bb59de19b695f5c41ac53",
+      "fork_sha256": "52ccc00d09c46ec735b5a7239222d79de424d3fa92c5386d99e11d2ceeef601c",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatemultisig5.json",
+      "upstream_sha256": "104d0ea921c86c7c51efbc9f11f70b2eb8fbd022432bf0b7ce3e3f44a244d608",
+      "fork_sha256": "4dd6b5e8b965c8a05d781a114d6e19957e6c6f63f3eef0eaf26052ba13170485",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreateoutpubkey2.json",
+      "upstream_sha256": "22edc57fdcb85514b2c2b3bce1c5c714dd2db40b206ba839c8a7b77155e19c27",
+      "fork_sha256": "833636478645aa0c239840a9ee514a40c73953832ed6dcf9efed699bd3c9c8f0",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreateoutpubkey3.json",
+      "upstream_sha256": "761f0b218d33eb2a2cfe0c09db82047c51e8e5cf8df0cf538d07c0673d15dc14",
+      "fork_sha256": "7a6656dcf32d86ceeccf80b60ec4026d88b8bb654880c5e89f742e45cac762df",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatescript2.json",
+      "upstream_sha256": "094066de277dd5dde3e477d83c2f5fd1090d5ff0a0765b685446b092e6a76a51",
+      "fork_sha256": "7ff4acc4d67f0ff9f370c82428c0e1fe71b2434adb2ae56e63a383f730b35dbc",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatescript3.json",
+      "upstream_sha256": "2edb72e6d727070034ce570d7f47bbacfe2739d29ce88c4f7a9a6e293c440a8f",
+      "fork_sha256": "d8224876d8d84a652feab4950a4b3235296bd6f064b117ad8a8fd3ee3b232c37",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatescript4.json",
+      "upstream_sha256": "44b650f6924f02e3619942dce7d8e69d81be6f7235a3104ee25e33efa88fa294",
+      "fork_sha256": "09f2dd648b8f96d3c898ad7581ee898402a8db93e07f9815c963195d84d2fab4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/data/util/txcreatesignv1.json",
+      "upstream_sha256": "3b69a4e5cdead675ec1f5fa99e2d37d2e77209596df4e94a15e16c4060e4787a",
+      "fork_sha256": "0e4c01daf4c177d40f01d7b12f5e482851f45b6b28bd805c6287c34ca7899ad4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/feature_assumeutxo.py",
+      "upstream_sha256": "d1b57481d692bc0f02caad6818749c977aec2e26670b8d60312d05c5e54415d3",
+      "fork_sha256": "feda2954e202d95648488dc74c1f92f8b5916ccde620d09f9ffeba1b34480111",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_coinstatsindex_compatibility.py",
+      "upstream_sha256": "5e425b83e20ddf53f7739de802fab684cdc2c76d2b3e2bf72b86de387659cbab",
+      "fork_sha256": "52cd8c12347ca201ed16eff27b13f0e4caf8ecc6cc05c935c3f85b6384670b26",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_coinstatsindex_undo.py",
+      "upstream_sha256": null,
+      "fork_sha256": "1ea1c067f9d76e596f203275e009744ff0e57102d1e10ff7b315adf0aabcb164",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_recycle.py",
+      "upstream_sha256": null,
+      "fork_sha256": "27975410e2d8e2692a33cc84624bcbc927380b67b6070a12784f0eaa6b46070d",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_recycle_boundary.py",
+      "upstream_sha256": null,
+      "fork_sha256": "d5b08c19eb33390c5a0b66b7fedc8bff8b01fad6e02513590f1297d050d52899",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_recycle_full_block.py",
+      "upstream_sha256": null,
+      "fork_sha256": "553420c19028b2fe4634326f589f90e8cde48c20514662b0367521cc7d2439af",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_recycle_index.py",
+      "upstream_sha256": null,
+      "fork_sha256": "9e8cb30d0ba87af26f5c5219a12a1633368a67ef18b4eea5126c16af2915f07f",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_recycle_interfaces.py",
+      "upstream_sha256": null,
+      "fork_sha256": "0503dd630abd6d103d4daebff2b137fe70698b132d2889c7375aca2ba1b4e9ac",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_recycle_mining_load.py",
+      "upstream_sha256": null,
+      "fork_sha256": "44a2ce5823ff765e6956765daa85ca260063a0af987294c30f65595f43550199",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_recycle_mixed_versions.py",
+      "upstream_sha256": null,
+      "fork_sha256": "b9be62cc6732f285420af8219c97cb83540b314c967d2aad03906a4e4ae5a49c",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_recycle_modes.py",
+      "upstream_sha256": null,
+      "fork_sha256": "d5a4a94164247c6182cf0530b906ad94ccf999e18a2b38bda8ae228d3e80f646",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_recycle_recovery.py",
+      "upstream_sha256": null,
+      "fork_sha256": "93eb64f4ce0d849aaedc442aae7c4e7aa3330b3a3f65b0dd8b73a714e9c46df8",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_recycle_spend.py",
+      "upstream_sha256": null,
+      "fork_sha256": "dc80ea5730cd9969f02cb479bccd22bcd0547d325f81736b99225d1317e3f6fd",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/feature_unsupported_utxo_db.py",
+      "upstream_sha256": "df9326fe093c8392620be51f2f46fdbf2c4abaca1aec24378e94b619de6d6aae",
+      "fork_sha256": "4df76b35f104d09a2ef2e91119c2d73f5313bd0853b25f80dad8a68070aab508",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/mining_mainnet.py",
+      "upstream_sha256": "94315880ae8bbca067af123b267549511821b2b7db563cd24d806ca3847531e7",
+      "fork_sha256": "90e4fe43cc1ffad07fa47d32e1fcde60c3a517d4683d79aefea685020646dcc1",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/p2p_private_broadcast_retry_v1.py",
+      "upstream_sha256": "441ed0b1b214545ac7a1919937a686483508bd326a7ae188d420c8ee1a10efef",
+      "fork_sha256": null,
+      "upstream_executable": 73,
+      "fork_executable": null
+    },
+    {
+      "path": "test/functional/p2p_resatoshi_bootstrap.py",
+      "upstream_sha256": null,
+      "fork_sha256": "e7e9fbdc7bf4f76266ebe47b8554b6305212b765e3ffa3136f62f3dbeb694bf1",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/rpc_blockchain.py",
+      "upstream_sha256": "1d44e6dd32df2091e6665be6b4bc550a7766a656e9f7667c15aae31f4927f647",
+      "fork_sha256": "cf580572cc59fd8b29c0745e7d76f32b584a4853ad065674fdfdc845a31900e9",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/rpc_checkrecycleindex.py",
+      "upstream_sha256": null,
+      "fork_sha256": "17e1ce8f05a3f732c0ac02d997d570c865190d30c0bf2567d796ad80125bb1eb",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/rpc_dumptxoutset.py",
+      "upstream_sha256": "78005ac31b4df70964714dcc407fb5571a89350a9fc8d78381d2a8b979dba487",
+      "fork_sha256": "dac890daf542e661bbb21e6e3b839505f3262e54282e3459c80a4de3c3f13442",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/rpc_generate_recycle.py",
+      "upstream_sha256": null,
+      "fork_sha256": "bd18c023c7493ebf7e1c10585b17a3680145c848f6c869325aa1f2ac878620e3",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/rpc_getblockstats.py",
+      "upstream_sha256": "f3fc3f8897c3909f4fa11e83fd30b65b7b00336991ade7469384f64be331fefe",
+      "fork_sha256": "6ff91d3d214d57a720c1bd5a51ef5448f43264b861eb7dbb426a9f2e341c4bc6",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/rpc_getblockstats_recycle.py",
+      "upstream_sha256": null,
+      "fork_sha256": "26586013c3bb2d9b74ad82fc84f03c8bf0b517c8a2cfe433b55f1404355e6a00",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/rpc_named_arguments.py",
+      "upstream_sha256": "168cd8f09b3c29b578dfdc06cce75b37bab1c09031880a3af9a91bfc9efa0b43",
+      "fork_sha256": "f36c5d26cbc48147b5731db92299ff26e494e25781d503a8d124d0acc5a254d6",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/rpc_signer.py",
+      "upstream_sha256": "34b2d5c0985ecd7a84d44b30255d8135f21371bccbdf0b39e9e74e43ae4162cf",
+      "fork_sha256": "bb351edcc39c66ff5c3a38954d9c38c0889d222c4a1efed488638d4c5bf82fa4",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/rpc_validateaddress.py",
+      "upstream_sha256": "1bf25b4e62e7c4b90844c4f3e27f1c155d566ba9eead762ee3dd0c2e61854ff4",
+      "fork_sha256": "e00590d3127531e3475361cfb37723ae8276aa990e870da46b335fb235b94ebd",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/test-shell.md",
+      "upstream_sha256": "3d4edebca7b581becfa6c9acaa556cf2418417b27b986d34c294798da4748b2e",
+      "fork_sha256": "7511213b223b24ce59569fa97c66ad5f5b23ff7ee8bb954506cc61d3dc04ae2b",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/test_framework/messages.py",
+      "upstream_sha256": "976c1f77654f2a172397cfc380bdc5f323b7582bd71d995c91d4be01bebe8408",
+      "fork_sha256": "01204c0727fbc133631b9645b2342c210406f7024fb6c5e86976f1b4737683ad",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/test_framework/p2p.py",
+      "upstream_sha256": "8f5da7b6d11a5fea8a2dae071e22c21e4f2922acba704a5eceaed64659d945c8",
+      "fork_sha256": "2a419331ada103ea401edd947fca334f4075649d6758c6f67b389855c358cad9",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/test_framework/util.py",
+      "upstream_sha256": "c456da7fbad0692dd42ca56537e8dc736b23040474d879e8d835e9048e801e30",
+      "fork_sha256": "7ffc55acb3bdb758176dd7fb698cdc6a38e11b06fc15bc58e7f20c6aa490cf87",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/test_framework/v2_p2p.py",
+      "upstream_sha256": "0ba6bfc9495623bdcf759873465341ac381e419837c6951872fff064cb2f64ad",
+      "fork_sha256": "b537f87638565f50061c97b5f6ab16396eef1d96f63112ce7cb38eadd44f21b4",
+      "upstream_executable": 0,
+      "fork_executable": 0
+    },
+    {
+      "path": "test/functional/test_runner.py",
+      "upstream_sha256": "ee8ea21ffcb7cf71717058ab5ec13e06ed00aea780d1acfe50cfabb796c320c9",
+      "fork_sha256": "1bf0c0f32df791889b00f333095a46463ea9e6b286c7f489e5b8ff25a79054ec",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/wallet_lockunspent_recycle.py",
+      "upstream_sha256": null,
+      "fork_sha256": "aa7dffb84c8c10c48d71d01fb5a4bd284645212fc6534986e6d5ce162ada2989",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/wallet_recycle_conflicts.py",
+      "upstream_sha256": null,
+      "fork_sha256": "a93efb14918ba89aa2d87a89db0fd9209da7b76b1a158690506e704900fdfc07",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/wallet_recycle_external.py",
+      "upstream_sha256": null,
+      "fork_sha256": "ea604fca4c2cdc13308e11b11471bf57aaf9fa5adb9a9fa109aff05d07cedb59",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/wallet_recycle_upgrade.py",
+      "upstream_sha256": null,
+      "fork_sha256": "428b9de10ae36e564a427c8fa594029de017510c4eac25cdb11548490fda589a",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/wallet_sendall_recycle.py",
+      "upstream_sha256": null,
+      "fork_sha256": "96a564fd972bdd0a5b59514236dc4de0ac4b82684371957ef587434ce281fdd8",
+      "upstream_executable": null,
+      "fork_executable": 73
+    },
+    {
+      "path": "test/functional/wallet_signer.py",
+      "upstream_sha256": "9e4d119b62fe1ea5d2e93685203f3d1fac3435df27987f9d7d201aa1e9ea9a7c",
+      "fork_sha256": "71b2f84ef2a8aca3f04be495d3446dbc28b38a09d99166469704bd8cd370649e",
+      "upstream_executable": 73,
+      "fork_executable": 73
+    }
+  ],
+  "groups": {
+    "other files": {
+      "files": 118,
+      "added_lines": 4231,
+      "deleted_lines": 2758
+    },
+    "other src/": {
+      "files": 130,
+      "added_lines": 5330,
+      "deleted_lines": 477
+    },
+    "translations": {
+      "files": 101,
+      "added_lines": 168651,
+      "deleted_lines": 149340
+    },
+    "tests": {
+      "files": 63,
+      "added_lines": 3541,
+      "deleted_lines": 4462
+    }
+  }
+}

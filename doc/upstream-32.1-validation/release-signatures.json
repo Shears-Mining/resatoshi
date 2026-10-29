@@ -1,0 +1,57 @@
+{
+  "release": "32.1",
+  "verified_at_utc": "2026-10-29T11:14:25.592062+00:00",
+  "archive_sha256": "a5f2f61e32cf7f790641c9ec306a3c88ca7b5a556946956b1f35ffd7e27813f9",
+  "archive_url": "https://bitcoincore.org/bin/bitcoin-core-32.1/bitcoin-32.1.tar.gz",
+  "checksums_url": "https://bitcoincore.org/bin/bitcoin-core-32.1/SHA256SUMS",
+  "signatures_url": "https://bitcoincore.org/bin/bitcoin-core-32.1/SHA256SUMS.asc",
+  "checksums_sha256": "8efe242e99fe85d96f6a564a14e41eae6ab903736f0732af4d6c00bf1d92534d",
+  "signatures_sha256": "a69d28b40056971b7b4e5aa02a1511edde2e12887961f02f86bd197f5f9c6baf",
+  "gpg_exit_code": 0,
+  "valid_signatures": [
+    {
+      "uid": "Ava Chow <me@achow101.com>",
+      "signing_fingerprint": "152812300785C96444D3334D17565732E08E5E41",
+      "primary_fingerprint": "152812300785C96444D3334D17565732E08E5E41"
+    },
+    {
+      "uid": "Ben Carman <benthecarman@live.com>",
+      "signing_fingerprint": "0AD83877C1F0CD1EE9BD660AD7CC770B81FD22A8",
+      "primary_fingerprint": "0AD83877C1F0CD1EE9BD660AD7CC770B81FD22A8"
+    },
+    {
+      "uid": "Michael Ford (bitcoin-otc) <fanquake@gmail.com>",
+      "signing_fingerprint": "CFB16E21C950F67FA95E558F2EEB9F5CC09526C1",
+      "primary_fingerprint": "E777299FC265DD04793070EB944D35F9AC3DB76A"
+    },
+    {
+      "uid": "Oliver Gugger <gugger@gmail.com>",
+      "signing_fingerprint": "F4FC70F07310028424EFC20A8E4256593F177720",
+      "primary_fingerprint": "F4FC70F07310028424EFC20A8E4256593F177720"
+    },
+    {
+      "uid": "Matthew Zipkin (GitHub Signing Key) <pinheadmz@gmail.com>",
+      "signing_fingerprint": "E61773CD6E01040E2F1BD78CE7E2984B6289C93A",
+      "primary_fingerprint": "E61773CD6E01040E2F1BD78CE7E2984B6289C93A"
+    },
+    {
+      "uid": "sedited <seb.kung@gmail.com>",
+      "signing_fingerprint": "F2CFC4ABD0B99D837EEBB7D09B79B45691DB4173",
+      "primary_fingerprint": "A8FC55F3B04BA3146F3492E79303B33A305224CB"
+    },
+    {
+      "uid": "Sjors Provoost <sjors@sprovoost.nl>",
+      "signing_fingerprint": "ED9BDF7AD6A55E232E84524257FF9BDBCC301009",
+      "primary_fingerprint": "ED9BDF7AD6A55E232E84524257FF9BDBCC301009"
+    },
+    {
+      "uid": "Will Clark <will@256k1.dev>",
+      "signing_fingerprint": "A0083660F235A27000CD3C81CE6EC49945C17EA6",
+      "primary_fingerprint": "67AA5B46E7AF78053167FE343B8F814A784218F8"
+    }
+  ],
+  "invalid_or_unknown_signatures": 0,
+  "key_source": "https://github.com/bitcoin-core/guix.sigs/tree/main/builder-keys",
+  "key_provenance": "Public keys downloaded over HTTPS from official guix.sigs; each Git blob SHA-1 matched the captured GitHub API index. Isolated keyring, no ownertrust assigned or independent out-of-band fingerprint authentication.",
+  "key_manifest": "builder-keys-manifest.json"
+}

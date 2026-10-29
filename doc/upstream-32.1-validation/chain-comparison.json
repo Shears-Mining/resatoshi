@@ -1,0 +1,212 @@
+{
+  "export": {
+    "height": 13600,
+    "bestblock": "0000000000001930f171182f11a1fc1b3a16899544d4acc1810894e37d5951f2",
+    "genesis": "0000000379813245fcdd4600969c6f74684f14433badf837be5b8ffa560174ec",
+    "export_sha256": "b7d9d630334ac2fa6cdd8ba11392ee6d98bf681c2764b38c779781a12de66bf8",
+    "source_version": "/Resatoshi:31.0.0/",
+    "captured_at_utc": "2026-10-29T11:09:20.312542+00:00"
+  },
+  "matched_utxo_fields": [
+    "height",
+    "bestblock",
+    "txouts",
+    "transactions",
+    "total_amount",
+    "muhash",
+    "bogosize"
+  ],
+  "all_four_equal": true,
+  "results": [
+    {
+      "version": "31.0-main",
+      "commit": "e2505c0470c283b5ddbbcd662f42d42b25509127",
+      "mode": "index",
+      "binary_sha256": "c19e89f67b6ba6ff2d70b11321ded33d03382087ec759964f85a544497b04e39",
+      "binary_version": "Resatoshi daemon version v31.0.0-rsat.1-ge2505c0470c2 (Bitcoin Core base 31.0.0) bitcoind",
+      "command": [
+        "/home/cjm/resatoshi/bitcoin-resatoshi-31.0/build/bin/bitcoind",
+        "-datadir=/home/cjm/resatoshi/audit-upstream-evidence-20261029/31.0-main-index/data",
+        "-server",
+        "-recyclemode=index",
+        "-listen=0",
+        "-connect=0",
+        "-dnsseed=0",
+        "-fixedseeds=0",
+        "-listenonion=0",
+        "-discover=0",
+        "-natpmp=0",
+        "-disablewallet",
+        "-rpcport=29640",
+        "-rpcbind=127.0.0.1",
+        "-assumevalid=0",
+        "-loadblock=/home/cjm/resatoshi/audit-upstream-evidence-20261029/mainnet.dat",
+        "-dbcache=128"
+      ],
+      "utxo": {
+        "height": 13600,
+        "bestblock": "0000000000001930f171182f11a1fc1b3a16899544d4acc1810894e37d5951f2",
+        "txouts": 10938,
+        "bogosize": 790005,
+        "muhash": "827edd21f68a695011abe996001c49c8e54d13b0214cab70bdb27cfbe85b7757",
+        "total_amount": "680000.00000000",
+        "transactions": 10623,
+        "disk_size": 0
+      },
+      "hash_serialized_3": "d1049edc346be919780936eeb6f9f8b6ca5bc7801aaaffdb6f03d439ee9f7ba1",
+      "recycling": {
+        "enabled": true,
+        "mode": "index",
+        "expiry_blocks": 5256000,
+        "max_reward_per_block": "1.00000000",
+        "pool_balance": "0E-8"
+      },
+      "verifychain_4_0": true,
+      "connections": 0,
+      "elapsed_seconds": 3.022
+    },
+    {
+      "version": "31.0-main",
+      "commit": "e2505c0470c283b5ddbbcd662f42d42b25509127",
+      "mode": "block",
+      "binary_sha256": "c19e89f67b6ba6ff2d70b11321ded33d03382087ec759964f85a544497b04e39",
+      "binary_version": "Resatoshi daemon version v31.0.0-rsat.1-ge2505c0470c2 (Bitcoin Core base 31.0.0) bitcoind",
+      "command": [
+        "/home/cjm/resatoshi/bitcoin-resatoshi-31.0/build/bin/bitcoind",
+        "-datadir=/home/cjm/resatoshi/audit-upstream-evidence-20261029/31.0-main-block/data",
+        "-server",
+        "-recyclemode=block",
+        "-listen=0",
+        "-connect=0",
+        "-dnsseed=0",
+        "-fixedseeds=0",
+        "-listenonion=0",
+        "-discover=0",
+        "-natpmp=0",
+        "-disablewallet",
+        "-rpcport=29641",
+        "-rpcbind=127.0.0.1",
+        "-assumevalid=0",
+        "-loadblock=/home/cjm/resatoshi/audit-upstream-evidence-20261029/mainnet.dat",
+        "-dbcache=128"
+      ],
+      "utxo": {
+        "height": 13600,
+        "bestblock": "0000000000001930f171182f11a1fc1b3a16899544d4acc1810894e37d5951f2",
+        "txouts": 10938,
+        "bogosize": 790005,
+        "muhash": "827edd21f68a695011abe996001c49c8e54d13b0214cab70bdb27cfbe85b7757",
+        "total_amount": "680000.00000000",
+        "transactions": 10623,
+        "disk_size": 0
+      },
+      "hash_serialized_3": "d1049edc346be919780936eeb6f9f8b6ca5bc7801aaaffdb6f03d439ee9f7ba1",
+      "recycling": {
+        "enabled": true,
+        "mode": "block",
+        "expiry_blocks": 5256000,
+        "max_reward_per_block": "1.00000000",
+        "pool_balance": "0E-8"
+      },
+      "verifychain_4_0": true,
+      "connections": 0,
+      "elapsed_seconds": 2.952
+    },
+    {
+      "version": "32.1-main",
+      "commit": "4f0d4ebb15af9bfb468ebb2632486eb694b714e8",
+      "mode": "index",
+      "binary_sha256": "a1412324b806322ab58d77e415025dfaee5fcf54274ead444faba115918a00b7",
+      "binary_version": "Resatoshi daemon version v32.1.0-rsat.1-g4f0d4ebb15af (Bitcoin Core base 32.1.0) bitcoind",
+      "command": [
+        "/home/cjm/resatoshi/audit-upstream-32.1-20261028/build/bin/bitcoind",
+        "-datadir=/home/cjm/resatoshi/audit-upstream-evidence-20261029/32.1-main-index/data",
+        "-server",
+        "-recyclemode=index",
+        "-listen=0",
+        "-connect=0",
+        "-dnsseed=0",
+        "-fixedseeds=0",
+        "-listenonion=0",
+        "-discover=0",
+        "-natpmp=0",
+        "-disablewallet",
+        "-rpcport=29642",
+        "-rpcbind=127.0.0.1",
+        "-assumevalid=0",
+        "-loadblock=/home/cjm/resatoshi/audit-upstream-evidence-20261029/mainnet.dat",
+        "-dbcache=128",
+        "-prevoutfetchthreads=2"
+      ],
+      "utxo": {
+        "height": 13600,
+        "bestblock": "0000000000001930f171182f11a1fc1b3a16899544d4acc1810894e37d5951f2",
+        "txouts": 10938,
+        "bogosize": 790005,
+        "muhash": "827edd21f68a695011abe996001c49c8e54d13b0214cab70bdb27cfbe85b7757",
+        "total_amount": "680000.00000000",
+        "transactions": 10623,
+        "disk_size": 0
+      },
+      "hash_serialized_3": "d1049edc346be919780936eeb6f9f8b6ca5bc7801aaaffdb6f03d439ee9f7ba1",
+      "recycling": {
+        "enabled": true,
+        "mode": "index",
+        "expiry_blocks": 5256000,
+        "max_reward_per_block": "1.00000000",
+        "pool_balance": "0E-8"
+      },
+      "verifychain_4_0": true,
+      "connections": 0,
+      "elapsed_seconds": 3.884
+    },
+    {
+      "version": "32.1-main",
+      "commit": "4f0d4ebb15af9bfb468ebb2632486eb694b714e8",
+      "mode": "block",
+      "binary_sha256": "a1412324b806322ab58d77e415025dfaee5fcf54274ead444faba115918a00b7",
+      "binary_version": "Resatoshi daemon version v32.1.0-rsat.1-g4f0d4ebb15af (Bitcoin Core base 32.1.0) bitcoind",
+      "command": [
+        "/home/cjm/resatoshi/audit-upstream-32.1-20261028/build/bin/bitcoind",
+        "-datadir=/home/cjm/resatoshi/audit-upstream-evidence-20261029/32.1-main-block/data",
+        "-server",
+        "-recyclemode=block",
+        "-listen=0",
+        "-connect=0",
+        "-dnsseed=0",
+        "-fixedseeds=0",
+        "-listenonion=0",
+        "-discover=0",
+        "-natpmp=0",
+        "-disablewallet",
+        "-rpcport=29643",
+        "-rpcbind=127.0.0.1",
+        "-assumevalid=0",
+        "-loadblock=/home/cjm/resatoshi/audit-upstream-evidence-20261029/mainnet.dat",
+        "-dbcache=128",
+        "-prevoutfetchthreads=2"
+      ],
+      "utxo": {
+        "height": 13600,
+        "bestblock": "0000000000001930f171182f11a1fc1b3a16899544d4acc1810894e37d5951f2",
+        "txouts": 10938,
+        "bogosize": 790005,
+        "muhash": "827edd21f68a695011abe996001c49c8e54d13b0214cab70bdb27cfbe85b7757",
+        "total_amount": "680000.00000000",
+        "transactions": 10623,
+        "disk_size": 0
+      },
+      "hash_serialized_3": "d1049edc346be919780936eeb6f9f8b6ca5bc7801aaaffdb6f03d439ee9f7ba1",
+      "recycling": {
+        "enabled": true,
+        "mode": "block",
+        "expiry_blocks": 5256000,
+        "max_reward_per_block": "1.00000000",
+        "pool_balance": "0E-8"
+      },
+      "verifychain_4_0": true,
+      "connections": 0,
+      "elapsed_seconds": 3.285
+    }
+  ]
+}

@@ -1,0 +1,207 @@
+[
+  {
+    "name": "0xb10c.gpg",
+    "git_blob": "9f15a529bb4f1b10bf5de991c709f4c59c6a74f3",
+    "sha256": "ccd3cc6fd3c58e8717abc31472ca9318a657711ecbdcf1a26289b3214045195e"
+  },
+  {
+    "name": "CoinForensics.gpg",
+    "git_blob": "07140ede180cc4720388428829d0b29299c73fc6",
+    "sha256": "3e1dff163c3a4a6f3dd50e18bed497888b18a7bc1c0745ef1f97def8b71735a4"
+  },
+  {
+    "name": "Emzy.gpg",
+    "git_blob": "10feb7db6cf810def133bc952a72a7cdb2ef85b1",
+    "sha256": "24201144a4bccf69fb5ab226d93318f344b07722e3696f7a0ef96b5a33a8712a"
+  },
+  {
+    "name": "Sjors.gpg",
+    "git_blob": "b3b02713a5b13dbdb0e3000a209b491bffb63050",
+    "sha256": "f7d0c746d69686302cb8465bddd4faf2e1930a22785dfc98c6f0cd149d0cfb13"
+  },
+  {
+    "name": "TheCharlatan.gpg",
+    "git_blob": "d296bd7a757a5534da4e33e04e379ec88e348df3",
+    "sha256": "9eb99905bbd8aca6c310a9a76587e2c37524bbc6df18c00cbe277231ea8d1508"
+  },
+  {
+    "name": "achow101.gpg",
+    "git_blob": "58f2ef0fa95af7e5f704ae0ea5561201b9d0080b",
+    "sha256": "1b31ab2e336d5ee44dd4d9f5703ad4445798fcee3b1352ab75afa145e737224a"
+  },
+  {
+    "name": "benthecarman.gpg",
+    "git_blob": "3f49ce63520caddf093ab4c05c3857a10da8e125",
+    "sha256": "438417e4db2106a1be8105f9b9abb777967840f7d4a81f1e5c0607d286b82735"
+  },
+  {
+    "name": "cfields.gpg",
+    "git_blob": "052375fefed56d12a078de1ace4cd42ef5643c66",
+    "sha256": "ade3096ffb3020eea7c30f7ef626b3d890387b782dde502b74f54044b4e9a502"
+  },
+  {
+    "name": "danielabrozzoni.gpg",
+    "git_blob": "6239a184386ba13891938211548b9da8e2fb9166",
+    "sha256": "55a1a2b551a92b1049c9e62a4ed94381945711825b09b211f60db96d414789d1"
+  },
+  {
+    "name": "darosior.gpg",
+    "git_blob": "2da3281f75b71665286b5952d672bac207ed904b",
+    "sha256": "9ab192ac8fb23d2f562dd675fed22669f9622596a8982bfab98be6fdad1c9f42"
+  },
+  {
+    "name": "davidgumberg.gpg",
+    "git_blob": "eb090b50f3320c6c2b5290822a886bf9302b2932",
+    "sha256": "6fa99bf54d7c43e1fb3d4dd1525d4d72e950e05944249198f139742ef849af9e"
+  },
+  {
+    "name": "dunxen.gpg",
+    "git_blob": "b19e5b3dd5f8f6f8c2ba28f14e1e744dc959aa56",
+    "sha256": "402901a80bc6eab5aa45eadc22407b23382c83e085955af6e94b9b5d0ba77a2f"
+  },
+  {
+    "name": "fanquake.gpg",
+    "git_blob": "17db6f4b108d276c584b6ed26c35b22914086794",
+    "sha256": "d9d6d89f5d9da0811ed94469f790d5bd0e185b7ee678e7ca7b3121995ded3d26"
+  },
+  {
+    "name": "glozow.gpg",
+    "git_blob": "83a8134a515fb8998bdb0772ca540908d2a49967",
+    "sha256": "78c3c941d0063a6a03ef354c0415636eae59c760c0235852fb40e2b97e6f7cf2"
+  },
+  {
+    "name": "guggero.gpg",
+    "git_blob": "8c55b89f61fb0e4f2ab24dd998191ee85a33bebd",
+    "sha256": "09d130b060d28e257a9e76773252d1ae35238e93425848b86bc67bd0f6b28675"
+  },
+  {
+    "name": "hebasto.gpg",
+    "git_blob": "8f3009aecceb750a8179fdcb9d85bb40bebbb187",
+    "sha256": "f305e90cb6b3cfe47beb71a51242395f1fc8d46840a1d2345283df2fefca021b"
+  },
+  {
+    "name": "ismaelsadeeq.gpg",
+    "git_blob": "278bccd2c7e41795ad120c254228a8a333bb952a",
+    "sha256": "9e6b9cdd2629e88616b9d3ab6140237afa344afdc517818014f718105ccf5806"
+  },
+  {
+    "name": "jackielove4u.gpg",
+    "git_blob": "cbbfee8769442c1d18f8ed7753289a85121f2ae2",
+    "sha256": "50d7dbc07a6eedbb24700bd80c122094f6e24dbc0812781f5f3318658d47d9b6"
+  },
+  {
+    "name": "josibake.gpg",
+    "git_blob": "337b3dc7b55bc77907216180673b3d22b0482ece",
+    "sha256": "47d60a0490a93e3261347e73d5c94311bd77538d822e315f6d68b6be5746e887"
+  },
+  {
+    "name": "kvaciral.gpg",
+    "git_blob": "1b2a1a77dd25204feabbb197cbdc7e3aa3c456d7",
+    "sha256": "c1e5fc38fb917b0a795c245cee7a13cffe6562cbb822be020ac5abbcf392e563"
+  },
+  {
+    "name": "laanwj.gpg",
+    "git_blob": "6e24626d9f2c02f1a8772e0148e620f48717882b",
+    "sha256": "556c62caf73e85a56ac2d15ecd814cf733f2a425cf72edb89eb7bafad6178656"
+  },
+  {
+    "name": "luke-jr.gpg",
+    "git_blob": "c5bd35df469115f7eea99f6fa35c60085053cd08",
+    "sha256": "e7259d18c91d54fd8d177fb9c128dd17fa65a394aafa7709e037fa8ed50477fd"
+  },
+  {
+    "name": "m3dwards.gpg",
+    "git_blob": "ae25ce772cad630b0b07229a5ffdd600b55e1403",
+    "sha256": "c6affc7b4375d0a4a36c6d6ab684c351dba28e45da6aadc083ec93c243e7908e"
+  },
+  {
+    "name": "maflcko.gpg",
+    "git_blob": "cc3ed8edffc0c2d8507703569d31df510fdabe59",
+    "sha256": "ec4b76e9c72ae67c283f100c6962fd0d3ba1c60abd9f8ed4044f53a329ba83d4"
+  },
+  {
+    "name": "marcofleon.gpg",
+    "git_blob": "53e8f499738a33f9475cdd4d1fe6d1ddea680961",
+    "sha256": "1d9740a6691b9fe48a7e9a9e30e578a928610360afe4effa603133aef260b661"
+  },
+  {
+    "name": "nkatha23.gpg",
+    "git_blob": "5fd1d036bd75a5079b98a6f376f6e4be253e3968",
+    "sha256": "41f648a5b3157c7adbdba2f22b0416caa24210c7c34f35746aa5ef2ead39ed78"
+  },
+  {
+    "name": "pinheadmz.gpg",
+    "git_blob": "e2d37a71d0a399a8fea278fad7ec37b74a060a69",
+    "sha256": "c69f6402bc7d63c60f2bcba1d2e853af521e625319118ab0fb57ec32f8405437"
+  },
+  {
+    "name": "satsie.gpg",
+    "git_blob": "2f5a9664537a22ee725d9e5e97988c53cdcbf81e",
+    "sha256": "905c2c1b14b43fbc6a0562884f2365e1728428141fccc365a83843db1d3b7f76"
+  },
+  {
+    "name": "sedited.gpg",
+    "git_blob": "88ee433a683ff9ea7f00dc3195b0c32c909c1df5",
+    "sha256": "4ccc4bd4de9b05625671dd6817f29d65e52bae8bb0fad402b5bd1f04eb211802"
+  },
+  {
+    "name": "sipa.gpg",
+    "git_blob": "457a6b907f9ccc315445e286dd0278c5bac134e2",
+    "sha256": "96804841ba5801e581569b4dad0e8f8826190d0016969d5e765c6533b3d7c077"
+  },
+  {
+    "name": "sipsorcery.gpg",
+    "git_blob": "75acfaa0c3909becb6c6422ff4f9fcca734b5e95",
+    "sha256": "6fdba7ccb6271d25ebf4ca5dca3d85c321b456300ec82ed633fe01f1e7bfc66c"
+  },
+  {
+    "name": "stickies-v.gpg",
+    "git_blob": "0947e939dcb07218e9785042296d4b4842836efd",
+    "sha256": "14dff06d3bc3855843546cc8594672d3fb8b3cdaa41bcaaaf45387c50d5c2f1e"
+  },
+  {
+    "name": "svanstaa.gpg",
+    "git_blob": "5b3e8dd55ed44a551c350ff61ec05a965d1ef9c8",
+    "sha256": "d2dea2019cae472606e033e42a757a9fc67fccca1a4c8b30dafae453c1aec65a"
+  },
+  {
+    "name": "tapcrafter.gpg",
+    "git_blob": "16c31adea09d2819b73c09e45f1488f7ed817f41",
+    "sha256": "b59b9eb4a52583772225572886c37a203ed3c50835b96019b9cf240f52ba458e"
+  },
+  {
+    "name": "theStack.gpg",
+    "git_blob": "6cc3ce6f2c0d5132c57d1c8252e160e2695683d7",
+    "sha256": "ffd7e42d89dae3c30dc26e5b472f1eee8d887600c03c1bdc3bc2a98ad93fae06"
+  },
+  {
+    "name": "vertiond.gpg",
+    "git_blob": "c6d69d114ec73bf6298a55601d8299604f5e66d3",
+    "sha256": "c5820b35cb13180002e2af1a584ba037392fcde2bff75b992eb7b024f36d23c0"
+  },
+  {
+    "name": "willcl-ark.gpg",
+    "git_blob": "24bcaafc82807010e423649818c830cc40aef9ea",
+    "sha256": "bc7e27b822682dde35d38b024848a27525ce76f5c9874f141318ea4a304c11ed"
+  },
+  {
+    "name": "willyko.gpg",
+    "git_blob": "e66d53a0feb62cb0db7ed7232cb63d1e95e0ce0f",
+    "sha256": "30cdc743f5d480ad24a1a28fa3c4f306111f0e8a22ecd8eaad86596d96a5e57c"
+  },
+  {
+    "name": "xyephy.gpg",
+    "git_blob": "45914ab4fab388e4f6cccb3697d8843a7dc87d1d",
+    "sha256": "9141e40972419f70b5fdab544d0d3bf800c09120b14e222c492c0f7bdf3bfea3"
+  },
+  {
+    "name": "xyzconstant.gpg",
+    "git_blob": "bdcfcbbc90179b70d03659c04481e61edf14837e",
+    "sha256": "1253ab04adb921761158e4cb92f74b616976accf1131f3d39d019e2364852999"
+  },
+  {
+    "name": "yuvicc.gpg",
+    "git_blob": "60c75c7119eb5b457b192248cd498b263de2a78f",
+    "sha256": "49bd066101c04bc65f1bd57d13fb9f06c799aecbfe3cc9bffc42f3f39a998e9e"
+  }
+]

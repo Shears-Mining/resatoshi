@@ -22,6 +22,13 @@ project-specific adaptations and validation requirements, and the
 [upstream 32.1 notes](release-notes/release-notes-32.1.md) for API and setting
 changes. Windows/macOS packages require their own build and runtime validation.
 
+Local validation for source `4f0d4eb` (2026-10-29): CTest 379 passed; base
+functional 308 passed/19 skipped, then IPC/ZMQ 3 passed (combined 311 passed/16
+skipped); full lint passed. Historical mainnet agreement, mixed-version
+expiry/reorganization tests, eight release signatures and the upstream-relative
+fork footprint are recorded in the
+[32.1 validation report](upstream-32.1-validation.md).
+
 ## Default expiry mode for new nodes
 
 Fresh data directories now default to `block` (Original blocks). Existing

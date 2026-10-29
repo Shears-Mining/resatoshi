@@ -1,0 +1,311 @@
+{
+  "reference_binary": "/home/cjm/resatoshi/bitcoin-resatoshi-31.0/build/bin/bitcoind",
+  "candidate_mode": "index",
+  "reference_mode": "block",
+  "transport": "v1",
+  "peers": [
+    {
+      "subver": "/Resatoshi:31.0.0(testnode1)/",
+      "version": 70016,
+      "transport_protocol_type": "v1"
+    },
+    {
+      "subver": "/Resatoshi:32.1.0(testnode0)/",
+      "version": 70017,
+      "transport_protocol_type": "v1"
+    }
+  ],
+  "locally_mined_blocks": [
+    203,
+    205
+  ],
+  "concurrent_competing_blocks": [
+    "486236933522482257a6cdbc5679c4c0f831ed312a1e3678f1efad8eaf71151d",
+    "1c96a281c7505f66fc9a2a0f6a6b62afd60fe0ef40b5490792e22ff522ae8b35"
+  ],
+  "standard_transactions_relayed_both_directions": true,
+  "reorganizations_across_first_expiry": 2,
+  "restart_rounds": 2,
+  "rpc_block_submission_to_peer": false,
+  "checkpoints": [
+    {
+      "label": "before first expiry",
+      "height": 200,
+      "bestblock": "25256668a9ad4ed01400b2f3551a534e66cdc11e16d43b061b4a6bf78b062cd4",
+      "txouts": 3,
+      "total_amount": "150.00000000",
+      "muhash": "cbc9852d5a28ba0d4b0ffcf3db02c47d0509e5521e947c870e29fbab2a399ddf",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "main branch wins across expiry",
+      "height": 203,
+      "bestblock": "301d739fab6e29e90e7adfee0f56dfe51c74a52de2b620159e9784df520fdc5a",
+      "txouts": 2,
+      "total_amount": "75.99800000",
+      "muhash": "7c8332b73d0ea6fda06abdb4e32795e5d2f269f0355ddbeeea09ff2ef8944da3",
+      "pool_balance": "97.00200000"
+    },
+    {
+      "label": "new branch wins and restores the expiry-block spend",
+      "height": 205,
+      "bestblock": "4e810600258079efd4241257f8231b24281a6fbaf4360a62a7f508ae45383167",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "47.00000000"
+    },
+    {
+      "label": "both formats reopen after reorganization",
+      "height": 205,
+      "bestblock": "4e810600258079efd4241257f8231b24281a6fbaf4360a62a7f508ae45383167",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "47.00000000"
+    },
+    {
+      "label": "alternating mining at 215",
+      "height": 215,
+      "bestblock": "6acbf5262a271587c303fae78823f147b439f87dd5438c6d62bb9e9a110579ba",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "37.00000000"
+    },
+    {
+      "label": "alternating mining at 225",
+      "height": 225,
+      "bestblock": "71f0cca57e62ed4f546ff52ce6d8d2ff3e48ae92fab695b6444028df480c3673",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "27.00000000"
+    },
+    {
+      "label": "alternating mining at 235",
+      "height": 235,
+      "bestblock": "2ec8c839de697c1b7b602e57ac3b2566e90632550fa4fb6b0c0c1132b1f7d9d6",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "17.00000000"
+    },
+    {
+      "label": "alternating mining at 245",
+      "height": 245,
+      "bestblock": "1eb64ad92d27c3898d14d3406bead08b38ed076d70e7da030c4bb26f04c87fe0",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "7.00000000"
+    },
+    {
+      "label": "alternating mining at 255",
+      "height": 255,
+      "bestblock": "47aa0c40aecfbbf0243e5841914a48a5bd906fac909bdbab7021d0cd086d0b5c",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 265",
+      "height": 265,
+      "bestblock": "05d52f31093dca770076e7fb6cfa1988f6dc59d791a6134ff1172f861a169864",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 275",
+      "height": 275,
+      "bestblock": "5d7b5090ec162ea5d92146abeed64b0f2531519afa48a24f447661989a6de87a",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 285",
+      "height": 285,
+      "bestblock": "6b4dc7298402a7cb07b25f5e4df56dbc60807bd58f7994463521c0f00a1edc53",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 295",
+      "height": 295,
+      "bestblock": "3d6fa09aa74170f0ab9faf244d57da2428b2fd0a3004687217ecb1c5b20db6f8",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 305",
+      "height": 305,
+      "bestblock": "043da49e829c97df3a350fe43aa6392bf406514efde81c87356ba84c7c3288e9",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 315",
+      "height": 315,
+      "bestblock": "39d9ccae454bae240fdc0dc2366664820012ef87bd9c3578eca98734a4c29fdf",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 325",
+      "height": 325,
+      "bestblock": "61d4fa11a8380ee76edc6d652524453c624416aa07ba06cb26753f7bdf66f00f",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 335",
+      "height": 335,
+      "bestblock": "7b985dd9e4b5a6eecd19fa2a73a5c240780b76bab53b76cbf044d5889a5f197f",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 345",
+      "height": 345,
+      "bestblock": "7f3bdcf0cf1ee90b8e7bf2167c3b04d08375d6f85aacd8297fce2d6cb8ef0544",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 355",
+      "height": 355,
+      "bestblock": "3e87fdf7c3a624a4956235ba3c7fc53e00622c36820592f1d14eab746fd12824",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 365",
+      "height": 365,
+      "bestblock": "21cdbd3759dd684c2f66c853610078b7efff69f2fcdc8c3ca8756b2f11137ab7",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 375",
+      "height": 375,
+      "bestblock": "25caf8798a7f9cc96ddd18656e9c32c2192f10f3861cd3a53df112f49bd65b9c",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 385",
+      "height": 385,
+      "bestblock": "01f047cf2bdb402d7384217741027591e19b162b2ccd05d2cea20b14efebe0f9",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 395",
+      "height": 395,
+      "bestblock": "5aa89b1d6fc6238b4768a36ad913bfcf73798287c0c80a7ba85e06c3660f5e0d",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "alternating mining at 400",
+      "height": 400,
+      "bestblock": "15a4a7d737d9dff2f6fa19122d6253a61e786f27ac5dc59cc3a29e3973e12836",
+      "txouts": 4,
+      "total_amount": "149.99700000",
+      "muhash": "0cab736b1f025eca4d32c14712d20fa3114d2ffdd02238c0a1c3ef33e96caacc",
+      "pool_balance": "0E-8"
+    },
+    {
+      "label": "renewed lifetime boundary 401",
+      "height": 401,
+      "bestblock": "6a2229438cd18f47e7d1520e617b50e32f5b43bbef8a212a5e52a7e41be5c543",
+      "txouts": 2,
+      "total_amount": "74.99800000",
+      "muhash": "26785b83fd1f0dc75a071270a2b62ec85bebc5eaa9f1527753dbff093cb647ce",
+      "pool_balance": "73.99900000"
+    },
+    {
+      "label": "renewed lifetime boundary 402",
+      "height": 402,
+      "bestblock": "7758ed5e9fe015557f1804d441ba1b66af011174f357c5ad320c688da5b5c461",
+      "txouts": 0,
+      "total_amount": "0E-8",
+      "muhash": "dd5ad2a105c2d29495f577245c357409002329b9f4d6182c0af3dc2f462555c8",
+      "pool_balance": "147.99700000"
+    },
+    {
+      "label": "renewed lifetime boundary 403",
+      "height": 403,
+      "bestblock": "30cbd481e54b8bf00e129279a7812bb0e8fa1adb11ff771d51385683c38c7133",
+      "txouts": 0,
+      "total_amount": "0E-8",
+      "muhash": "dd5ad2a105c2d29495f577245c357409002329b9f4d6182c0af3dc2f462555c8",
+      "pool_balance": "146.99700000"
+    },
+    {
+      "label": "renewed lifetime boundary 404",
+      "height": 404,
+      "bestblock": "365b6ebeb02b7607f0f392ea5afb557adebac58637532632dc6b34976ccf3188",
+      "txouts": 0,
+      "total_amount": "0E-8",
+      "muhash": "dd5ad2a105c2d29495f577245c357409002329b9f4d6182c0af3dc2f462555c8",
+      "pool_balance": "145.99700000"
+    },
+    {
+      "label": "renewed lifetime boundary 405",
+      "height": 405,
+      "bestblock": "6ed1d761a5c1e45034346580db7126d61c906d9275f7b5f18192e991a0131e17",
+      "txouts": 0,
+      "total_amount": "0E-8",
+      "muhash": "dd5ad2a105c2d29495f577245c357409002329b9f4d6182c0af3dc2f462555c8",
+      "pool_balance": "144.99700000"
+    },
+    {
+      "label": "empty UTXO set with a nonzero pool",
+      "height": 405,
+      "bestblock": "6ed1d761a5c1e45034346580db7126d61c906d9275f7b5f18192e991a0131e17",
+      "txouts": 0,
+      "total_amount": "0E-8",
+      "muhash": "dd5ad2a105c2d29495f577245c357409002329b9f4d6182c0af3dc2f462555c8",
+      "pool_balance": "144.99700000"
+    },
+    {
+      "label": "pool-only state survives restart",
+      "height": 405,
+      "bestblock": "6ed1d761a5c1e45034346580db7126d61c906d9275f7b5f18192e991a0131e17",
+      "txouts": 0,
+      "total_amount": "0E-8",
+      "muhash": "dd5ad2a105c2d29495f577245c357409002329b9f4d6182c0af3dc2f462555c8",
+      "pool_balance": "144.99700000"
+    }
+  ]
+}

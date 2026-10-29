@@ -21,7 +21,11 @@ Archive checksums (SHA-256, checked against the official HTTPS SHA256SUMS):
 The 32.1 archive was checked against the official HTTPS SHA256SUMS on
 2026-10-28. Its release tag resolves to
 `f0de87f040621468b956f01f526a43a010310501`. This update does not establish
-Git ancestry with Bitcoin Core; release signatures were not verified.
+Git ancestry with Bitcoin Core. On 2026-10-29, all eight signatures on the
+32.1 SHA256SUMS were verified against public builder keys obtained from the
+official guix.sigs repository. The signed checksum matches the imported archive.
+See the [32.1 validation record](upstream-32.1-validation.md) for fingerprints,
+key provenance, historical mainnet replay, test results and the fork footprint.
 
 The 31.0-to-32.1 source changes were integrated against ReSatoshi main
 `e2505c0470c283b5ddbbcd662f42d42b25509127` in a separate worktree.
@@ -51,7 +55,8 @@ The original 32.1 notes are retained as
 All files shared by the original import and the 31.0 archive matched byte for
 byte. Nine omitted vendored source/build/test files are restored unchanged.
 The two omitted minisketch hosted-CI configurations remain excluded. Archive
-checksums were verified; release signatures were not verified in this audit.
+checksums were verified. The initial audit did not verify release signatures;
+the follow-up record above verifies the 32.1 signatures only.
 Vendored snapshot commits are local imports, not proof of upstream Git ancestry.
 
 The restored libmultiprocess, minisketch and secp256k1 trees are recorded with
@@ -174,6 +179,10 @@ handles. Reconcile this small local fix with upstream during future updates.
   remain supported.
 
 ## Local validation
+
+Completed 32.1 checks, their exact source commits and remaining limitations are
+recorded in [32.1 validation](upstream-32.1-validation.md). Requirements below
+describe the maintenance procedure; they do not imply every platform was tested.
 
 Run from the repository root using a configured build with tests and wallet:
 

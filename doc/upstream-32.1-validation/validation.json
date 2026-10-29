@@ -1,0 +1,85 @@
+{
+  "source_commit": "4f0d4ebb15af9bfb468ebb2632486eb694b714e8",
+  "previous_main": "e2505c0470c283b5ddbbcd662f42d42b25509127",
+  "completed_at_utc": "2026-10-29T11:21:15.602788+00:00",
+  "build": {
+    "type": "RelWithDebInfo",
+    "compiler": "GCC 15.2.0",
+    "qt": "6.10.2",
+    "gui": true,
+    "wallet": true,
+    "ipc": true,
+    "kernel_library_and_tests": true,
+    "zeromq": true
+  },
+  "ctest": {
+    "passed": 379,
+    "failed": 0,
+    "skipped": 0,
+    "details": "ctest-results.json"
+  },
+  "functional": {
+    "base_passed": 308,
+    "base_skipped": 19,
+    "base_failed": 0,
+    "supplemental_passed": 3,
+    "combined_unique_passed": 311,
+    "remaining_skipped": 16,
+    "details": "functional-results.json"
+  },
+  "mainnet": {
+    "height": 13600,
+    "versions": 2,
+    "modes": [
+      "index",
+      "block"
+    ],
+    "all_four_equal": true,
+    "details": "chain-comparison.json"
+  },
+  "mixed_versions": {
+    "candidate_reference_modes_and_transports": [
+      "index/block v2",
+      "block/index v1"
+    ],
+    "passed": true
+  },
+  "full_block_previous_main_comparison": "full-block.json",
+  "release_authentication": {
+    "valid_signatures": 8,
+    "archive_checksum_matches": true,
+    "details": "release-signatures.json"
+  },
+  "fork_footprint": {
+    "files": 412,
+    "added_lines": 181753,
+    "deleted_lines": 157037,
+    "details": "fork-footprint.json"
+  },
+  "full_lint": "passed",
+  "hosted_ci": false,
+  "production_deployment": false,
+  "not_run": [
+    "full Windows/macOS builds and install/uninstall",
+    "complete extended functional suite",
+    "new sanitizer/fuzz campaigns",
+    "in-place production directory upgrades",
+    "disk-format downgrade"
+  ],
+  "artifact_sha256": {
+    "SHA256SUMS": "8efe242e99fe85d96f6a564a14e41eae6ab903736f0732af4d6c00bf1d92534d",
+    "SHA256SUMS.asc": "a69d28b40056971b7b4e5aa02a1511edde2e12887961f02f86bd197f5f9c6baf",
+    "builder-keys-manifest.json": "9cfed096b09e61e73947399b98a6e3e01e04b31fb7d01e163ac45fa2d734265c",
+    "chain-comparison.json": "64da9f768a85e8f440d798764af6e3e45f02babbd73ec3d211020fdcbc867d02",
+    "ctest-results.json": "1e19d8af3b8fa9d5eb1e08a4828da44e237272fd820761263058ca76bea140eb",
+    "fork-footprint.json": "a1a2f9bcd331cd2e249c3128b9acd05d75b7a823524052e758afd2387ae19166",
+    "fork-footprint.numstat.tsv": "ec9e7592e0260a052bb5adc19233e9a92b7df8ccd01be38117487ee9cc84891e",
+    "fork-footprint.stat.txt": "5afa78dc119c5372c51088d6c2a8fd60c3d3fae09e7f1678529d458011aaaf5a",
+    "full-block.json": "8e90062a327397ac2ec8714952bda7c8b5eaad7e09274cf1d5e48ee5c0aec9b4",
+    "functional-results.json": "33abcb6c1495ee1c920f788ac1bfb819b49e3dc851ef1dba21a40e8fa60b00a4",
+    "gpg-status.txt": "027f1890f40326030d2c383f6e19f9fd171848fc5ed1920926dc97034051c5f4",
+    "mixed-block-v1.json": "ac4f7b52d6bfcb3a1f88eed2a6dc88e6372f0e96674c5f35360154ce26221677",
+    "mixed-index-v2.json": "fdac0ae4c61094146b894b8793dcd93b048e2fad0eafca0b0800b00679877d85",
+    "release-signatures.json": "39c37f2096384975d17a678d2c342bdf4ce12fd4ea549c7c9e050689de0239cb"
+  }
+}
